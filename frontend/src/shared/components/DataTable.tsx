@@ -22,7 +22,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="min-w-full divide-y divide-slate-200">
+      <table className="min-w-full table-fixed divide-y divide-slate-200">
         <thead className="bg-slate-50">
           <tr>
             {columns.map((col) => (

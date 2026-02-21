@@ -1,5 +1,6 @@
 export { DataTable } from './DataTable'
 export type { Column } from './DataTable'
+export { CopyableCell } from './CopyableCell'
 export { Pagination } from './Pagination'
 export { ConfirmDialog } from './ConfirmDialog'
 export { LoadingSpinner } from './LoadingSpinner'

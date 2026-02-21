@@ -2,7 +2,7 @@ import { api } from '@/shared/services/api'
 import type { Cliente, ClienteCreate, ClienteUpdate } from '../types/cliente.types'
 
 export const clienteService = {
-  list: (params?: { skip?: number; limit?: number }) =>
+  list: (params?: { skip?: number; limit?: number; search?: string }) =>
     api.get<Cliente[]>('/clientes', { params }).then((r) => r.data),
 
   get: (id: number) => api.get<Cliente>(`/clientes/${id}`).then((r) => r.data),

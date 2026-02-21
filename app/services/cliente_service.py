@@ -10,8 +10,10 @@ class ClienteService:
         self.db = db
         self.repo = ClienteRepository(db)
 
-    def listar(self, skip: int = 0, limit: int = 100) -> list[Cliente]:
-        return self.db.query(Cliente).offset(skip).limit(limit).all()
+    def listar(
+        self, skip: int = 0, limit: int = 100, search: str | None = None
+    ) -> list[Cliente]:
+        return self.repo.listar(skip, limit, search)
 
     def obtener(self, id: int) -> Cliente:
         c = self.repo.get(id)
