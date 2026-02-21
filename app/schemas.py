@@ -48,15 +48,21 @@ class Usuario(UsuarioBase):
 
 # ============= CLIENTE =============
 class ClienteBase(BaseModel):
-    nit: str
     razon_social: str
-    nombre_gerente: Optional[str] = None
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
+    tipo_documento: str  # NIT, CC
+    numero_identificacion: str
+    dv: Optional[str] = None
+    regimen: Optional[str] = None
+    pais: Optional[str] = None
     ciudad: Optional[str] = None
+    direccion: Optional[str] = None
+    telefono: Optional[str] = None
     departamento: Optional[str] = None
-    vendedor: Optional[str] = None
+    codigo_postal: Optional[str] = None
     email: Optional[str] = None
+    responsabilidad_fiscal: Optional[str] = None
+    detalles_tributarios: Optional[str] = None
+    vendedor: Optional[str] = None
 
 
 class ClienteCreate(ClienteBase):
@@ -64,15 +70,21 @@ class ClienteCreate(ClienteBase):
 
 
 class ClienteUpdate(BaseModel):
-    nit: Optional[str] = None
     razon_social: Optional[str] = None
-    nombre_gerente: Optional[str] = None
-    telefono: Optional[str] = None
-    direccion: Optional[str] = None
+    tipo_documento: Optional[str] = None
+    numero_identificacion: Optional[str] = None
+    dv: Optional[str] = None
+    regimen: Optional[str] = None
+    pais: Optional[str] = None
     ciudad: Optional[str] = None
+    direccion: Optional[str] = None
+    telefono: Optional[str] = None
     departamento: Optional[str] = None
-    vendedor: Optional[str] = None
+    codigo_postal: Optional[str] = None
     email: Optional[str] = None
+    responsabilidad_fiscal: Optional[str] = None
+    detalles_tributarios: Optional[str] = None
+    vendedor: Optional[str] = None
 
 
 class Cliente(ClienteBase):

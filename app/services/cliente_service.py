@@ -20,8 +20,10 @@ class ClienteService:
         return c
 
     def crear(self, data: ClienteCreate) -> Cliente:
-        if self.repo.exists_nit(data.nit):
-            raise ValidationError("Ya existe un cliente con ese NIT")
+        if self.repo.exists_documento(data.tipo_documento, data.numero_identificacion):
+            raise ValidationError(
+                f"Ya existe un cliente con {data.tipo_documento} {data.numero_identificacion}"
+            )
         cliente = Cliente(**data.model_dump())
         self.db.add(cliente)
         self.db.commit()
@@ -31,9 +33,11 @@ class ClienteService:
     def actualizar(self, id: int, data: ClienteUpdate) -> Cliente:
         cliente = self.obtener(id)
         attrs = data.model_dump(exclude_unset=True)
-        if "nit" in attrs and attrs["nit"] != cliente.nit:
-            if self.repo.exists_nit(attrs["nit"], exclude_id=id):
-                raise ValidationError("Ya existe un cliente con ese NIT")
+        tipo = attrs.get("tipo_documento", cliente.tipo_documento)
+        num = attrs.get("numero_identificacion", cliente.numero_identificacion)
+        if (tipo, num) != (cliente.tipo_documento, cliente.numero_identificacion):
+            if self.repo.exists_documento(tipo, num, exclude_id=id):
+                raise ValidationError(f"Ya existe un cliente con {tipo} {num}")
         for k, v in attrs.items():
             setattr(cliente, k, v)
         self.db.commit()

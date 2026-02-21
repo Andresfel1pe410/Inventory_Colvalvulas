@@ -1,38 +1,58 @@
 export interface Cliente {
   id: number
-  nit: string
   razon_social: string
-  nombre_gerente?: string
-  telefono?: string
-  direccion?: string
+  tipo_documento: string
+  numero_identificacion: string
+  dv?: string
+  regimen?: string
+  pais?: string
   ciudad?: string
+  direccion?: string
+  telefono?: string
   departamento?: string
-  vendedor?: string
+  codigo_postal?: string
   email?: string
+  responsabilidad_fiscal?: string
+  detalles_tributarios?: string
+  vendedor?: string
   created_at: string
   updated_at: string
 }
 
 export interface ClienteCreate {
-  nit: string
   razon_social: string
-  nombre_gerente?: string
-  telefono?: string
-  direccion?: string
+  tipo_documento: string
+  numero_identificacion: string
+  dv?: string
+  regimen?: string
+  pais?: string
   ciudad?: string
+  direccion?: string
+  telefono?: string
   departamento?: string
-  vendedor?: string
+  codigo_postal?: string
   email?: string
+  responsabilidad_fiscal?: string
+  detalles_tributarios?: string
+  vendedor?: string
 }
 
 export interface ClienteUpdate {
-  nit?: string
   razon_social?: string
-  nombre_gerente?: string
-  telefono?: string
-  direccion?: string
+  tipo_documento?: string
+  numero_identificacion?: string
+  dv?: string
+  regimen?: string
+  pais?: string
   ciudad?: string
+  direccion?: string
+  telefono?: string
   departamento?: string
-  vendedor?: string
+  codigo_postal?: string
   email?: string
+  responsabilidad_fiscal?: string
+  detalles_tributarios?: string
+  vendedor?: string
 }
+
+export const TIPOS_DOCUMENTO = ['NIT', 'CC'] as const

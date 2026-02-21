@@ -120,7 +120,7 @@ export function PedidoFormPage() {
                 <option value="">Seleccione...</option>
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.razon_social} ({c.nit})
+                    {c.razon_social} ({c.tipo_documento} {c.numero_identificacion})
                   </option>
                 ))}
               </select>

@@ -53,15 +53,21 @@ class Cliente(Base):
     __tablename__ = "cliente"
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    nit = Column(String(20), unique=True, nullable=False)
     razon_social = Column(String(200), nullable=False)
-    nombre_gerente = Column(String(200))
-    telefono = Column(String(50))
-    direccion = Column(String(255))
+    tipo_documento = Column(String(10), nullable=False)  # NIT, CC
+    numero_identificacion = Column(String(30), nullable=False)
+    dv = Column(String(5))
+    regimen = Column(String(100))
+    pais = Column(String(100))
     ciudad = Column(String(100))
+    direccion = Column(String(255))
+    telefono = Column(String(50))
     departamento = Column(String(100))
-    vendedor = Column(String(10))
+    codigo_postal = Column(String(20))
     email = Column(String(255))
+    responsabilidad_fiscal = Column(String(100))
+    detalles_tributarios = Column(Text)
+    vendedor = Column(String(10))
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 

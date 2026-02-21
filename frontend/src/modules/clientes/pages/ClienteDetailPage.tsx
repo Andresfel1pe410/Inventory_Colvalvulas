@@ -61,20 +61,28 @@ export function ClienteDetailPage() {
       <div className="rounded-lg border border-slate-200 bg-white p-6">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-sm font-medium text-slate-500">NIT</dt>
-            <dd className="mt-1 text-slate-900">{cliente.nit}</dd>
-          </div>
-          <div>
             <dt className="text-sm font-medium text-slate-500">Razón Social</dt>
             <dd className="mt-1 text-slate-900">{cliente.razon_social}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-slate-500">Teléfono</dt>
-            <dd className="mt-1 text-slate-900">{cliente.telefono || '—'}</dd>
+            <dt className="text-sm font-medium text-slate-500">Tipo de documento</dt>
+            <dd className="mt-1 text-slate-900">{cliente.tipo_documento}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-slate-500">Email</dt>
-            <dd className="mt-1 text-slate-900">{cliente.email || '—'}</dd>
+            <dt className="text-sm font-medium text-slate-500">Número de identificación</dt>
+            <dd className="mt-1 text-slate-900">{cliente.numero_identificacion}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500">DV</dt>
+            <dd className="mt-1 text-slate-900">{cliente.dv || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500">Régimen</dt>
+            <dd className="mt-1 text-slate-900">{cliente.regimen || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500">País</dt>
+            <dd className="mt-1 text-slate-900">{cliente.pais || '—'}</dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-slate-500">Ciudad</dt>
@@ -85,17 +93,37 @@ export function ClienteDetailPage() {
             <dd className="mt-1 text-slate-900">{cliente.departamento || '—'}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-slate-500">Vendedor</dt>
-            <dd className="mt-1 text-slate-900">{cliente.vendedor || '—'}</dd>
+            <dt className="text-sm font-medium text-slate-500">Código Postal</dt>
+            <dd className="mt-1 text-slate-900">{cliente.codigo_postal || '—'}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-slate-500">Nombre Gerente</dt>
-            <dd className="mt-1 text-slate-900">{cliente.nombre_gerente || '—'}</dd>
-          </div>
-          <div className="sm:col-span-2">
             <dt className="text-sm font-medium text-slate-500">Dirección</dt>
             <dd className="mt-1 text-slate-900">{cliente.direccion || '—'}</dd>
           </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500">Teléfono</dt>
+            <dd className="mt-1 text-slate-900">{cliente.telefono || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500">Email</dt>
+            <dd className="mt-1 text-slate-900">{cliente.email || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500">Responsabilidad Fiscal</dt>
+            <dd className="mt-1 text-slate-900">{cliente.responsabilidad_fiscal || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500">Vendedor</dt>
+            <dd className="mt-1 text-slate-900">{cliente.vendedor || '—'}</dd>
+          </div>
+          {cliente.detalles_tributarios && (
+            <div className="sm:col-span-2">
+              <dt className="text-sm font-medium text-slate-500">Detalles Tributarios</dt>
+              <dd className="mt-1 whitespace-pre-wrap text-slate-900">
+                {cliente.detalles_tributarios}
+              </dd>
+            </div>
+          )}
         </dl>
       </div>
     </div>

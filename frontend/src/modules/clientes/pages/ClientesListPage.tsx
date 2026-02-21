@@ -5,12 +5,13 @@ import { clienteService } from '../services/cliente.service'
 import type { Cliente } from '../types/cliente.types'
 
 const columns: Column<Cliente>[] = [
-  { key: 'nit', header: 'NIT' },
+  { key: 'tipo_documento', header: 'Tipo Doc.' },
+  { key: 'numero_identificacion', header: 'Nº Documento' },
   { key: 'razon_social', header: 'Razón Social' },
-  { key: 'telefono', header: 'Teléfono' },
-  { key: 'ciudad', header: 'Ciudad' },
   { key: 'departamento', header: 'Departamento' },
-  { key: 'email', header: 'Email' },
+  { key: 'ciudad', header: 'Ciudad' },
+  { key: 'email', header: 'Correo' },
+  { key: 'telefono', header: 'Teléfono' },
 ]
 
 export function ClientesListPage() {
