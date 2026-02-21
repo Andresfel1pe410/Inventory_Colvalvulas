@@ -1,0 +1,5 @@
+export { PedidosListPage } from './pages/PedidosListPage'
+export { PedidoFormPage } from './pages/PedidoFormPage'
+export { PedidoDetailPage } from './pages/PedidoDetailPage'
+export { PedidoEditPage } from './pages/PedidoEditPage'
+export type { Pedido, PedidoConDetalles, PedidoCreate } from './types/pedido.types'

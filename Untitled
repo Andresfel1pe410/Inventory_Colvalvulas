@@ -1,0 +1,21 @@
+# =============================================
+# ERP Inventario - Variables de entorno
+# Copiar a .env (raíz) para backend y frontend/.env para frontend
+# =============================================
+
+# ---------- BACKEND (FastAPI) - archivo .env en raíz ----------
+# Base de datos PostgreSQL (Supabase)
+# Formato: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:*Afng19111981*@db.nciiowjijbfxkvvdkqii.supabase.co:5432/postgres
+
+# Supabase - Backend
+SUPABASE_URL=https://nciiowjijbfxkvvdkqii.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_3IshvvG9x35WxNGsZRwXSA_esSif0j4
+
+# Service Role Key - NUNCA exponer en frontend, solo en backend
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_7Eiu-gici6cg83zJzfviJQ_Uk4JdS3I
+
+# ---------- FRONTEND (React/Vite) - archivo frontend/.env ----------
+# Vite usa prefijo VITE_ para exponer variables al cliente
+VITE_SUPABASE_URL=https://nciiowjijbfxkvvdkqii.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_3IshvvG9x35WxNGsZRwXSA_esSif0j4

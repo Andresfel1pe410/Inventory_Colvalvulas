@@ -1,0 +1,1 @@
+# ERP Inventario - FastAPI + Supabase
