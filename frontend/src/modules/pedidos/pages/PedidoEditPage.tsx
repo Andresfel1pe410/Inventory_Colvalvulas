@@ -4,16 +4,9 @@ import { formatPesos } from '@/shared/utils/format'
 import { pedidoService } from '../services/pedido.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
 import { productoService } from '@/modules/productos/services/producto.service'
-import { getPrecioByLista, LISTAS_PRECIOS } from '@/modules/productos/types/producto.types'
+import { getPrecioByLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
-
-const LISTA_LABELS: Record<string, string> = {
-  lista_1: 'Lista 1',
-  lista_2: 'Lista 2',
-  lista_3: 'Lista 3',
-  lista_plus: 'Lista Plus',
-}
 
 interface LineaDetalle {
   producto_id: number
@@ -40,7 +33,7 @@ export function PedidoEditPage() {
     if (!id) return
     setLoadingPedido(true)
     Promise.all([
-      clienteService.list({ activos_only: true }),
+      clienteService.list(),
       productoService.list({ activos_only: true }),
       pedidoService.get(Number(id)),
     ])
@@ -67,9 +60,13 @@ export function PedidoEditPage() {
       .finally(() => setLoadingPedido(false))
   }, [id])
 
+  const productosLista = productos.filter(
+    (p) => p.lista === listaPrecios || detalles.some((d) => d.producto_id === p.id)
+  )
   const addLinea = () => {
-    if (productos.length === 0) return
-    setDetalles((d) => [...d, { producto_id: productos[0].id, cantidad: 1, producto: productos[0] }])
+    const disponibles = productos.filter((p) => p.lista === listaPrecios)
+    if (disponibles.length === 0) return
+    setDetalles((d) => [...d, { producto_id: disponibles[0].id, cantidad: 1, producto: disponibles[0] }])
   }
 
   const updateLinea = (idx: number, field: 'producto_id' | 'cantidad', value: number | '') => {
@@ -175,7 +172,7 @@ export function PedidoEditPage() {
                 <option value="">Seleccione...</option>
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.razon_social || c.nombre} ({c.codigo})
+                    {c.razon_social} ({c.nit})
                   </option>
                 ))}
               </select>
@@ -242,9 +239,9 @@ export function PedidoEditPage() {
                     onChange={(e) => updateLinea(idx, 'producto_id', Number(e.target.value))}
                     className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
                   >
-                    {productos.map((p) => (
+                    {productosLista.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nombre} - {formatPesos(getPrecioByLista(p, listaPrecios))} (
+                        {p.referencia} - {formatPesos(getPrecioByLista(p, listaPrecios))} (
                         {LISTA_LABELS[listaPrecios]})
                       </option>
                     ))}

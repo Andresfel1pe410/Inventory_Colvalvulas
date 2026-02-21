@@ -83,7 +83,7 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
               <option value="">Seleccione producto...</option>
               {inventarios.map((i) => (
                 <option key={i.id} value={i.producto_id}>
-                  {i.producto?.nombre || i.producto?.codigo || `#${i.producto_id}`} (stock: {i.stock_actual})
+                  {i.producto?.referencia || i.producto?.codigo || `#${i.producto_id}`} (stock: {i.stock_actual})
                 </option>
               ))}
             </select>

@@ -96,7 +96,7 @@ export function OrdenEmpaqueDetailPage() {
               key={d.id}
               className="flex items-center justify-between px-4 py-3"
             >
-              <span>{productos[d.producto_id]?.nombre || `Producto #${d.producto_id}`}</span>
+              <span>{productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `Producto #${d.producto_id}`}</span>
               <span>
                 {d.cantidad_empacada} / {d.cantidad}
               </span>

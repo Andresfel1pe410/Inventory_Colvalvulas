@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { productoService } from '../services/producto.service'
+import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
 import type { ProductoCreate } from '../types/producto.types'
 
 export function ProductoFormPage() {
@@ -10,14 +11,10 @@ export function ProductoFormPage() {
 
   const [form, setForm] = useState<ProductoCreate>({
     codigo: '',
-    nombre: '',
-    descripcion: '',
-    unidad_medida: 'UND',
-    precio_lista_1: undefined,
-    precio_lista_2: undefined,
-    precio_lista_3: undefined,
-    precio_lista_plus: undefined,
-    activo: true,
+    referencia: '',
+    material: '',
+    precio: 0,
+    lista: 'lista_1',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,14 +26,10 @@ export function ProductoFormPage() {
         .then((p) =>
           setForm({
             codigo: p.codigo,
-            nombre: p.nombre,
-            descripcion: p.descripcion || '',
-            unidad_medida: p.unidad_medida,
-            precio_lista_1: p.precio_lista_1 ?? undefined,
-            precio_lista_2: p.precio_lista_2 ?? undefined,
-            precio_lista_3: p.precio_lista_3 ?? undefined,
-            precio_lista_plus: p.precio_lista_plus ?? undefined,
-            activo: p.activo,
+            referencia: p.referencia,
+            material: p.material,
+            precio: p.precio ?? 0,
+            lista: p.lista || 'lista_1',
           })
         )
         .catch(() => setError('Producto no encontrado'))
@@ -50,7 +43,7 @@ export function ProductoFormPage() {
     try {
       const data: ProductoCreate = {
         ...form,
-        descripcion: form.descripcion || undefined,
+        precio: typeof form.precio === 'number' ? form.precio : parseFloat(String(form.precio)) || 0,
       }
       if (isEdit && id) {
         await productoService.update(Number(id), data)
@@ -76,7 +69,7 @@ export function ProductoFormPage() {
         )}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Código</label>
+            <label className="block text-sm font-medium text-slate-700">Código *</label>
             <input
               type="text"
               value={form.codigo}
@@ -86,126 +79,60 @@ export function ProductoFormPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Nombre</label>
+            <label className="block text-sm font-medium text-slate-700">Referencia *</label>
             <input
               type="text"
-              value={form.nombre}
-              onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
+              value={form.referencia}
+              onChange={(e) => setForm((f) => ({ ...f, referencia: e.target.value }))}
               required
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Material</label>
-          <textarea
-            value={form.descripcion}
-            onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
-            rows={2}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Unidad</label>
-          <select
-            value={form.unidad_medida}
-            onChange={(e) => setForm((f) => ({ ...f, unidad_medida: e.target.value }))}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-          >
-            <option value="UND">UND</option>
-            <option value="KG">KG</option>
-            <option value="L">L</option>
-            <option value="M">M</option>
-          </select>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="mb-3 font-medium text-slate-900">Listas de precios</h3>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-600">Lista 1</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder=""
-                value={form.precio_lista_1 === undefined || form.precio_lista_1 === null ? '' : form.precio_lista_1}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setForm((f) => ({
-                    ...f,
-                    precio_lista_1: v === '' ? undefined : (parseFloat(v) || 0),
-                  }))
-                }}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600">Lista 2</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder=""
-                value={form.precio_lista_2 === undefined || form.precio_lista_2 === null ? '' : form.precio_lista_2}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setForm((f) => ({
-                    ...f,
-                    precio_lista_2: v === '' ? undefined : (parseFloat(v) || 0),
-                  }))
-                }}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600">Lista 3</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder=""
-                value={form.precio_lista_3 === undefined || form.precio_lista_3 === null ? '' : form.precio_lista_3}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setForm((f) => ({
-                    ...f,
-                    precio_lista_3: v === '' ? undefined : (parseFloat(v) || 0),
-                  }))
-                }}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600">Lista Plus</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder=""
-                value={form.precio_lista_plus === undefined || form.precio_lista_plus === null ? '' : form.precio_lista_plus}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setForm((f) => ({
-                    ...f,
-                    precio_lista_plus: v === '' ? undefined : (parseFloat(v) || 0),
-                  }))
-                }}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+          <label className="block text-sm font-medium text-slate-700">Material *</label>
           <input
-            type="checkbox"
-            id="activo"
-            checked={form.activo}
-            onChange={(e) => setForm((f) => ({ ...f, activo: e.target.checked }))}
-            className="rounded border-slate-300"
+            type="text"
+            value={form.material}
+            onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}
+            required
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
           />
-          <label htmlFor="activo" className="text-sm text-slate-700">
-            Activo
-          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Precio *</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.precio}
+              onChange={(e) => {
+                const v = e.target.value
+                setForm((f) => ({
+                  ...f,
+                  precio: v === '' ? 0 : parseFloat(v) || 0,
+                }))
+              }}
+              required
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Lista *</label>
+            <select
+              value={form.lista}
+              onChange={(e) => setForm((f) => ({ ...f, lista: e.target.value }))}
+              required
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              {LISTAS_PRECIOS.map((l) => (
+                <option key={l} value={l}>
+                  {LISTA_LABELS[l]}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex gap-3 pt-4">
           <button

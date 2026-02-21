@@ -10,11 +10,8 @@ class ClienteService:
         self.db = db
         self.repo = ClienteRepository(db)
 
-    def listar(self, skip: int = 0, limit: int = 100, activos_only: bool = True) -> list[Cliente]:
-        q = self.db.query(Cliente)
-        if activos_only:
-            q = q.filter(Cliente.activo == True)
-        return q.offset(skip).limit(limit).all()
+    def listar(self, skip: int = 0, limit: int = 100) -> list[Cliente]:
+        return self.db.query(Cliente).offset(skip).limit(limit).all()
 
     def obtener(self, id: int) -> Cliente:
         c = self.repo.get(id)
@@ -23,12 +20,9 @@ class ClienteService:
         return c
 
     def crear(self, data: ClienteCreate) -> Cliente:
-        if self.repo.exists_codigo(data.codigo):
-            raise ValidationError("Ya existe un cliente con ese código")
-        d = data.model_dump()
-        if not d.get("razon_social") and d.get("nombre"):
-            d["razon_social"] = d["nombre"]
-        cliente = Cliente(**d)
+        if self.repo.exists_nit(data.nit):
+            raise ValidationError("Ya existe un cliente con ese NIT")
+        cliente = Cliente(**data.model_dump())
         self.db.add(cliente)
         self.db.commit()
         self.db.refresh(cliente)
@@ -37,9 +31,9 @@ class ClienteService:
     def actualizar(self, id: int, data: ClienteUpdate) -> Cliente:
         cliente = self.obtener(id)
         attrs = data.model_dump(exclude_unset=True)
-        if "codigo" in attrs and attrs["codigo"] != cliente.codigo:
-            if self.repo.exists_codigo(attrs["codigo"], exclude_id=id):
-                raise ValidationError("Ya existe un cliente con ese código")
+        if "nit" in attrs and attrs["nit"] != cliente.nit:
+            if self.repo.exists_nit(attrs["nit"], exclude_id=id):
+                raise ValidationError("Ya existe un cliente con ese NIT")
         for k, v in attrs.items():
             setattr(cliente, k, v)
         self.db.commit()

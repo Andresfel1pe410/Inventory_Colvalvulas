@@ -16,7 +16,7 @@ def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     activos_only: bool = Query(True),
-    search: str | None = Query(None, description="Buscar por código o nombre"),
+    search: str | None = Query(None, description="Buscar por código, referencia o material"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):

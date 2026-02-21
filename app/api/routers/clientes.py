@@ -15,11 +15,10 @@ router = APIRouter(prefix="/clientes", tags=["clientes"])
 def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    activos_only: bool = Query(True),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    return ClienteService(db).listar(skip, limit, activos_only)
+    return ClienteService(db).listar(skip, limit)
 
 
 @router.get("/{id}", response_model=Cliente)

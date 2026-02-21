@@ -48,18 +48,15 @@ class Usuario(UsuarioBase):
 
 # ============= CLIENTE =============
 class ClienteBase(BaseModel):
-    codigo: str
-    nombre: str  # Mantener para compat
-    nit: Optional[str] = None
-    razon_social: Optional[str] = None
+    nit: str
+    razon_social: str
     nombre_gerente: Optional[str] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
     departamento: Optional[str] = None
-    vendedor_id: Optional[int] = None
+    vendedor: Optional[str] = None
     email: Optional[str] = None
-    activo: bool = True
 
 
 class ClienteCreate(ClienteBase):
@@ -67,8 +64,6 @@ class ClienteCreate(ClienteBase):
 
 
 class ClienteUpdate(BaseModel):
-    codigo: Optional[str] = None
-    nombre: Optional[str] = None
     nit: Optional[str] = None
     razon_social: Optional[str] = None
     nombre_gerente: Optional[str] = None
@@ -76,9 +71,8 @@ class ClienteUpdate(BaseModel):
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
     departamento: Optional[str] = None
-    vendedor_id: Optional[int] = None
+    vendedor: Optional[str] = None
     email: Optional[str] = None
-    activo: Optional[bool] = None
 
 
 class Cliente(ClienteBase):
@@ -95,14 +89,10 @@ LISTAS_PRECIOS = ("lista_1", "lista_2", "lista_3", "lista_plus")
 
 class ProductoBase(BaseModel):
     codigo: str
-    nombre: str
-    descripcion: Optional[str] = None
-    unidad_medida: str = "UND"
-    precio_lista_1: Optional[Decimal] = Field(None, ge=0)
-    precio_lista_2: Optional[Decimal] = Field(None, ge=0)
-    precio_lista_3: Optional[Decimal] = Field(None, ge=0)
-    precio_lista_plus: Optional[Decimal] = Field(None, ge=0)
-    activo: bool = True
+    referencia: str
+    material: str
+    precio: Decimal = Field(ge=0)
+    lista: str = Field(..., pattern="^(lista_1|lista_2|lista_3|lista_plus)$")
 
 
 class ProductoCreate(ProductoBase):
@@ -111,14 +101,10 @@ class ProductoCreate(ProductoBase):
 
 class ProductoUpdate(BaseModel):
     codigo: Optional[str] = None
-    nombre: Optional[str] = None
-    descripcion: Optional[str] = None
-    unidad_medida: Optional[str] = None
-    precio_lista_1: Optional[Decimal] = Field(None, ge=0)
-    precio_lista_2: Optional[Decimal] = Field(None, ge=0)
-    precio_lista_3: Optional[Decimal] = Field(None, ge=0)
-    precio_lista_plus: Optional[Decimal] = Field(None, ge=0)
-    activo: Optional[bool] = None
+    referencia: Optional[str] = None
+    material: Optional[str] = None
+    precio: Optional[Decimal] = Field(None, ge=0)
+    lista: Optional[str] = Field(None, pattern="^(lista_1|lista_2|lista_3|lista_plus)$")
 
 
 class Producto(ProductoBase):
@@ -211,8 +197,6 @@ class PedidoBase(BaseModel):
 
 class PedidoCreate(PedidoBase):
     detalles: list[DetallePedidoCreate]
-    lista_precios: str = "lista_1"  # lista_1, lista_2, lista_3, lista_plus
-    descuento: Decimal = Field(default=0, ge=0, le=100)  # Porcentaje 0-100
     lista_precios: str = "lista_1"  # lista_1, lista_2, lista_3, lista_plus
     descuento: Decimal = Field(default=0, ge=0, le=100)  # Porcentaje 0-100
 

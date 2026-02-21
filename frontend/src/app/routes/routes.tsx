@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/modules/auth'
 import { MainLayout } from '../layout/MainLayout'
 import { LoginPage } from '@/modules/auth'
-import { ClientesListPage, ClienteFormPage } from '@/modules/clientes'
+import { ClientesListPage, ClienteFormPage, ClienteDetailPage } from '@/modules/clientes'
 import { ProductosListPage, ProductoFormPage } from '@/modules/productos'
 import { InventarioPage } from '@/modules/inventario'
 import { PedidosListPage, PedidoFormPage, PedidoDetailPage, PedidoEditPage } from '@/modules/pedidos'
@@ -26,6 +26,7 @@ export function AppRoutes() {
         <Route path="clientes" element={<ClientesListPage />} />
         <Route path="clientes/nuevo" element={<ClienteFormPage />} />
         <Route path="clientes/:id/editar" element={<ClienteFormPage />} />
+        <Route path="clientes/:id" element={<ClienteDetailPage />} />
         <Route path="productos" element={<ProductosListPage />} />
         <Route path="productos/nuevo" element={<ProductoFormPage />} />
         <Route path="productos/:id/editar" element={<ProductoFormPage />} />

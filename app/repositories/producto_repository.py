@@ -18,15 +18,17 @@ class ProductoRepository(BaseRepository[Producto]):
         return q.first() is not None
 
     def list_activos(self, skip: int = 0, limit: int = 100, search: str | None = None):
-        q = self.db.query(Producto).filter(Producto.activo == True)
-        if search and search.strip():
-            term = f"%{search.strip()}%"
-            q = q.filter(or_(Producto.codigo.ilike(term), Producto.nombre.ilike(term)))
-        return q.offset(skip).limit(limit).all()
+        return self.list_all(skip, limit, search)
 
     def list_all(self, skip: int = 0, limit: int = 100, search: str | None = None):
         q = self.db.query(Producto)
         if search and search.strip():
             term = f"%{search.strip()}%"
-            q = q.filter(or_(Producto.codigo.ilike(term), Producto.nombre.ilike(term)))
+            q = q.filter(
+                or_(
+                    Producto.codigo.ilike(term),
+                    Producto.referencia.ilike(term),
+                    Producto.material.ilike(term),
+                )
+            )
         return q.offset(skip).limit(limit).all()

@@ -39,7 +39,7 @@ export function RemisionesListPage() {
       key: 'cliente_id',
       header: 'Cliente',
       render: (r) =>
-        clientes[r.cliente_id]?.razon_social || clientes[r.cliente_id]?.nombre || `#${r.cliente_id}`,
+        clientes[r.cliente_id]?.razon_social || `#${r.cliente_id}`,
     },
     {
       key: 'numero_factura',

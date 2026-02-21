@@ -5,21 +5,12 @@ import { clienteService } from '../services/cliente.service'
 import type { Cliente } from '../types/cliente.types'
 
 const columns: Column<Cliente>[] = [
-  { key: 'codigo', header: 'Código' },
-  {
-    key: 'razon_social',
-    header: 'Razón Social',
-    render: (c) => c.razon_social || c.nombre,
-  },
   { key: 'nit', header: 'NIT' },
-  { key: 'nombre_gerente', header: 'Gerente' },
+  { key: 'razon_social', header: 'Razón Social' },
   { key: 'telefono', header: 'Teléfono' },
   { key: 'ciudad', header: 'Ciudad' },
-  {
-    key: 'activo',
-    header: 'Activo',
-    render: (c) => (c.activo ? 'Sí' : 'No'),
-  },
+  { key: 'departamento', header: 'Departamento' },
+  { key: 'email', header: 'Email' },
 ]
 
 export function ClientesListPage() {
@@ -35,7 +26,6 @@ export function ClientesListPage() {
       const data = await clienteService.list({
         skip: (page - 1) * limit,
         limit,
-        activos_only: false,
       })
       setClientes(data)
     } catch {
@@ -86,6 +76,12 @@ export function ClientesListPage() {
                 width: '180px',
                 render: (c) => (
                   <div className="flex gap-2">
+                    <Link
+                      to={`/clientes/${c.id}`}
+                      className="text-primary-600 hover:underline"
+                    >
+                      Detalles
+                    </Link>
                     <Link
                       to={`/clientes/${c.id}/editar`}
                       className="text-primary-600 hover:underline"

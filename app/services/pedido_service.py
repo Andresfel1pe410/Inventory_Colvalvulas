@@ -14,19 +14,9 @@ LISTAS_PRECIOS = ("lista_1", "lista_2", "lista_3", "lista_plus")
 
 
 def _precio_desde_lista(prod: Producto, lista: str) -> Decimal:
-    """Obtiene el precio del producto según la lista. Fallback a primera lista disponible."""
-    mapeo = {
-        "lista_1": prod.precio_lista_1,
-        "lista_2": prod.precio_lista_2,
-        "lista_3": prod.precio_lista_3,
-        "lista_plus": prod.precio_lista_plus,
-    }
-    precio = mapeo.get(lista) if lista else None
-    if precio is not None:
-        return Decimal(str(precio))
-    for v in (prod.precio_lista_1, prod.precio_lista_2, prod.precio_lista_3, prod.precio_lista_plus):
-        if v is not None:
-            return Decimal(str(v))
+    """Obtiene el precio del producto si pertenece a la lista seleccionada."""
+    if prod.lista == lista:
+        return Decimal(str(prod.precio))
     return Decimal("0")
 
 

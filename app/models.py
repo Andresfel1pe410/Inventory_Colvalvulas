@@ -53,22 +53,17 @@ class Cliente(Base):
     __tablename__ = "cliente"
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    codigo = Column(String(50), unique=True, nullable=False)
-    nombre = Column(String(200), nullable=False)  # Mantener para compatibilidad
-    nit = Column(String(20))
-    razon_social = Column(String(200))
+    nit = Column(String(20), unique=True, nullable=False)
+    razon_social = Column(String(200), nullable=False)
     nombre_gerente = Column(String(200))
     telefono = Column(String(50))
     direccion = Column(String(255))
     ciudad = Column(String(100))
     departamento = Column(String(100))
-    vendedor_id = Column(BigInteger, ForeignKey("usuario.id", ondelete="SET NULL"))
+    vendedor = Column(String(10))
     email = Column(String(255))
-    activo = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    vendedor = relationship("Usuario", foreign_keys=[vendedor_id])
 
 
 class Producto(Base):
@@ -76,14 +71,10 @@ class Producto(Base):
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     codigo = Column(String(50), unique=True, nullable=False)
-    nombre = Column(String(200), nullable=False)
-    descripcion = Column(Text)
-    unidad_medida = Column(String(20), default="UND")
-    precio_lista_1 = Column(Numeric(15, 2))
-    precio_lista_2 = Column(Numeric(15, 2))
-    precio_lista_3 = Column(Numeric(15, 2))
-    precio_lista_plus = Column(Numeric(15, 2))
-    activo = Column(Boolean, default=True)
+    referencia = Column(String(200), nullable=False)
+    material = Column(String(255), nullable=False)
+    precio = Column(Numeric(15, 2), nullable=False)
+    lista = Column(String(20), nullable=False)  # lista_1, lista_2, lista_3, lista_plus
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     

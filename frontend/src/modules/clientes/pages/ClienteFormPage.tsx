@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { clienteService } from '../services/cliente.service'
-import { usuarioService } from '@/modules/usuarios/services/usuario.service'
+import {
+  DEPARTAMENTOS_COLOMBIA,
+  CIUDADES_POR_DEPARTAMENTO,
+} from '@/shared/constants/colombia'
+import { VENDEDORES } from '@/shared/constants/vendedores'
 import type { ClienteCreate } from '../types/cliente.types'
-import type { UsuarioSistema } from '@/modules/usuarios/types/usuario.types'
 
 export function ClienteFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
 
-  const [form, setForm] = useState<ClienteCreate>({
-    codigo: '',
-    nombre: '',
+  const [form, setForm] = useState<ClienteCreate & { email?: string }>({
     nit: '',
     razon_social: '',
     nombre_gerente: '',
@@ -21,16 +22,14 @@ export function ClienteFormPage() {
     ciudad: '',
     departamento: '',
     email: '',
-    vendedor_id: undefined,
-    activo: true,
+    vendedor: '',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [usuarios, setUsuarios] = useState<UsuarioSistema[]>([])
 
-  useEffect(() => {
-    usuarioService.list({ limit: 200 }).then(setUsuarios)
-  }, [])
+  const ciudadesDisponibles = form.departamento
+    ? CIUDADES_POR_DEPARTAMENTO[form.departamento] ?? []
+    : []
 
   useEffect(() => {
     if (isEdit && id) {
@@ -38,18 +37,15 @@ export function ClienteFormPage() {
         .get(Number(id))
         .then((c) =>
           setForm({
-            codigo: c.codigo,
-            nombre: c.nombre,
             nit: c.nit || '',
-            razon_social: c.razon_social || c.nombre || '',
+            razon_social: c.razon_social || '',
             nombre_gerente: c.nombre_gerente || '',
             direccion: c.direccion || '',
             telefono: c.telefono || '',
             ciudad: c.ciudad || '',
             departamento: c.departamento || '',
-            vendedor_id: c.vendedor_id,
+            vendedor: c.vendedor || '',
             email: c.email || '',
-            activo: c.activo,
           })
         )
         .catch(() => setError('Cliente no encontrado'))
@@ -63,16 +59,15 @@ export function ClienteFormPage() {
     try {
       const data = {
         ...form,
-        nombre: form.razon_social || form.nombre,
-        nit: form.nit || undefined,
-        razon_social: form.razon_social || form.nombre || undefined,
+        nit: form.nit,
+        razon_social: form.razon_social,
         nombre_gerente: form.nombre_gerente || undefined,
         direccion: form.direccion || undefined,
         telefono: form.telefono || undefined,
         ciudad: form.ciudad || undefined,
         departamento: form.departamento || undefined,
-        vendedor_id: form.vendedor_id || undefined,
         email: form.email || undefined,
+        vendedor: form.vendedor || undefined,
       }
       if (isEdit && id) {
         await clienteService.update(Number(id), data)
@@ -87,6 +82,10 @@ export function ClienteFormPage() {
     }
   }
 
+  const handleDepartamentoChange = (dep: string) => {
+    setForm((f) => ({ ...f, departamento: dep, ciudad: '' }))
+  }
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">
@@ -98,27 +97,33 @@ export function ClienteFormPage() {
         )}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Código</label>
+            <label className="block text-sm font-medium text-slate-700">NIT *</label>
             <input
               type="text"
-              value={form.codigo}
-              onChange={(e) => setForm((f) => ({ ...f, codigo: e.target.value }))}
+              value={form.nit}
+              onChange={(e) => setForm((f) => ({ ...f, nit: e.target.value }))}
               required
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">NIT</label>
-            <input
-              type="text"
-              value={form.nit}
-              onChange={(e) => setForm((f) => ({ ...f, nit: e.target.value }))}
+            <label className="block text-sm font-medium text-slate-700">Vendedor</label>
+            <select
+              value={form.vendedor}
+              onChange={(e) => setForm((f) => ({ ...f, vendedor: e.target.value }))}
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-            />
+            >
+              <option value="">Ninguno</option>
+              {VENDEDORES.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Razón Social</label>
+          <label className="block text-sm font-medium text-slate-700">Razón Social *</label>
           <input
             type="text"
             value={form.razon_social}
@@ -156,40 +161,36 @@ export function ClienteFormPage() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
+            <label className="block text-sm font-medium text-slate-700">Departamento</label>
+            <select
+              value={form.departamento}
+              onChange={(e) => handleDepartamentoChange(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              <option value="">Seleccione...</option>
+              {DEPARTAMENTOS_COLOMBIA.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-slate-700">Ciudad</label>
-            <input
-              type="text"
+            <select
               value={form.ciudad}
               onChange={(e) => setForm((f) => ({ ...f, ciudad: e.target.value }))}
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-            />
+              disabled={!form.departamento}
+            >
+              <option value="">Seleccione...</option>
+              {ciudadesDisponibles.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Departamento</label>
-            <input
-              type="text"
-              value={form.departamento}
-              onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Vendedor (opcional)</label>
-          <select
-            value={form.vendedor_id ?? ''}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, vendedor_id: e.target.value ? Number(e.target.value) : undefined }))
-            }
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-          >
-            <option value="">Ninguno</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {[u.nombre, u.apellido].filter(Boolean).join(' ') || u.email}
-              </option>
-            ))}
-          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700">Email</label>
@@ -199,18 +200,6 @@ export function ClienteFormPage() {
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="activo"
-            checked={form.activo}
-            onChange={(e) => setForm((f) => ({ ...f, activo: e.target.checked }))}
-            className="rounded border-slate-300"
-          />
-          <label htmlFor="activo" className="text-sm text-slate-700">
-            Activo
-          </label>
         </div>
         <div className="flex gap-3 pt-4">
           <button

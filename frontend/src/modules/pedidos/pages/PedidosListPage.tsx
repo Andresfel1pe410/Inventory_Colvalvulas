@@ -39,7 +39,7 @@ export function PedidosListPage() {
     {
       key: 'cliente_id',
       header: 'Cliente',
-      render: (p) => clientes[p.cliente_id]?.nombre || `#${p.cliente_id}`,
+      render: (p) => clientes[p.cliente_id]?.razon_social || `#${p.cliente_id}`,
     },
     { key: 'estado', header: 'Estado' },
     {

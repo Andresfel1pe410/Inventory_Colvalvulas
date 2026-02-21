@@ -73,7 +73,7 @@ export function PedidoDetailPage() {
       <div className="space-y-4">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <p className="text-sm text-slate-600">
-            Cliente: <span className="font-medium">{cliente?.nombre}</span>
+            Cliente: <span className="font-medium">{cliente?.razon_social}</span>
           </p>
           <p className="text-sm text-slate-600">
             Estado:{' '}
@@ -128,7 +128,7 @@ export function PedidoDetailPage() {
                 key={d.id}
                 className="flex items-center justify-between px-4 py-3"
               >
-                <span>{productos[d.producto_id]?.nombre || `#${d.producto_id}`}</span>
+                <span>{productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `#${d.producto_id}`}</span>
                 <span>
                   {d.cantidad} x {formatPesos(d.precio_unitario)} = {formatPesos(d.subtotal)}
                 </span>

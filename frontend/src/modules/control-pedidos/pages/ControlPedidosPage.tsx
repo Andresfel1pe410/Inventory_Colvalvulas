@@ -89,7 +89,7 @@ export function ControlPedidosPage() {
           cantidad: d.cantidad,
         }
         const qty = item.estado === 'no_enviado' ? 0 : item.cantidad
-        const prodNombre = productos[d.producto_id]?.nombre || `Producto #${d.producto_id}`
+        const prodNombre = productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `Producto #${d.producto_id}`
 
         detalles.push({ producto_id: d.producto_id, cantidad_enviada: qty })
 
@@ -157,7 +157,7 @@ export function ControlPedidosPage() {
     {
       key: 'cliente_id',
       header: 'Cliente',
-      render: (p) => clientes[p.cliente_id]?.razon_social || clientes[p.cliente_id]?.nombre || `#${p.cliente_id}`,
+      render: (p) => clientes[p.cliente_id]?.razon_social || `#${p.cliente_id}`,
     },
     {
       key: 'estado',
@@ -248,7 +248,7 @@ export function ControlPedidosPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-xs font-medium uppercase text-slate-500">Cliente</p>
-                  <p className="font-medium">{clientes[detail.cliente_id]?.razon_social || clientes[detail.cliente_id]?.nombre}</p>
+                  <p className="font-medium">{clientes[detail.cliente_id]?.razon_social}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase text-slate-500">Estado</p>
@@ -332,7 +332,7 @@ export function ControlPedidosPage() {
                       key={d.id}
                       className="flex items-center justify-between px-4 py-3"
                     >
-                      <span>{productos[d.producto_id]?.nombre || `#${d.producto_id}`}</span>
+                      <span>{productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `#${d.producto_id}`}</span>
                       <span>
                         {d.cantidad} x {formatPesos(d.precio_unitario)} = {formatPesos(d.subtotal)}
                       </span>
@@ -458,7 +458,7 @@ export function ControlPedidosPage() {
                   {detail.detalles.map((d) => {
                     const item =
                       checklistEnvio[d.producto_id] ?? { estado: 'completo' as const, cantidad: d.cantidad }
-                    const prodNombre = productos[d.producto_id]?.nombre || `#${d.producto_id}`
+                    const prodNombre = productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `#${d.producto_id}`
                     return (
                       <div
                         key={d.id}

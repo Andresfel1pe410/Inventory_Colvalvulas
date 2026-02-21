@@ -3,31 +3,22 @@ import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination, ConfirmDialog } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
 import { productoService } from '../services/producto.service'
+import { LISTA_LABELS } from '../types/producto.types'
 import type { Producto } from '../types/producto.types'
 
 const columns: Column<Producto>[] = [
   { key: 'codigo', header: 'Código' },
-  { key: 'nombre', header: 'Nombre' },
-  { key: 'descripcion', header: 'Material', render: (p) => p.descripcion || '-' },
+  { key: 'referencia', header: 'Referencia' },
+  { key: 'material', header: 'Material' },
   {
-    key: 'precio_lista_1',
-    header: 'Lista 1',
-    render: (p) => formatPesos(p.precio_lista_1),
+    key: 'precio',
+    header: 'Precio',
+    render: (p) => formatPesos(p.precio),
   },
   {
-    key: 'precio_lista_2',
-    header: 'Lista 2',
-    render: (p) => formatPesos(p.precio_lista_2),
-  },
-  {
-    key: 'precio_lista_3',
-    header: 'Lista 3',
-    render: (p) => formatPesos(p.precio_lista_3),
-  },
-  {
-    key: 'precio_lista_plus',
-    header: 'Lista Plus',
-    render: (p) => formatPesos(p.precio_lista_plus),
+    key: 'lista',
+    header: 'Lista',
+    render: (p) => LISTA_LABELS[p.lista] ?? p.lista,
   },
 ]
 
@@ -84,7 +75,7 @@ export function ProductosListPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             type="text"
-            placeholder="Buscar por código o nombre..."
+            placeholder="Buscar por código, referencia o material..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-64"

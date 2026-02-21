@@ -119,7 +119,7 @@ export function InventarioPage() {
     {
       key: 'producto_id',
       header: 'Producto',
-      render: (i) => i.producto?.nombre || `#${i.producto_id}`,
+      render: (i) => i.producto?.referencia || i.producto?.codigo || `#${i.producto_id}`,
     },
     {
       key: 'stock_actual',
@@ -217,7 +217,7 @@ export function InventarioPage() {
                           )}
                         </span>
                         <span className="truncate">
-                          {p.numero_pedido} - {clientes[p.cliente_id]?.nombre || '?'} ({p.estado.replace('_', ' ')})
+                          {p.numero_pedido} - {clientes[p.cliente_id]?.razon_social || '?'} ({p.estado.replace('_', ' ')})
                         </span>
                       </button>
                     ))}
