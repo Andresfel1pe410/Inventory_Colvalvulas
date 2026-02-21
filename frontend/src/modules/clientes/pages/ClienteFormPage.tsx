@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { clienteService } from '../services/cliente.service'
 import {
   DEPARTAMENTOS_COLOMBIA,
-  CIUDADES_POR_DEPARTAMENTO,
+  MUNICIPIOS_POR_DEPARTAMENTO,
 } from '@/shared/constants/colombia'
 import { VENDEDORES } from '@/shared/constants/vendedores'
 import type { ClienteCreate } from '../types/cliente.types'
@@ -27,8 +27,8 @@ export function ClienteFormPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const ciudadesDisponibles = form.departamento
-    ? CIUDADES_POR_DEPARTAMENTO[form.departamento] ?? []
+  const municipiosDisponibles = form.departamento
+    ? MUNICIPIOS_POR_DEPARTAMENTO[form.departamento] ?? []
     : []
 
   useEffect(() => {
@@ -176,7 +176,7 @@ export function ClienteFormPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Ciudad</label>
+            <label className="block text-sm font-medium text-slate-700">Ciudad / Municipio</label>
             <select
               value={form.ciudad}
               onChange={(e) => setForm((f) => ({ ...f, ciudad: e.target.value }))}
@@ -184,9 +184,9 @@ export function ClienteFormPage() {
               disabled={!form.departamento}
             >
               <option value="">Seleccione...</option>
-              {ciudadesDisponibles.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {municipiosDisponibles.map((m) => (
+                <option key={m} value={m}>
+                  {m}
                 </option>
               ))}
             </select>
