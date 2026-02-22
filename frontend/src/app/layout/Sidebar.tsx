@@ -52,7 +52,7 @@ export function Sidebar() {
         .map((item) => ({ ...item, blocked: false }))
 
   return (
-    <aside className="flex h-screen w-56 flex-col border-r border-slate-200 bg-white">
+    <aside className="no-print flex h-screen w-56 flex-col border-r border-slate-200 bg-white">
       <div className="flex h-14 items-center border-b border-slate-200 px-4">
         <span className="font-semibold text-slate-900">ERP Logístico</span>
       </div>

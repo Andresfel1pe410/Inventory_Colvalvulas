@@ -40,13 +40,25 @@ export function PedidoDetailPage() {
     )
   }
 
+  const handlePrint = () => window.print()
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="no-print mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">
           Pedido {pedido.numero_pedido}
         </h1>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Imprimir
+          </button>
           {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' && (
             <>
               <Link
@@ -71,7 +83,59 @@ export function PedidoDetailPage() {
           </button>
         </div>
       </div>
-      <div className="space-y-4">
+      {/* Área de impresión: solo visible al imprimir, sin precios */}
+      <div className="print-area hidden p-6">
+        <h1 className="mb-6 text-2xl font-bold">Pedido {pedido.numero_pedido}</h1>
+        {pedido.observaciones && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-slate-700">Observaciones</p>
+            <p className="text-slate-900">{pedido.observaciones}</p>
+          </div>
+        )}
+        <div className="mb-6 rounded border border-slate-300 p-4">
+          <p className="mb-2 text-sm font-medium text-slate-700">Cliente</p>
+          <p className="font-semibold">{cliente?.razon_social}</p>
+          <p className="text-sm">
+            {cliente?.tipo_documento} {cliente?.numero_identificacion}
+            {cliente?.dv != null && cliente.dv !== '' ? `-${cliente.dv}` : ''}
+          </p>
+          {cliente?.direccion && <p className="text-sm">{cliente.direccion}</p>}
+          {cliente?.ciudad && (
+            <p className="text-sm">
+              {cliente.ciudad}
+              {cliente.departamento ? `, ${cliente.departamento}` : ''}
+            </p>
+          )}
+          {cliente?.telefono && <p className="text-sm">Tel: {cliente.telefono}</p>}
+          {cliente?.email && <p className="text-sm">Email: {cliente.email}</p>}
+          {cliente?.regimen && <p className="text-sm">Régimen: {cliente.regimen}</p>}
+        </div>
+        <table className="w-full border-collapse border border-slate-300 text-sm">
+          <thead>
+            <tr className="bg-slate-100">
+              <th className="border border-slate-300 px-3 py-2 text-left font-medium">Nº Referencia</th>
+              <th className="border border-slate-300 px-3 py-2 text-left font-medium">Producto</th>
+              <th className="border border-slate-300 px-3 py-2 text-right font-medium">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pedido.detalles.map((d) => {
+              const prod = productos[d.producto_id]
+              const codigo = prod && pedido.lista_precios
+                ? getCodigoByLista(prod, pedido.lista_precios)
+                : (prod && getCodigoDisplay(prod)) || '—'
+              return (
+                <tr key={d.id}>
+                  <td className="border border-slate-300 px-3 py-2">{codigo}</td>
+                  <td className="border border-slate-300 px-3 py-2">{prod?.referencia || `#${d.producto_id}`}</td>
+                  <td className="border border-slate-300 px-3 py-2 text-right">{d.cantidad}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="no-print space-y-4">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <p className="text-sm text-slate-600">
             Cliente: <span className="font-medium">{cliente?.razon_social}</span>
@@ -80,6 +144,14 @@ export function PedidoDetailPage() {
             Estado:{' '}
             <span className="font-medium capitalize">{pedido.estado.replace('_', ' ')}</span>
           </p>
+          {pedido.observaciones && (
+            <div className="mt-2">
+              <p className="text-sm text-slate-600">
+                Observaciones:{' '}
+                <span className="font-medium text-slate-900">{pedido.observaciones}</span>
+              </p>
+            </div>
+          )}
           {pedido.estado === 'enviado' && (
             <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-medium uppercase text-slate-500">Datos de entrega</p>
@@ -127,28 +199,33 @@ export function PedidoDetailPage() {
             </p>
           )}
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white">
-          <div className="grid grid-cols-[1fr_1fr_auto] gap-4 border-b border-slate-200 px-4 py-3 font-medium text-slate-900">
+        <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
+          <div className="grid min-w-[640px] grid-cols-[1fr_120px_1fr_80px_100px_100px] gap-4 border-b border-slate-200 px-4 py-3 font-medium text-slate-900">
             <span>Producto</span>
+            <span>Material</span>
             <span>Código</span>
-            <span className="text-right">Cantidad x Precio</span>
+            <span className="text-right">Cantidad</span>
+            <span className="text-right">Precio unit.</span>
+            <span className="text-right">Subtotal</span>
           </div>
           <div className="divide-y divide-slate-200">
             {pedido.detalles.map((d) => {
               const prod = productos[d.producto_id]
+              const material = prod?.material || '—'
               const codigo = prod && pedido.lista_precios
                 ? getCodigoByLista(prod, pedido.lista_precios)
                 : (prod && getCodigoDisplay(prod)) || '—'
               return (
                 <div
                   key={d.id}
-                  className="grid grid-cols-[1fr_1fr_auto] gap-4 px-4 py-3"
+                  className="grid min-w-[640px] grid-cols-[1fr_120px_1fr_80px_100px_100px] gap-4 px-4 py-3"
                 >
                   <span>{prod?.referencia || `#${d.producto_id}`}</span>
+                  <span className="text-slate-600">{material}</span>
                   <span className="text-slate-600">{codigo}</span>
-                  <span className="text-right">
-                    {d.cantidad} x {formatPesos(d.precio_unitario)} = {formatPesos(d.subtotal)}
-                  </span>
+                  <span className="text-right">{d.cantidad}</span>
+                  <span className="text-right">{formatPesos(d.precio_unitario)}</span>
+                  <span className="text-right">{formatPesos(d.subtotal)}</span>
                 </div>
               )
             })}

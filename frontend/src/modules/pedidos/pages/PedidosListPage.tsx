@@ -47,6 +47,15 @@ export function PedidosListPage() {
       header: 'Total',
       render: (p) => formatPesos(p.total),
     },
+    {
+      key: 'observaciones',
+      header: 'Observaciones',
+      render: (p) => (
+        <span className="max-w-[200px] truncate block" title={p.observaciones || ''}>
+          {p.observaciones || '—'}
+        </span>
+      ),
+    },
   ]
 
   return (

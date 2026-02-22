@@ -178,8 +178,9 @@ export function PedidoFormPage() {
             <p className="text-sm text-slate-500">Agregue productos al pedido</p>
           ) : (
             <div className="space-y-2 overflow-x-auto">
-              <div className="grid min-w-[640px] grid-cols-[1fr_100px_80px_100px_100px_120px_auto] gap-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
+              <div className="grid min-w-[720px] grid-cols-[1fr_120px_100px_80px_100px_100px_120px_auto] gap-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
                 <span>Producto</span>
+                <span>Material</span>
                 <span>Código</span>
                 <span>Cant.</span>
                 <span className="text-right">Precio unit.</span>
@@ -188,6 +189,7 @@ export function PedidoFormPage() {
               </div>
               {detalles.map((d, idx) => {
                 const prod = d.producto || productos.find((p) => p.id === d.producto_id)
+                const material = prod?.material || '—'
                 const codigo = prod ? getCodigoByLista(prod, listaPrecios) || '—' : '—'
                 const precioUnit = prod ? getPrecioByLista(prod, listaPrecios) : 0
                 const cant = typeof d.cantidad === 'number' ? d.cantidad : parseInt(String(d.cantidad), 10) || 0
@@ -195,17 +197,18 @@ export function PedidoFormPage() {
                 return (
                   <div
                     key={idx}
-                    className="grid min-w-[640px] grid-cols-[1fr_100px_80px_100px_100px_120px_auto] items-center gap-4 rounded border p-2"
+                    className="grid min-w-[720px] grid-cols-[1fr_120px_100px_80px_100px_100px_120px_auto] items-center gap-4 rounded border p-2"
                   >
                     <div className="min-w-0">
                       <ProductoSearchSelect
                         value={d.producto_id}
                         onChange={(id) => updateLinea(idx, 'producto_id', id === '' ? '' : id)}
                         products={productosLista}
-                        formatLabel={(p) => p.referencia}
+                        formatLabel={(p) => (p.material ? `${p.referencia} [${p.material}]` : p.referencia)}
                         placeholder="Buscar por referencia, código o material..."
                       />
                     </div>
+                    <span className="text-sm text-slate-600">{material}</span>
                     <span className="text-sm text-slate-600">{codigo}</span>
                     <input
                       type="number"
