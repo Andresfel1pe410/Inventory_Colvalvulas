@@ -1,5 +1,5 @@
 """Router de pedidos."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -25,6 +25,12 @@ router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 def _es_vendedor_solo(db: Session, usuario: Usuario) -> bool:
     roles = UsuarioRepository(db).get_roles(usuario.id)
     return "vendedor" in roles and "admin" not in roles
+
+
+def _require_admin(db: Session, usuario: Usuario) -> None:
+    roles = UsuarioRepository(db).get_roles(usuario.id)
+    if "admin" not in roles:
+        raise HTTPException(403, "Solo administradores pueden modificar la intención de envío")
 
 
 @router.get("", response_model=list[Pedido])
@@ -102,6 +108,7 @@ def actualizar_intencion_envio(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require_admin(db, current_user)
     es_vend = _es_vendedor_solo(db, current_user)
     PedidoService(db).obtener(
         id,

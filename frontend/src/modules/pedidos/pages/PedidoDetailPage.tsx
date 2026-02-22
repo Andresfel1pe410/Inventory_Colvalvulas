@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 import { formatPesos } from '@/shared/utils/format'
 import { pedidoService } from '../services/pedido.service'
 import { productoService } from '@/modules/productos/services/producto.service'
@@ -45,6 +46,8 @@ function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
 export function PedidoDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.roles?.includes('admin')
   const [pedido, setPedido] = useState<PedidoConDetalles | null>(null)
   const [productos, setProductos] = useState<Record<number, Producto>>({})
   const [cliente, setCliente] = useState<Cliente | null>(null)
@@ -204,7 +207,7 @@ export function PedidoDetailPage() {
               <label className="text-xs font-medium uppercase text-slate-500">
                 Intención de envío
               </label>
-              {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' ? (
+              {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' && isAdmin ? (
                 <select
                   value={pedido.intencion_envio ?? ''}
                   onChange={(e) => handleIntencionChange(e.target.value as IntencionEnvio | '')}
