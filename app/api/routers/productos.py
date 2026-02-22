@@ -17,19 +17,21 @@ def listar(
     limit: int = Query(100, ge=1, le=500),
     activos_only: bool = Query(True),
     search: str | None = Query(None, description="Buscar por código, referencia o material"),
+    lista: str | None = Query(None, description="Filtrar productos por lista de precios"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    return ProductoService(db).listar(skip, limit, activos_only, search)
+    return ProductoService(db).listar(skip, limit, activos_only, search, lista)
 
 
 @router.get("/codigo/{codigo}", response_model=Producto)
 def obtener_por_codigo(
     codigo: str,
+    lista: str = Query(..., description="Lista de precios (lista_1, lista_2, lista_3, lista_plus, lista_plus_costa)"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    return ProductoService(db).obtener_por_codigo(codigo)
+    return ProductoService(db).obtener_por_codigo_lista(codigo, lista)
 
 
 @router.get("/{id}", response_model=Producto)

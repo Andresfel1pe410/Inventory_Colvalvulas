@@ -5,6 +5,7 @@ import { pedidoService } from '../services/pedido.service'
 import { productoService } from '@/modules/productos/services/producto.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
 import type { PedidoConDetalles, Pedido } from '../types/pedido.types'
+import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
@@ -128,7 +129,7 @@ export function PedidoDetailPage() {
                 key={d.id}
                 className="flex items-center justify-between px-4 py-3"
               >
-                <span>{productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `#${d.producto_id}`}</span>
+                <span>{productos[d.producto_id]?.referencia || (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) || `#${d.producto_id}`}</span>
                 <span>
                   {d.cantidad} x {formatPesos(d.precio_unitario)} = {formatPesos(d.subtotal)}
                 </span>

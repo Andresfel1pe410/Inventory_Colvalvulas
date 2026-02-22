@@ -7,6 +7,7 @@ import { productoService } from '@/modules/productos/services/producto.service'
 import { DataTable, Column } from '@/shared/components'
 import type { Pedido, PedidoConDetalles } from '@/modules/pedidos/types/pedido.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
+import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 
 const TRANSPORTADORAS = ['YP', 'A.N.', 'E.Express', 'Interrapidisimo'] as const
@@ -89,7 +90,7 @@ export function ControlPedidosPage() {
           cantidad: d.cantidad,
         }
         const qty = item.estado === 'no_enviado' ? 0 : item.cantidad
-        const prodNombre = productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `Producto #${d.producto_id}`
+        const prodNombre = productos[d.producto_id]?.referencia || (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) || `Producto #${d.producto_id}`
 
         detalles.push({ producto_id: d.producto_id, cantidad_enviada: qty })
 
@@ -332,7 +333,7 @@ export function ControlPedidosPage() {
                       key={d.id}
                       className="flex items-center justify-between px-4 py-3"
                     >
-                      <span>{productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `#${d.producto_id}`}</span>
+                      <span>{productos[d.producto_id]?.referencia || (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) || `#${d.producto_id}`}</span>
                       <span>
                         {d.cantidad} x {formatPesos(d.precio_unitario)} = {formatPesos(d.subtotal)}
                       </span>
@@ -458,7 +459,7 @@ export function ControlPedidosPage() {
                   {detail.detalles.map((d) => {
                     const item =
                       checklistEnvio[d.producto_id] ?? { estado: 'completo' as const, cantidad: d.cantidad }
-                    const prodNombre = productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `#${d.producto_id}`
+                    const prodNombre = productos[d.producto_id]?.referencia || (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) || `#${d.producto_id}`
                     return (
                       <div
                         key={d.id}

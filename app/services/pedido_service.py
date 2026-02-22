@@ -10,14 +10,13 @@ from app.schemas import PedidoCreate, PedidoUpdateFull, DetallePedidoCreate
 
 ESTADOS_VALIDOS = ("en_espera", "en_proceso", "enviado", "cancelado")
 TRANSPORTADORAS = ("YP", "A.N.", "E.Express", "Interrapidisimo")
-LISTAS_PRECIOS = ("lista_1", "lista_2", "lista_3", "lista_plus")
+LISTAS_PRECIOS = ("lista_1", "lista_2", "lista_3", "lista_plus", "lista_plus_costa")
 
 
-def _precio_desde_lista(prod: Producto, lista: str) -> Decimal:
-    """Obtiene el precio del producto si pertenece a la lista seleccionada."""
-    if prod.lista == lista:
-        return Decimal(str(prod.precio))
-    return Decimal("0")
+def _precio_desde_lista(producto_repo, producto_id: int, lista: str) -> Decimal:
+    """Obtiene el precio del producto desde producto_lista_precio para la lista indicada."""
+    precio = producto_repo.get_precio_lista(producto_id, lista)
+    return Decimal(str(precio)) if precio is not None else Decimal("0")
 
 
 class PedidoService:
@@ -62,7 +61,7 @@ class PedidoService:
             prod = self.producto_repo.get(det.producto_id)
             if not prod:
                 raise NotFoundError(f"Producto {det.producto_id} no encontrado")
-            precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(prod, lista)
+            precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(self.producto_repo, det.producto_id, lista)
             subtotal = Decimal(str(precio)) * det.cantidad
             self.db.add(
                 DetallePedido(
@@ -106,7 +105,7 @@ class PedidoService:
             prod = self.producto_repo.get(det.producto_id)
             if not prod:
                 raise NotFoundError(f"Producto {det.producto_id} no encontrado")
-            precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(prod, lista)
+            precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(self.producto_repo, det.producto_id, lista)
             subtotal = Decimal(str(precio)) * det.cantidad
             self.db.add(
                 DetallePedido(
@@ -134,7 +133,7 @@ class PedidoService:
         if not prod:
             raise NotFoundError("Producto no encontrado")
         lista = pedido.lista_precios or "lista_1"
-        precio = data.precio_unitario if data.precio_unitario else _precio_desde_lista(prod, lista)
+        precio = data.precio_unitario if data.precio_unitario else _precio_desde_lista(self.producto_repo, data.producto_id, lista)
         subtotal = Decimal(str(precio)) * data.cantidad
 
         det = DetallePedido(

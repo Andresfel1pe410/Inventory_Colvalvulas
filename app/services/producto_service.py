@@ -1,6 +1,6 @@
 """Servicio de productos."""
 from app.core.exceptions import NotFoundError, ValidationError
-from app.models import Producto, Inventario
+from app.models import Producto, ProductoListaPrecio, Inventario
 from app.repositories.producto_repository import ProductoRepository
 from app.schemas import ProductoCreate, ProductoUpdate
 
@@ -16,47 +16,82 @@ class ProductoService:
         limit: int = 100,
         activos_only: bool = True,
         search: str | None = None,
+        lista: str | None = None,
     ) -> list[Producto]:
         if activos_only:
-            return self.repo.list_activos(skip, limit, search)
-        return self.repo.list_all(skip, limit, search)
+            return self.repo.list_activos(skip, limit, search, lista)
+        return self.repo.list_all(skip, limit, search, lista)
 
     def obtener(self, id: int) -> Producto:
-        p = self.repo.get(id)
+        p = self.repo.get_with_listas(id)
         if not p:
             raise NotFoundError("Producto no encontrado")
         return p
 
-    def obtener_por_codigo(self, codigo: str) -> Producto:
-        p = self.repo.get_by_codigo(codigo)
+    def obtener_por_codigo_lista(self, codigo: str, lista: str) -> Producto:
+        p = self.repo.get_by_codigo_lista(codigo, lista)
         if not p:
             raise NotFoundError("Producto no encontrado")
+        self.db.refresh(p)
+        p = self.repo.get_with_listas(p.id)
         return p
 
     def crear(self, data: ProductoCreate) -> Producto:
-        if self.repo.exists_codigo(data.codigo):
-            raise ValidationError("Ya existe un producto con ese código")
-        d = data.model_dump()
-        producto = Producto(**d)
+        dump = data.model_dump()
+        listas_precio = dump.pop("listas_precio", [])
+        for lp in listas_precio:
+            if self.repo.exists_codigo_en_lista(lp["codigo"], lp["lista"]):
+                raise ValidationError(
+                    f"Ya existe un producto con código '{lp['codigo']}' en la lista {lp['lista']}"
+                )
+        producto = Producto(referencia=dump["referencia"], material=dump["material"])
         self.db.add(producto)
         self.db.flush()
+        for lp in listas_precio:
+            self.db.add(
+                ProductoListaPrecio(
+                    producto_id=producto.id,
+                    lista=lp["lista"],
+                    codigo=lp["codigo"],
+                    precio=lp["precio"],
+                )
+            )
         inv = Inventario(producto_id=producto.id, stock_actual=0, stock_minimo=0)
         self.db.add(inv)
         self.db.commit()
         self.db.refresh(producto)
-        return producto
+        return self.obtener(producto.id)
 
     def actualizar(self, id: int, data: ProductoUpdate) -> Producto:
         producto = self.obtener(id)
         attrs = data.model_dump(exclude_unset=True)
-        if "codigo" in attrs and attrs["codigo"] != producto.codigo:
-            if self.repo.exists_codigo(attrs["codigo"], exclude_id=id):
-                raise ValidationError("Ya existe un producto con ese código")
-        for k, v in attrs.items():
-            setattr(producto, k, v)
+        if "referencia" in attrs:
+            producto.referencia = attrs["referencia"]
+        if "material" in attrs:
+            producto.material = attrs["material"]
+        if "listas_precio" in attrs:
+            for lp in attrs["listas_precio"]:
+                if self.repo.exists_codigo_en_lista(
+                    lp["codigo"], lp["lista"], exclude_producto_id=id
+                ):
+                    raise ValidationError(
+                        f"Ya existe un producto con código '{lp['codigo']}' en la lista {lp['lista']}"
+                    )
+            for plp in list(producto.listas_precio):
+                self.db.delete(plp)
+            self.db.flush()
+            for lp in attrs["listas_precio"]:
+                self.db.add(
+                    ProductoListaPrecio(
+                        producto_id=id,
+                        lista=lp["lista"],
+                        codigo=lp["codigo"],
+                        precio=lp["precio"],
+                    )
+                )
         self.db.commit()
         self.db.refresh(producto)
-        return producto
+        return self.obtener(id)
 
     def eliminar(self, id: int) -> None:
         producto = self.obtener(id)

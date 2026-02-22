@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ordenEmpaqueService } from '../services/ordenEmpaque.service'
 import { productoService } from '@/modules/productos/services/producto.service'
 import type { OrdenEmpaqueConDetalles } from '../types/ordenEmpaque.types'
+import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import { ConfirmDialog } from '@/shared/components'
 
@@ -96,7 +97,7 @@ export function OrdenEmpaqueDetailPage() {
               key={d.id}
               className="flex items-center justify-between px-4 py-3"
             >
-              <span>{productos[d.producto_id]?.referencia || productos[d.producto_id]?.codigo || `Producto #${d.producto_id}`}</span>
+              <span>{productos[d.producto_id]?.referencia || (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) || `Producto #${d.producto_id}`}</span>
               <span>
                 {d.cantidad_empacada} / {d.cantidad}
               </span>

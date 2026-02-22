@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { inventarioService } from '../services/inventario.service'
 import { productoService } from '@/modules/productos/services/producto.service'
 import type { Inventario } from '../types/inventario.types'
+import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 
 interface EntradaInventarioModalProps {
@@ -83,7 +84,7 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
               <option value="">Seleccione producto...</option>
               {inventarios.map((i) => (
                 <option key={i.id} value={i.producto_id}>
-                  {i.producto?.referencia || i.producto?.codigo || `#${i.producto_id}`} (stock: {i.stock_actual})
+                  {i.producto?.referencia || (i.producto && getCodigoDisplay(i.producto)) || `#${i.producto_id}`} (stock: {i.stock_actual})
                 </option>
               ))}
             </select>

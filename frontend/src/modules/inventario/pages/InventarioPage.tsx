@@ -6,6 +6,7 @@ import { pedidoService } from '@/modules/pedidos/services/pedido.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
 import { EntradaInventarioModal } from '../components/EntradaInventarioModal'
 import type { InventarioResumen } from '../types/inventario.types'
+import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import type { Pedido } from '@/modules/pedidos/types/pedido.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
@@ -119,7 +120,7 @@ export function InventarioPage() {
     {
       key: 'producto_id',
       header: 'Producto',
-      render: (i) => i.producto?.referencia || i.producto?.codigo || `#${i.producto_id}`,
+      render: (i) => i.producto?.referencia || (i.producto && getCodigoDisplay(i.producto)) || `#${i.producto_id}`,
     },
     {
       key: 'stock_actual',

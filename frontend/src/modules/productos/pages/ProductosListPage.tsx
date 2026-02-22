@@ -3,22 +3,24 @@ import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination, ConfirmDialog } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
 import { productoService } from '../services/producto.service'
-import { LISTA_LABELS } from '../types/producto.types'
+import { LISTA_LABELS, getCodigoDisplay } from '../types/producto.types'
 import type { Producto } from '../types/producto.types'
 
 const columns: Column<Producto>[] = [
-  { key: 'codigo', header: 'Código' },
+  {
+    key: 'codigo',
+    header: 'Código',
+    render: (p) => getCodigoDisplay(p) || '—',
+  },
   { key: 'referencia', header: 'Referencia' },
   { key: 'material', header: 'Material' },
   {
-    key: 'precio',
-    header: 'Precio',
-    render: (p) => formatPesos(p.precio),
-  },
-  {
-    key: 'lista',
-    header: 'Lista',
-    render: (p) => LISTA_LABELS[p.lista] ?? p.lista,
+    key: 'listas',
+    header: 'Listas',
+    render: (p) =>
+      p.listas_precio
+        ?.map((lp) => `${LISTA_LABELS[lp.lista] ?? lp.lista}: ${lp.codigo} ${formatPesos(lp.precio)}`)
+        .join(' | ') ?? '—',
   },
 ]
 
@@ -29,6 +31,7 @@ export function ProductosListPage() {
   const [limit] = useState(20)
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
+  const [listaFilter, setListaFilter] = useState<string>('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export function ProductosListPage() {
         limit,
         activos_only: false,
         search: searchDebounced.trim() || undefined,
+        lista: listaFilter || undefined,
       })
       setProductos(data)
     } catch {
@@ -51,7 +55,7 @@ export function ProductosListPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, limit, searchDebounced])
+  }, [page, limit, searchDebounced, listaFilter])
 
   useEffect(() => {
     load()
@@ -80,6 +84,18 @@ export function ProductosListPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-64"
           />
+          <select
+            value={listaFilter}
+            onChange={(e) => setListaFilter(e.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Todas las listas</option>
+            {Object.entries(LISTA_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
           <Link
             to="/productos/nuevo"
             className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"

@@ -96,15 +96,28 @@ class Cliente(ClienteBase):
 
 
 # ============= PRODUCTO =============
-LISTAS_PRECIOS = ("lista_1", "lista_2", "lista_3", "lista_plus")
+LISTAS_PRECIOS = ("lista_1", "lista_2", "lista_3", "lista_plus", "lista_plus_costa")
+
+
+class ProductoListaPrecioBase(BaseModel):
+    lista: str = Field(..., pattern="^(lista_1|lista_2|lista_3|lista_plus|lista_plus_costa)$")
+    codigo: str
+    precio: Decimal = Field(ge=0)
+
+
+class ProductoListaPrecio(ProductoListaPrecioBase):
+    id: int
+    producto_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductoBase(BaseModel):
-    codigo: str
     referencia: str
     material: str
-    precio: Decimal = Field(ge=0)
-    lista: str = Field(..., pattern="^(lista_1|lista_2|lista_3|lista_plus)$")
+    listas_precio: list[ProductoListaPrecioBase] = Field(..., min_length=1)
 
 
 class ProductoCreate(ProductoBase):
@@ -112,15 +125,14 @@ class ProductoCreate(ProductoBase):
 
 
 class ProductoUpdate(BaseModel):
-    codigo: Optional[str] = None
     referencia: Optional[str] = None
     material: Optional[str] = None
-    precio: Optional[Decimal] = Field(None, ge=0)
-    lista: Optional[str] = Field(None, pattern="^(lista_1|lista_2|lista_3|lista_plus)$")
+    listas_precio: Optional[list[ProductoListaPrecioBase]] = None
 
 
 class Producto(ProductoBase):
     id: int
+    listas_precio: list[ProductoListaPrecio] = []
     created_at: datetime
     updated_at: datetime
 
@@ -209,7 +221,7 @@ class PedidoBase(BaseModel):
 
 class PedidoCreate(PedidoBase):
     detalles: list[DetallePedidoCreate]
-    lista_precios: str = "lista_1"  # lista_1, lista_2, lista_3, lista_plus
+    lista_precios: str = "lista_1"  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
     descuento: Decimal = Field(default=0, ge=0, le=100)  # Porcentaje 0-100
 
 
@@ -222,7 +234,7 @@ class PedidoUpdateFull(BaseModel):
     """Actualización completa: cliente, lista, descuento, observaciones y detalles."""
     cliente_id: int
     observaciones: Optional[str] = None
-    lista_precios: str = "lista_1"
+    lista_precios: str = "lista_1"  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
     descuento: Decimal = Field(default=0, ge=0, le=100)
     detalles: list[DetallePedidoCreate]
 

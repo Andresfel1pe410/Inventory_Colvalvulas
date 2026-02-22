@@ -76,15 +76,29 @@ class Producto(Base):
     __tablename__ = "producto"
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    codigo = Column(String(50), unique=True, nullable=False)
     referencia = Column(String(200), nullable=False)
     material = Column(String(255), nullable=False)
-    precio = Column(Numeric(15, 2), nullable=False)
-    lista = Column(String(20), nullable=False)  # lista_1, lista_2, lista_3, lista_plus
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     
     inventario = relationship("Inventario", back_populates="producto", uselist=False, cascade="all, delete-orphan")
+    listas_precio = relationship(
+        "ProductoListaPrecio", back_populates="producto", cascade="all, delete-orphan"
+    )
+
+
+class ProductoListaPrecio(Base):
+    __tablename__ = "producto_lista_precio"
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    producto_id = Column(BigInteger, ForeignKey("producto.id", ondelete="CASCADE"), nullable=False)
+    lista = Column(String(30), nullable=False)  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
+    codigo = Column(String(50), nullable=False)
+    precio = Column(Numeric(15, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    producto = relationship("Producto", back_populates="listas_precio")
 
 
 class Inventario(Base):
@@ -134,7 +148,7 @@ class Pedido(Base):
     numero_factura = Column(String(100))
     numero_guia = Column(String(100))
     resumen_envio = Column(Text)  # Anotación del checklist al marcar enviado
-    lista_precios = Column(String(20), default="lista_1")  # lista_1, lista_2, lista_3, lista_plus
+    lista_precios = Column(String(20), default="lista_1")  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
     descuento = Column(Numeric(5, 2), default=0)  # Porcentaje 0-100
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -4,7 +4,7 @@ import { formatPesos } from '@/shared/utils/format'
 import { pedidoService } from '../services/pedido.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
 import { productoService } from '@/modules/productos/services/producto.service'
-import { getPrecioByLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
+import { getPrecioByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import type { DetallePedidoCreate } from '../types/pedido.types'
@@ -37,7 +37,7 @@ export function PedidoFormPage() {
     })
   }, [])
 
-  const productosLista = productos.filter((p) => p.lista === listaPrecios)
+  const productosLista = productos.filter((p) => tieneLista(p, listaPrecios))
   const addLinea = () => {
     if (productosLista.length === 0) return
     setDetalles((d) => [...d, { producto_id: productosLista[0].id, cantidad: 1, producto: productosLista[0] }])
