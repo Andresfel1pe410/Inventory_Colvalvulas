@@ -1,0 +1,10 @@
+# Ignorar frontend para reducir tamaño del deploy (solo backend)
+frontend/
+.git/
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env
+.env.local
+*.md
