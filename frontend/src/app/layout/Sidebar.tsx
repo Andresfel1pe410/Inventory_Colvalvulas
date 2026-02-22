@@ -53,8 +53,13 @@ export function Sidebar() {
 
   return (
     <aside className="no-print flex h-screen w-56 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-14 items-center border-b border-slate-200 px-4">
-        <span className="font-semibold text-slate-900">ERP Logístico</span>
+      <div className="flex flex-col items-center justify-center gap-1 border-b border-slate-200 px-4 py-3">
+        <img
+          src="/logo-colvalvulas.png"
+          alt="Colvalvulas"
+          className="h-10 w-auto object-contain"
+        />
+        <span className="text-center text-sm font-semibold text-slate-900">Colvalvulas Logistica</span>
       </div>
       <nav className="flex-1 space-y-1 p-2">
         {itemsToShow.map((item) => {

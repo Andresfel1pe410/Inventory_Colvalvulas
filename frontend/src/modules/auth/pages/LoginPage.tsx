@@ -67,9 +67,16 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100">
       <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-center text-2xl font-semibold text-slate-900">
-          ERP Logístico
-        </h1>
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <img
+            src="/logo-colvalvulas.png"
+            alt="Colvalvulas"
+            className="h-16 w-auto object-contain"
+          />
+          <h1 className="text-center text-2xl font-semibold text-slate-900">
+            Colvalvulas Logistica
+          </h1>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
