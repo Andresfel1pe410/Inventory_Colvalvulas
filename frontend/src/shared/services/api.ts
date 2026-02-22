@@ -1,7 +1,6 @@
 import axios, { AxiosError } from 'axios'
 import { useAuthStore } from '@/modules/auth/store/authStore'
-
-const API_BASE = '/api/v1'
+import { API_BASE } from '@/shared/config'
 
 export const api = axios.create({
   baseURL: API_BASE,

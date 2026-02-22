@@ -1,8 +1,7 @@
 import axios from 'axios'
 import { createClient, Session } from '@supabase/supabase-js'
 import { User } from '../types/auth.types'
-
-const API_BASE = '/api/v1'
+import { API_BASE } from '@/shared/config'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''

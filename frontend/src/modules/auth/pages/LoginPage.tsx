@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { login } from '../services/auth.service'
+import { API_BASE } from '@/shared/config'
 
 export function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -35,7 +36,7 @@ export function LoginPage() {
 
       // Diagnóstico: verificar que el backend reconoce el token
       try {
-        const res = await fetch('/api/v1/debug/auth', {
+        const res = await fetch(`${API_BASE}/debug/auth`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const debug = (await res.json()) as {
