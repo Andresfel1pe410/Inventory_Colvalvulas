@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import {
   DataTable,
   Column,
-  Pagination,
   ConfirmDialog,
   CopyableCell,
 } from '@/shared/components'
@@ -78,8 +77,6 @@ const columns: Column<Cliente>[] = [
 export function ClientesListPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [limit] = useState(20)
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
@@ -89,16 +86,12 @@ export function ClientesListPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  useEffect(() => {
-    setPage(1)
-  }, [search])
-
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const data = await clienteService.list({
-        skip: (page - 1) * limit,
-        limit,
+        skip: 0,
+        limit: 10000,
         search: searchDebounced.trim() || undefined,
       })
       setClientes(data)
@@ -107,7 +100,7 @@ export function ClientesListPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, limit, searchDebounced])
+  }, [searchDebounced])
 
   useEffect(() => {
     load()
@@ -184,12 +177,9 @@ export function ClientesListPage() {
             data={clientes}
             keyExtractor={(c) => c.id}
           />
-          <Pagination
-            page={page}
-            total={clientes.length}
-            limit={limit}
-            onPageChange={setPage}
-          />
+          <p className="mt-2 text-sm text-slate-600">
+            Total: {clientes.length} registro{clientes.length !== 1 ? 's' : ''}
+          </p>
         </>
       )}
       <ConfirmDialog

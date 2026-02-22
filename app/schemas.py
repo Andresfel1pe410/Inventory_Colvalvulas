@@ -132,7 +132,7 @@ class ProductoUpdate(BaseModel):
 
 class Producto(ProductoBase):
     id: int
-    listas_precio: list[ProductoListaPrecio] = []
+    listas_precio: list[ProductoListaPrecio] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

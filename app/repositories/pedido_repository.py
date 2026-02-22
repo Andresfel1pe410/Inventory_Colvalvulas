@@ -47,6 +47,30 @@ class PedidoRepository(BaseRepository[Pedido]):
             .all()
         )
 
+    def get_all_for_usuario(self, usuario_id: int, skip: int = 0, limit: int = 100):
+        """Lista solo pedidos creados por el usuario."""
+        return (
+            self.db.query(Pedido)
+            .filter(Pedido.usuario_id == usuario_id)
+            .order_by(ORDEN_ESTADO, Pedido.id.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_estados_for_usuario(
+        self, usuario_id: int, estados: list[str], skip: int = 0, limit: int = 500
+    ) -> list[Pedido]:
+        """Lista pedidos del usuario filtrados por estados."""
+        return (
+            self.db.query(Pedido)
+            .filter(Pedido.usuario_id == usuario_id, Pedido.estado.in_(estados))
+            .order_by(ORDEN_ESTADO, Pedido.id.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
     def generar_numero(self) -> str:
         max_id = self.db.query(func.max(Pedido.id)).scalar() or 0
         return f"PED-{max_id + 1:06d}"

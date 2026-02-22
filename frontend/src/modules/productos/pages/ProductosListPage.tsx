@@ -1,34 +1,53 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { DataTable, Column, Pagination, ConfirmDialog } from '@/shared/components'
+import { DataTable, Column, ConfirmDialog } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
 import { productoService } from '../services/producto.service'
-import { LISTA_LABELS, getCodigoDisplay } from '../types/producto.types'
+import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
 import type { Producto } from '../types/producto.types'
+import { useAuthStore } from '@/modules/auth'
 
-const columns: Column<Producto>[] = [
-  {
-    key: 'codigo',
-    header: 'Código',
-    render: (p) => getCodigoDisplay(p) || '—',
-  },
-  { key: 'referencia', header: 'Referencia' },
-  { key: 'material', header: 'Material' },
-  {
-    key: 'listas',
-    header: 'Listas',
-    render: (p) =>
-      p.listas_precio
-        ?.map((lp) => `${LISTA_LABELS[lp.lista] ?? lp.lista}: ${lp.codigo} ${formatPesos(lp.precio)}`)
-        .join(' | ') ?? '—',
-  },
-]
+function getListaCodigo(p: Producto, lista: string): string {
+  const lp = p.listas_precio?.find((l) => l.lista === lista)
+  return lp?.codigo ?? '—'
+}
+
+function getListaPrecio(p: Producto, lista: string): string {
+  const lp = p.listas_precio?.find((l) => l.lista === lista)
+  return lp ? formatPesos(lp.precio) : '—'
+}
+
+function buildListaColumns(listas: readonly string[]): Column<Producto>[] {
+  return [
+    { key: 'referencia', header: 'Referencia' },
+    { key: 'material', header: 'Material' },
+    ...listas.flatMap(
+      (lista): Column<Producto>[] => [
+        {
+          key: `${lista}_codigo`,
+          header: `${LISTA_LABELS[lista] ?? lista} (código)`,
+          render: (p) => getListaCodigo(p, lista),
+        },
+        {
+          key: `${lista}_precio`,
+          header: `${LISTA_LABELS[lista] ?? lista} (precio)`,
+          render: (p) => getListaPrecio(p, lista),
+        },
+      ]
+    ),
+  ]
+}
 
 export function ProductosListPage() {
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.roles?.includes('admin')
+  const listasVendedor = user?.listas_precio && user.listas_precio.length > 0
+    ? user.listas_precio
+    : [...LISTAS_PRECIOS]
+  const listasToShow = isAdmin ? [...LISTAS_PRECIOS] : listasVendedor
+  const baseColumns = buildListaColumns(listasToShow)
   const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [limit] = useState(20)
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [listaFilter, setListaFilter] = useState<string>('')
@@ -43,19 +62,22 @@ export function ProductosListPage() {
     setLoading(true)
     try {
       const data = await productoService.list({
-        skip: (page - 1) * limit,
-        limit,
-        activos_only: false,
+        skip: 0,
+        limit: 10000,
         search: searchDebounced.trim() || undefined,
         lista: listaFilter || undefined,
       })
-      setProductos(data)
+      setProductos(
+        [...data].sort((a, b) =>
+          (a.referencia || '').localeCompare(b.referencia || '', 'es')
+        )
+      )
     } catch {
       setProductos([])
     } finally {
       setLoading(false)
     }
-  }, [page, limit, searchDebounced, listaFilter])
+  }, [searchDebounced, listaFilter])
 
   useEffect(() => {
     load()
@@ -90,18 +112,20 @@ export function ProductosListPage() {
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="">Todas las listas</option>
-            {Object.entries(LISTA_LABELS).map(([k, v]) => (
+            {listasToShow.map((k) => (
               <option key={k} value={k}>
-                {v}
+                {LISTA_LABELS[k] ?? k}
               </option>
             ))}
           </select>
-          <Link
-            to="/productos/nuevo"
-            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-          >
-            Nuevo producto
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/productos/nuevo"
+              className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            >
+              Nuevo producto
+            </Link>
+          )}
         </div>
       </div>
       {loading ? (
@@ -112,38 +136,39 @@ export function ProductosListPage() {
         <>
           <DataTable
             columns={[
-              ...columns,
-              {
-                key: 'actions',
-                header: 'Acciones',
-                width: '180px',
-                render: (p) => (
-                  <div className="flex gap-2">
-                    <Link
-                      to={`/productos/${p.id}/editar`}
-                      className="text-primary-600 hover:underline"
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      onClick={() => setDeleteId(p.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                ),
-              },
+              ...baseColumns,
+              ...(isAdmin
+                ? [
+                    {
+                      key: 'actions',
+                      header: 'Acciones',
+                      width: '180px',
+                      render: (p: Producto) => (
+                        <div className="flex gap-2">
+                          <Link
+                            to={`/productos/${p.id}/editar`}
+                            className="text-primary-600 hover:underline"
+                          >
+                            Editar
+                          </Link>
+                          <button
+                            onClick={() => setDeleteId(p.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      ),
+                    },
+                  ]
+                : []),
             ]}
             data={productos}
             keyExtractor={(p) => p.id}
           />
-          <Pagination
-            page={page}
-            total={productos.length}
-            limit={limit}
-            onPageChange={setPage}
-          />
+          <p className="mt-2 text-sm text-slate-600">
+            Total: {productos.length} registro{productos.length !== 1 ? 's' : ''}
+          </p>
         </>
       )}
       <ConfirmDialog

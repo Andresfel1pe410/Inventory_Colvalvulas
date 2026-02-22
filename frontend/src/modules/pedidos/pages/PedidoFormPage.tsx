@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
+import { ClienteSearchSelect, ProductoSearchSelect } from '@/shared/components'
 import { pedidoService } from '../services/pedido.service'
-import { clienteService } from '@/modules/clientes/services/cliente.service'
 import { productoService } from '@/modules/productos/services/producto.service'
-import { getPrecioByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
-import type { Cliente } from '@/modules/clientes/types/cliente.types'
+import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import type { DetallePedidoCreate } from '../types/pedido.types'
+import { useAuthStore } from '@/modules/auth'
 
 interface LineaDetalle {
   producto_id: number
@@ -17,27 +17,33 @@ interface LineaDetalle {
 
 export function PedidoFormPage() {
   const navigate = useNavigate()
-  const [clientes, setClientes] = useState<Cliente[]>([])
+  const user = useAuthStore((s) => s.user)
+  const listasDisponibles =
+    user?.listas_precio && user.listas_precio.length > 0
+      ? user.listas_precio
+      : [...LISTAS_PRECIOS]
+  const listaDefault =
+    listasDisponibles.includes('lista_1') ? 'lista_1' : listasDisponibles[0] || 'lista_1'
+
   const [productos, setProductos] = useState<Producto[]>([])
   const [clienteId, setClienteId] = useState<number | ''>('')
   const [observaciones, setObservaciones] = useState('')
-  const [listaPrecios, setListaPrecios] = useState<string>('lista_1')
+  const [listaPrecios, setListaPrecios] = useState<string>(listaDefault)
   const [descuento, setDescuento] = useState<number | ''>(0)
   const [detalles, setDetalles] = useState<LineaDetalle[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      clienteService.list(),
-      productoService.list({ activos_only: true }),
-    ]).then(([c, p]) => {
-      setClientes(c)
-      setProductos(p)
-    })
+    productoService
+      .list({ limit: 500 })
+      .then(setProductos)
+      .catch(() => setProductos([]))
   }, [])
 
-  const productosLista = productos.filter((p) => tieneLista(p, listaPrecios))
+  const productosLista = productos.filter(
+    (p) => tieneLista(p, listaPrecios) || !p.listas_precio?.length
+  ).sort((a, b) => (a.referencia || '').localeCompare(b.referencia || '', 'es'))
   const addLinea = () => {
     if (productosLista.length === 0) return
     setDetalles((d) => [...d, { producto_id: productosLista[0].id, cantidad: 1, producto: productosLista[0] }])
@@ -109,21 +115,14 @@ export function PedidoFormPage() {
         )}
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-slate-700">Cliente</label>
-              <select
+              <ClienteSearchSelect
                 value={clienteId}
-                onChange={(e) => setClienteId(e.target.value ? Number(e.target.value) : '')}
+                onChange={setClienteId}
+                placeholder="Buscar por nombre o NIT..."
                 required
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-              >
-                <option value="">Seleccione...</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.razon_social} ({c.tipo_documento} {c.numero_identificacion})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">Lista de precios</label>
@@ -132,7 +131,7 @@ export function PedidoFormPage() {
                 onChange={(e) => setListaPrecios(e.target.value)}
                 className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
               >
-                {LISTAS_PRECIOS.map((l) => (
+                {listasDisponibles.map((l) => (
                   <option key={l} value={l}>
                     {LISTA_LABELS[l]}
                   </option>
@@ -179,39 +178,107 @@ export function PedidoFormPage() {
           {detalles.length === 0 ? (
             <p className="text-sm text-slate-500">Agregue productos al pedido</p>
           ) : (
-            <div className="space-y-2">
-              {detalles.map((d, idx) => (
-                <div key={idx} className="flex items-center gap-4 rounded border p-2">
-                  <select
-                    value={d.producto_id}
-                    onChange={(e) => updateLinea(idx, 'producto_id', Number(e.target.value))}
-                    className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
+            <div className="space-y-2 overflow-x-auto">
+              <div className="grid min-w-[640px] grid-cols-[1fr_100px_80px_100px_100px_120px_auto] gap-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
+                <span>Producto</span>
+                <span>Código</span>
+                <span>Cant.</span>
+                <span className="text-right">Precio unit.</span>
+                <span className="text-right">Subtotal</span>
+                <span />
+              </div>
+              {detalles.map((d, idx) => {
+                const prod = d.producto || productos.find((p) => p.id === d.producto_id)
+                const codigo = prod ? getCodigoByLista(prod, listaPrecios) || '—' : '—'
+                const precioUnit = prod ? getPrecioByLista(prod, listaPrecios) : 0
+                const cant = typeof d.cantidad === 'number' ? d.cantidad : parseInt(String(d.cantidad), 10) || 0
+                const subtotal = precioUnit * cant
+                return (
+                  <div
+                    key={idx}
+                    className="grid min-w-[640px] grid-cols-[1fr_100px_80px_100px_100px_120px_auto] items-center gap-4 rounded border p-2"
                   >
-                    {productosLista.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.referencia} - {formatPesos(getPrecioByLista(p, listaPrecios))} ({LISTA_LABELS[listaPrecios]})
-                        </option>
-                      ))}
-                  </select>
-                  <input
-                    type="number"
-                    min="1"
-                    value={d.cantidad === '' ? '' : d.cantidad}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      updateLinea(idx, 'cantidad', v === '' ? '' : (parseInt(v, 10) || 0))
-                    }}
-                    className="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeLinea(idx)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Quitar
-                  </button>
+                    <div className="min-w-0">
+                      <ProductoSearchSelect
+                        value={d.producto_id}
+                        onChange={(id) => updateLinea(idx, 'producto_id', id === '' ? '' : id)}
+                        products={productosLista}
+                        formatLabel={(p) => p.referencia}
+                        placeholder="Buscar por referencia, código o material..."
+                      />
+                    </div>
+                    <span className="text-sm text-slate-600">{codigo}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={d.cantidad === '' ? '' : d.cantidad}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        updateLinea(idx, 'cantidad', v === '' ? '' : (parseInt(v, 10) || 0))
+                      }}
+                      className="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
+                    />
+                    <span className="text-right text-sm text-slate-700">{formatPesos(precioUnit)}</span>
+                    <span className="text-right text-sm font-medium text-slate-800">{formatPesos(subtotal)}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeLinea(idx)}
+                      className="text-red-600 hover:underline"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )
+              })}
+              <div className="mt-4 flex justify-end border-t border-slate-200 pt-4">
+                <div className="space-y-1 text-right">
+                  <p className="text-sm text-slate-600">
+                    Subtotal:{' '}
+                    <span className="font-medium">
+                      {formatPesos(
+                        detalles.reduce((s, d) => {
+                          const prod = d.producto || productos.find((p) => p.id === d.producto_id)
+                          const precio = prod ? getPrecioByLista(prod, listaPrecios) : 0
+                          const cant =
+                            typeof d.cantidad === 'number' ? d.cantidad : parseInt(String(d.cantidad), 10) || 0
+                          return s + precio * cant
+                        }, 0)
+                      )}
+                    </span>
+                  </p>
+                  {(typeof descuento === 'number' ? descuento : parseFloat(String(descuento)) || 0) > 0 && (
+                    <p className="text-sm text-slate-600">
+                      Descuento {descuento}%:{' '}
+                      <span className="font-medium text-green-600">
+                        -
+                        {formatPesos(
+                          detalles.reduce((s, d) => {
+                            const prod = d.producto || productos.find((p) => p.id === d.producto_id)
+                            const precio = prod ? getPrecioByLista(prod, listaPrecios) : 0
+                            const cant =
+                              typeof d.cantidad === 'number' ? d.cantidad : parseInt(String(d.cantidad), 10) || 0
+                            return s + precio * cant
+                          }, 0) *
+                            ((typeof descuento === 'number' ? descuento : parseFloat(String(descuento)) || 0) / 100)
+                        )}
+                      </span>
+                    </p>
+                  )}
+                  <p className="text-base font-semibold text-slate-900">
+                    Total:{' '}
+                    {formatPesos(
+                      detalles.reduce((s, d) => {
+                        const prod = d.producto || productos.find((p) => p.id === d.producto_id)
+                        const precio = prod ? getPrecioByLista(prod, listaPrecios) : 0
+                        const cant =
+                          typeof d.cantidad === 'number' ? d.cantidad : parseInt(String(d.cantidad), 10) || 0
+                        return s + precio * cant
+                      }, 0) *
+                        (1 - ((typeof descuento === 'number' ? descuento : parseFloat(String(descuento)) || 0) / 100))
+                    )}
+                  </p>
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </div>

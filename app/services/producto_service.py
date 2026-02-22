@@ -14,18 +14,26 @@ class ProductoService:
         self,
         skip: int = 0,
         limit: int = 100,
-        activos_only: bool = True,
         search: str | None = None,
         lista: str | None = None,
+        listas_vendedor: list[str] | None = None,
     ) -> list[Producto]:
-        if activos_only:
-            return self.repo.list_activos(skip, limit, search, lista)
-        return self.repo.list_all(skip, limit, search, lista)
+        productos = self.repo.list_all(skip, limit, search, lista)
+        if listas_vendedor and len(listas_vendedor) > 0:
+            listas_set = set(listas_vendedor)
+            for p in productos:
+                p.listas_precio = [lp for lp in (p.listas_precio or []) if lp.lista in listas_set]
+        return productos
 
-    def obtener(self, id: int) -> Producto:
+    def obtener(
+        self, id: int, listas_vendedor: list[str] | None = None
+    ) -> Producto:
         p = self.repo.get_with_listas(id)
         if not p:
             raise NotFoundError("Producto no encontrado")
+        if listas_vendedor and len(listas_vendedor) > 0:
+            listas_set = set(listas_vendedor)
+            p.listas_precio = [lp for lp in (p.listas_precio or []) if lp.lista in listas_set]
         return p
 
     def obtener_por_codigo_lista(self, codigo: str, lista: str) -> Producto:

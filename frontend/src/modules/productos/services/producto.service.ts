@@ -5,7 +5,6 @@ export const productoService = {
   list: (params?: {
     skip?: number
     limit?: number
-    activos_only?: boolean
     search?: string
     lista?: string
   }) => api.get<Producto[]>('/productos', { params }).then((r) => r.data),

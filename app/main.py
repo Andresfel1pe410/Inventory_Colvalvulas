@@ -14,6 +14,7 @@ from app.core.logging_config import setup_logging
 from app.core.exceptions import AppException
 from app.api.auth import get_current_user
 from app.api.routers import (
+    auth_router,
     clientes,
     productos,
     inventario,
@@ -71,6 +72,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
+app.include_router(auth_router.router, prefix=settings.API_V1_PREFIX)
 app.include_router(clientes.router, prefix=settings.API_V1_PREFIX)
 app.include_router(productos.router, prefix=settings.API_V1_PREFIX)
 app.include_router(inventario.router, prefix=settings.API_V1_PREFIX)

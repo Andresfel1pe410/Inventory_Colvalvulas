@@ -35,7 +35,7 @@ export function ControlPedidosPage() {
       const [pedData, cliData, prodData] = await Promise.all([
         pedidoService.list({ limit: 500 }),
         clienteService.list({ limit: 500 }),
-        productoService.list({ limit: 500, activos_only: false }),
+        productoService.list({ limit: 500 }),
       ])
       setPedidos(pedData)
       setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))

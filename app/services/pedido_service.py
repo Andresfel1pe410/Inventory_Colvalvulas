@@ -5,6 +5,7 @@ from app.core.exceptions import NotFoundError, ValidationError, ForbiddenError
 from app.models import Pedido, DetallePedido, Producto
 from app.repositories.pedido_repository import PedidoRepository
 from app.repositories.producto_repository import ProductoRepository
+from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas import PedidoCreate, PedidoUpdateFull, DetallePedidoCreate
 
 
@@ -26,16 +27,27 @@ class PedidoService:
         self.producto_repo = ProductoRepository(db)
 
     def listar(
-        self, skip: int = 0, limit: int = 100, estados: list[str] | None = None
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        estados: list[str] | None = None,
+        usuario_id: int | None = None,
+        es_vendedor: bool = False,
     ) -> list[Pedido]:
+        if es_vendedor and usuario_id:
+            if estados:
+                return self.repo.get_by_estados_for_usuario(usuario_id, estados, skip, limit)
+            return self.repo.get_all_for_usuario(usuario_id, skip, limit)
         if estados:
             return self.repo.get_by_estados(estados, skip, limit)
         return self.repo.get_all(skip, limit)
 
-    def obtener(self, id: int) -> Pedido:
+    def obtener(self, id: int, usuario_id: int | None = None, es_vendedor: bool = False) -> Pedido:
         p = self.repo.get_with_detalles(id)
         if not p:
             raise NotFoundError("Pedido no encontrado")
+        if es_vendedor and usuario_id and p.usuario_id != usuario_id:
+            raise ForbiddenError("No tiene acceso a este pedido")
         return p
 
     def crear(self, data: PedidoCreate, usuario_id: int) -> Pedido:
@@ -73,6 +85,7 @@ class PedidoService:
                 )
             )
 
+        self.db.flush()
         self._recalcular_totales(pedido.id)
         self.db.commit()
         self.db.refresh(pedido)
@@ -117,6 +130,7 @@ class PedidoService:
                 )
             )
 
+        self.db.flush()
         self._recalcular_totales(pedido_id)
         self.db.commit()
         self.db.refresh(pedido)

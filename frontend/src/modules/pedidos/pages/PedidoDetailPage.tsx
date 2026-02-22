@@ -5,7 +5,7 @@ import { pedidoService } from '../services/pedido.service'
 import { productoService } from '@/modules/productos/services/producto.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
 import type { PedidoConDetalles, Pedido } from '../types/pedido.types'
-import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
+import { getCodigoDisplay, getCodigoByLista } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
@@ -106,7 +106,15 @@ export function PedidoDetailPage() {
             </div>
           )}
           <p className="text-sm text-slate-600">
-            Total: <span className="font-medium">{formatPesos(pedido.total)}</span>
+            Total:{' '}
+            <span className="font-medium">
+              {formatPesos(
+                pedido.detalles?.length
+                  ? pedido.detalles.reduce((s, d) => s + (d.subtotal ?? 0), 0) *
+                      (1 - ((pedido.descuento ?? 0) / 100))
+                  : pedido.total
+              )}
+            </span>
           </p>
           {pedido.lista_precios && (
             <p className="text-sm text-slate-600">
@@ -120,21 +128,30 @@ export function PedidoDetailPage() {
           )}
         </div>
         <div className="rounded-lg border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 px-4 py-3 font-medium text-slate-900">
-            Detalle
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-4 border-b border-slate-200 px-4 py-3 font-medium text-slate-900">
+            <span>Producto</span>
+            <span>Código</span>
+            <span className="text-right">Cantidad x Precio</span>
           </div>
           <div className="divide-y divide-slate-200">
-            {pedido.detalles.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center justify-between px-4 py-3"
-              >
-                <span>{productos[d.producto_id]?.referencia || (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) || `#${d.producto_id}`}</span>
-                <span>
-                  {d.cantidad} x {formatPesos(d.precio_unitario)} = {formatPesos(d.subtotal)}
-                </span>
-              </div>
-            ))}
+            {pedido.detalles.map((d) => {
+              const prod = productos[d.producto_id]
+              const codigo = prod && pedido.lista_precios
+                ? getCodigoByLista(prod, pedido.lista_precios)
+                : (prod && getCodigoDisplay(prod)) || '—'
+              return (
+                <div
+                  key={d.id}
+                  className="grid grid-cols-[1fr_1fr_auto] gap-4 px-4 py-3"
+                >
+                  <span>{prod?.referencia || `#${d.producto_id}`}</span>
+                  <span className="text-slate-600">{codigo}</span>
+                  <span className="text-right">
+                    {d.cantidad} x {formatPesos(d.precio_unitario)} = {formatPesos(d.subtotal)}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

@@ -50,28 +50,22 @@ class ProductoRepository(BaseRepository[Producto]):
         )
         return float(plp.precio) if plp else None
 
-    def list_activos(
-        self,
-        skip: int = 0,
-        limit: int = 100,
-        search: str | None = None,
-        lista: str | None = None,
-    ):
-        return self.list_all(skip, limit, search, lista)
-
     def list_all(
         self,
         skip: int = 0,
         limit: int = 100,
         search: str | None = None,
         lista: str | None = None,
+        listas: list[str] | None = None,
     ):
         q = self.db.query(Producto).options(joinedload(Producto.listas_precio))
-        if lista:
+        if listas:
+            q = q.join(Producto.listas_precio).filter(ProductoListaPrecio.lista.in_(listas))
+        elif lista:
             q = q.join(Producto.listas_precio).filter(ProductoListaPrecio.lista == lista)
         if search and search.strip():
             term = f"%{search.strip()}%"
-            if lista:
+            if lista or listas:
                 q = q.filter(
                     or_(
                         ProductoListaPrecio.codigo.ilike(term),

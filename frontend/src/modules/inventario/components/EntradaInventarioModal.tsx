@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { inventarioService } from '../services/inventario.service'
 import { productoService } from '@/modules/productos/services/producto.service'
-import type { Inventario } from '../types/inventario.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 
@@ -12,7 +11,8 @@ interface EntradaInventarioModalProps {
 }
 
 export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInventarioModalProps) {
-  const [inventarios, setInventarios] = useState<(Inventario & { producto?: Producto })[]>([])
+  const [productos, setProductos] = useState<Producto[]>([])
+  const [stockMap, setStockMap] = useState<Record<number, number>>({})
   const [productoId, setProductoId] = useState<number | ''>('')
   const [cantidad, setCantidad] = useState('')
   const [motivo, setMotivo] = useState('')
@@ -26,14 +26,18 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
       setMotivo('')
       setError('')
       Promise.all([
+        productoService.list({ limit: 500 }),
         inventarioService.list({ limit: 500 }),
-        productoService.list({ limit: 500, activos_only: false }),
       ])
-        .then(([invData, prodData]) => {
-          const prodMap = Object.fromEntries(prodData.map((p) => [p.id, p]))
-          setInventarios(invData.map((i) => ({ ...i, producto: prodMap[i.producto_id] })))
+        .then(([prodData, invData]) => {
+          setProductos(prodData)
+          const stock: Record<number, number> = {}
+          invData.forEach((i) => {
+            stock[i.producto_id] = i.stock_actual
+          })
+          setStockMap(stock)
         })
-        .catch(() => setInventarios([]))
+        .catch(() => setProductos([]))
     }
   }, [open])
 
@@ -60,7 +64,7 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
 
   if (!open) return null
 
-  const stockActual = inventarios.find((i) => i.producto_id === productoId)?.stock_actual ?? null
+  const stockActual = productoId ? stockMap[productoId] ?? 0 : null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -82,9 +86,9 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
             >
               <option value="">Seleccione producto...</option>
-              {inventarios.map((i) => (
-                <option key={i.id} value={i.producto_id}>
-                  {i.producto?.referencia || (i.producto && getCodigoDisplay(i.producto)) || `#${i.producto_id}`} (stock: {i.stock_actual})
+              {productos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.referencia || getCodigoDisplay(p) || `#${p.id}`} (stock: {stockMap[p.id] ?? 0})
                 </option>
               ))}
             </select>
@@ -124,7 +128,7 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
             </button>
             <button
               type="submit"
-              disabled={loading || inventarios.length === 0}
+              disabled={loading || productos.length === 0}
               className="rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 disabled:opacity-50"
             >
               {loading ? 'Registrando...' : 'Registrar entrada'}

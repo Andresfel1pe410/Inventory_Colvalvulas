@@ -16,10 +16,13 @@ class UsuarioService:
         return u
 
     def listar_con_roles(self, skip: int = 0, limit: int = 100) -> list[dict]:
+        from app.repositories.vendedor_lista_repository import VendedorListaRepository
+        vendedor_repo = VendedorListaRepository(self.db)
         usuarios = self.repo.get_all(skip, limit)
         result = []
         for u in usuarios:
             roles = self.repo.get_roles(u.id)
+            listas = vendedor_repo.get_listas_by_usuario(u.id) if "vendedor" in roles else []
             result.append({
                 "id": u.id,
                 "email": u.email,
@@ -27,6 +30,7 @@ class UsuarioService:
                 "apellido": u.apellido,
                 "activo": u.activo,
                 "roles": roles,
+                "listas_precio": listas,
             })
         return result
 
@@ -43,3 +47,10 @@ class UsuarioService:
         self.db.commit()
         self.db.refresh(ur)
         return ur
+
+    def set_roles(self, usuario_id: int, rol_ids: list[int]) -> None:
+        """Reemplaza todos los roles del usuario."""
+        self.db.query(UsuarioRol).filter(UsuarioRol.usuario_id == usuario_id).delete()
+        for rid in rol_ids:
+            self.db.add(UsuarioRol(usuario_id=usuario_id, rol_id=rid))
+        self.db.commit()

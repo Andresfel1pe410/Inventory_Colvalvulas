@@ -1,5 +1,8 @@
+import axios from 'axios'
 import { createClient, Session } from '@supabase/supabase-js'
 import { User } from '../types/auth.types'
+
+const API_BASE = '/api/v1'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -24,18 +27,36 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
+export interface MeResponse {
+  id: number
+  email: string
+  nombre: string | null
+  apellido: string | null
+  roles: string[]
+  listas_precio: string[] | null
+}
+
+export async function fetchMe(token: string): Promise<User> {
+  const { data } = await axios.get<MeResponse>(`${API_BASE}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return {
+    id: String(data.id),
+    email: data.email,
+    nombre: data.nombre ?? undefined,
+    apellido: data.apellido ?? undefined,
+    roles: data.roles,
+    listas_precio: data.listas_precio,
+  }
+}
+
 export async function login(email: string, password: string): Promise<{ session: Session; user: User }> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw new Error(error.message)
   if (!data.session) throw new Error('No se obtuvo sesión')
 
-  const user: User = {
-    id: data.user.id,
-    email: data.user.email!,
-    nombre: data.user.user_metadata?.nombre,
-    apellido: data.user.user_metadata?.apellido,
-    roles: data.user.user_metadata?.roles || ['vendedor'],
-  }
+  const token = data.session.access_token
+  const user = await fetchMe(token)
 
   return { session: data.session, user }
 }

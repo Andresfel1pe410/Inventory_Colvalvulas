@@ -5,4 +5,5 @@ export interface UsuarioSistema {
   apellido?: string
   activo: boolean
   roles: string[]
+  listas_precio?: string[]
 }

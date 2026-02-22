@@ -28,7 +28,9 @@ class InventarioService:
 
         inv = self.repo.get_by_producto(producto_id)
         if not inv:
-            raise NotFoundError("Inventario del producto no encontrado")
+            inv = Inventario(producto_id=producto_id, stock_actual=0, stock_minimo=0)
+            self.db.add(inv)
+            self.db.flush()
 
         stock_anterior = inv.stock_actual
         if tipo in ("entrada", "ajuste"):

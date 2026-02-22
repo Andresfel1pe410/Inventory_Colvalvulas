@@ -49,6 +49,16 @@ class UsuarioRol(Base):
     rol = relationship("Rol")
 
 
+class VendedorListaPrecio(Base):
+    """Listas de precios asignadas a un vendedor por el admin."""
+    __tablename__ = "vendedor_lista_precio"
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    usuario_id = Column(BigInteger, ForeignKey("usuario.id", ondelete="CASCADE"), nullable=False)
+    lista = Column(String(30), nullable=False)  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+
 class Cliente(Base):
     __tablename__ = "cliente"
     
