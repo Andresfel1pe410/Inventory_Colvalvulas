@@ -4,10 +4,43 @@ import { formatPesos } from '@/shared/utils/format'
 import { pedidoService } from '../services/pedido.service'
 import { productoService } from '@/modules/productos/services/producto.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
-import type { PedidoConDetalles } from '../types/pedido.types'
+import type { PedidoConDetalles, IntencionEnvio } from '../types/pedido.types'
 import { getCodigoDisplay, getCodigoByLista } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
+
+const OPCIONES_INTENCION: { value: IntencionEnvio | ''; label: string }[] = [
+  { value: 'enviar', label: 'Enviar' },
+  { value: 'enviar_parcial', label: 'Enviar Parcial' },
+  { value: 'no_enviar', label: 'No enviar' },
+]
+
+function diasSinEnviar(createdAt: string, estado: string): number | null {
+  if (estado === 'enviado') return null
+  const created = new Date(createdAt).getTime()
+  const hoy = Date.now()
+  return Math.floor((hoy - created) / (1000 * 60 * 60 * 24))
+}
+
+function colorDias(dias: number): string {
+  if (dias <= 6) return 'bg-green-100 border-green-400 text-green-800'
+  if (dias <= 10) return 'bg-amber-100 border-amber-400 text-amber-800'
+  return 'bg-red-100 border-red-400 text-red-800'
+}
+
+function colorIntencion(intencion: IntencionEnvio | null | undefined): string {
+  if (!intencion) return 'bg-slate-100 border-slate-300 text-slate-700'
+  if (intencion === 'enviar') return 'bg-green-100 border-green-400 text-green-800'
+  if (intencion === 'enviar_parcial') return 'bg-amber-100 border-amber-400 text-amber-800'
+  return 'bg-red-100 border-red-400 text-red-800'
+}
+
+function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
+  if (!intencion) return 'Sin definir'
+  if (intencion === 'enviar') return 'Enviar'
+  if (intencion === 'enviar_parcial') return 'Enviar Parcial'
+  return 'No enviar'
+}
 
 export function PedidoDetailPage() {
   const { id } = useParams()
@@ -15,6 +48,7 @@ export function PedidoDetailPage() {
   const [pedido, setPedido] = useState<PedidoConDetalles | null>(null)
   const [productos, setProductos] = useState<Record<number, Producto>>({})
   const [cliente, setCliente] = useState<Cliente | null>(null)
+  const [savingIntencion, setSavingIntencion] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -41,6 +75,18 @@ export function PedidoDetailPage() {
   }
 
   const handlePrint = () => window.print()
+
+  const handleIntencionChange = async (value: IntencionEnvio | '') => {
+    if (!pedido || savingIntencion) return
+    const val = value === '' ? null : value
+    setSavingIntencion(true)
+    try {
+      const updated = await pedidoService.updateIntencionEnvio(pedido.id, val)
+      setPedido(updated)
+    } finally {
+      setSavingIntencion(false)
+    }
+  }
 
   return (
     <div>
@@ -143,6 +189,50 @@ export function PedidoDetailPage() {
           <p className="text-sm text-slate-600">
             Estado:{' '}
             <span className="font-medium capitalize">{pedido.estado.replace('_', ' ')}</span>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-4">
+            {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' && (() => {
+              const dias = diasSinEnviar(pedido.created_at, pedido.estado)
+              return dias !== null ? (
+                <div className={`rounded-lg border-2 px-4 py-2 font-medium ${colorDias(dias)}`}>
+                  <span className="text-xs uppercase">Días sin enviar</span>
+                  <p className="text-lg font-bold">{dias}</p>
+                </div>
+              ) : null
+            })()}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium uppercase text-slate-500">
+                Intención de envío
+              </label>
+              {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' ? (
+                <select
+                  value={pedido.intencion_envio ?? ''}
+                  onChange={(e) => handleIntencionChange(e.target.value as IntencionEnvio | '')}
+                  disabled={savingIntencion}
+                  className={`rounded-lg border-2 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 ${colorIntencion(pedido.intencion_envio ?? undefined)}`}
+                >
+                  <option value="">Seleccionar...</option>
+                  {OPCIONES_INTENCION.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className={`rounded-lg border-2 px-4 py-2 font-medium ${colorIntencion(pedido.intencion_envio ?? undefined)}`}>
+                  {labelIntencion(pedido.intencion_envio ?? undefined)}
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-slate-500">
+            Creado: {new Date(pedido.created_at).toLocaleDateString('es-CO', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
           </p>
           {pedido.observaciones && (
             <div className="mt-2">

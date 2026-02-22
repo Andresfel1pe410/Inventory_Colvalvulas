@@ -7,6 +7,8 @@ export interface DetallePedido {
   subtotal: number
 }
 
+export type IntencionEnvio = 'enviar' | 'enviar_parcial' | 'no_enviar'
+
 export interface Pedido {
   id: number
   numero_pedido: string
@@ -22,6 +24,7 @@ export interface Pedido {
   transportadora?: string
   numero_factura?: string
   numero_guia?: string
+  intencion_envio?: IntencionEnvio | null
   lista_precios?: string
   descuento?: number
   created_at: string

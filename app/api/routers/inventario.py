@@ -1,4 +1,5 @@
 """Router de inventario - solo lectura y movimientos."""
+from datetime import datetime
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
@@ -6,7 +7,8 @@ from app.core.database import get_db
 from app.api.auth import get_current_user
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
-from app.schemas import Inventario, InventarioResumen, MovimientoInventario, MovimientoInventarioCreate
+from app.repositories.movimiento_inventario_repository import MovimientoInventarioRepository
+from app.schemas import Inventario, InventarioResumen, MovimientoInventario, MovimientoInventarioCreate, MovimientoInventarioReporte
 from app.services.inventario_service import InventarioService
 from app.repositories.inventario_repository import InventarioRepository
 
@@ -49,6 +51,26 @@ def obtener_por_producto(
         from fastapi import HTTPException
         raise HTTPException(404, "Inventario no encontrado")
     return inv
+
+
+@router.get("/movimientos/entradas", response_model=list[MovimientoInventarioReporte])
+def listar_entradas(
+    fecha_inicio: str = Query(..., description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: str = Query(..., description="Fecha fin (YYYY-MM-DD)"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(5000, ge=1, le=10000),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _require_admin(db, current_user)
+    try:
+        dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+        dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(400, "Formato de fecha inválido. Use YYYY-MM-DD")
+    if dt_inicio > dt_fin:
+        raise HTTPException(400, "La fecha de inicio debe ser menor o igual a la fecha fin")
+    return MovimientoInventarioRepository(db).get_entradas_por_fecha(dt_inicio, dt_fin, skip, limit)
 
 
 @router.post("/movimientos", response_model=MovimientoInventario, status_code=201)

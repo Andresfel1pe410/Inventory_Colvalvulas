@@ -5,12 +5,39 @@ import { pedidoService } from '@/modules/pedidos/services/pedido.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
 import { productoService } from '@/modules/productos/services/producto.service'
 import { DataTable, Column } from '@/shared/components'
-import type { Pedido, PedidoConDetalles } from '@/modules/pedidos/types/pedido.types'
+import type { Pedido, PedidoConDetalles, IntencionEnvio } from '@/modules/pedidos/types/pedido.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 
 const TRANSPORTADORAS = ['YP', 'A.N.', 'E.Express', 'Interrapidisimo'] as const
+
+function diasSinEnviar(createdAt: string, estado: string): number | null {
+  if (estado === 'enviado') return null
+  const created = new Date(createdAt).getTime()
+  const hoy = Date.now()
+  return Math.floor((hoy - created) / (1000 * 60 * 60 * 24))
+}
+
+function colorDias(dias: number): string {
+  if (dias <= 6) return 'bg-green-100 text-green-800'
+  if (dias <= 10) return 'bg-amber-100 text-amber-800'
+  return 'bg-red-100 text-red-800'
+}
+
+function colorIntencion(intencion: IntencionEnvio | null | undefined): string {
+  if (!intencion) return 'bg-slate-100 text-slate-600'
+  if (intencion === 'enviar') return 'bg-green-100 text-green-800'
+  if (intencion === 'enviar_parcial') return 'bg-amber-100 text-amber-800'
+  return 'bg-red-100 text-red-800'
+}
+
+function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
+  if (!intencion) return '—'
+  if (intencion === 'enviar') return 'Enviar'
+  if (intencion === 'enviar_parcial') return 'Enviar Parcial'
+  return 'No enviar'
+}
 
 export function ControlPedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
@@ -178,6 +205,34 @@ export function ControlPedidosPage() {
           {p.estado.replace('_', ' ')}
         </span>
       ),
+    },
+    {
+      key: 'intencion_envio',
+      header: 'Intención de envío',
+      render: (p) => (
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${colorIntencion(
+            p.intencion_envio ?? undefined
+          )}`}
+        >
+          {labelIntencion(p.intencion_envio ?? undefined)}
+        </span>
+      ),
+    },
+    {
+      key: 'dias_sin_enviar',
+      header: 'Días sin enviar',
+      render: (p) => {
+        const dias = diasSinEnviar(p.created_at, p.estado)
+        if (dias === null) return <span className="text-slate-400">—</span>
+        return (
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${colorDias(dias)}`}
+          >
+            {dias}
+          </span>
+        )
+      },
     },
     {
       key: 'actions',

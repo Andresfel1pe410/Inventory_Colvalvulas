@@ -12,6 +12,7 @@ from app.schemas import (
     PedidoCreate,
     PedidoUpdate,
     PedidoUpdateFull,
+    PedidoIntencionUpdate,
     PedidoEnvioCreate,
     DetallePedido,
     DetallePedidoCreate,
@@ -92,6 +93,27 @@ def agregar_detalle(
     current_user: Usuario = Depends(get_current_user),
 ):
     return PedidoService(db).agregar_detalle(id, data, current_user.id)
+
+
+@router.patch("/{id}/intencion-envio", response_model=PedidoConDetalles)
+def actualizar_intencion_envio(
+    id: int,
+    data: PedidoIntencionUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    es_vend = _es_vendedor_solo(db, current_user)
+    PedidoService(db).obtener(
+        id,
+        usuario_id=current_user.id if es_vend else None,
+        es_vendedor=es_vend,
+    )
+    PedidoService(db).actualizar_intencion_envio(id, data.intencion_envio)
+    return PedidoService(db).obtener(
+        id,
+        usuario_id=current_user.id if es_vend else None,
+        es_vendedor=es_vend,
+    )
 
 
 @router.patch("/{id}/estado", response_model=Pedido)

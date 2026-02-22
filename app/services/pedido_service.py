@@ -164,6 +164,16 @@ class PedidoService:
         self.db.refresh(det)
         return det
 
+    def actualizar_intencion_envio(self, pedido_id: int, intencion_envio: str | None) -> Pedido:
+        """Actualiza la intención de envío del pedido (enviar, enviar_parcial, no_enviar)."""
+        pedido = self.obtener(pedido_id)
+        if intencion_envio and intencion_envio not in ("enviar", "enviar_parcial", "no_enviar"):
+            raise ValidationError("Intención inválida. Válidas: enviar, enviar_parcial, no_enviar")
+        pedido.intencion_envio = intencion_envio
+        self.db.commit()
+        self.db.refresh(pedido)
+        return pedido
+
     def cambiar_estado(self, pedido_id: int, nuevo_estado: str) -> Pedido:
         pedido = self.obtener(pedido_id)
         if nuevo_estado not in ESTADOS_VALIDOS:

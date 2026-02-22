@@ -5,10 +5,11 @@ import { productoService } from '@/modules/productos/services/producto.service'
 import { pedidoService } from '@/modules/pedidos/services/pedido.service'
 import { clienteService } from '@/modules/clientes/services/cliente.service'
 import { EntradaInventarioModal } from '../components/EntradaInventarioModal'
+import { ReporteEntradasModal } from '../components/ReporteEntradasModal'
 import type { InventarioResumen } from '../types/inventario.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
-import type { Pedido } from '@/modules/pedidos/types/pedido.types'
+import type { Pedido, PedidoConDetalles } from '@/modules/pedidos/types/pedido.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
 type FiltroPedidos = 'todos' | number[]  // 'todos' = todos, number[] = IDs seleccionados
@@ -20,6 +21,7 @@ export function InventarioPage() {
   const [clientes, setClientes] = useState<Record<number, Cliente>>({})
   const [loading, setLoading] = useState(true)
   const [modalEntradaOpen, setModalEntradaOpen] = useState(false)
+  const [modalReporteOpen, setModalReporteOpen] = useState(false)
   const [filtroPedidos, setFiltroPedidos] = useState<FiltroPedidos>('todos')
   const [filtroOpen, setFiltroOpen] = useState(false)
   const [pedidosSeleccionados, setPedidosSeleccionados] = useState<Set<number>>(new Set())
@@ -28,6 +30,7 @@ export function InventarioPage() {
   const [productosSeleccionados, setProductosSeleccionados] = useState<Set<number>>(new Set())
   const [busquedaProducto, setBusquedaProducto] = useState('')
   const [soloNegativos, setSoloNegativos] = useState(false)
+  const [pedidosConDetalles, setPedidosConDetalles] = useState<Record<number, PedidoConDetalles>>({})
 
   const loadPedidosActivos = useCallback(async () => {
     try {
@@ -74,6 +77,20 @@ export function InventarioPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (pedidosActivos.length === 0) {
+      setPedidosConDetalles({})
+      return
+    }
+    Promise.all(pedidosActivos.map((p) => pedidoService.get(p.id)))
+      .then((results) => {
+        const map: Record<number, PedidoConDetalles> = {}
+        results.forEach((ped) => { map[ped.id] = ped })
+        setPedidosConDetalles(map)
+      })
+      .catch(() => setPedidosConDetalles({}))
+  }, [pedidosActivos])
 
   useEffect(() => {
     if (filtroOpen) {
@@ -161,9 +178,35 @@ export function InventarioPage() {
       ? 'Todos los pedidos'
       : `${filtroPedidos.length} pedido(s) seleccionado(s)`
 
+  const stockPorProducto = useMemo(() => {
+    const map: Record<number, number> = {}
+    inventarios.forEach((i) => { map[i.producto_id] = i.stock_actual })
+    return map
+  }, [inventarios])
+
+  const pedidoTieneStockCompleto = useMemo(() => {
+    const result: Record<number, boolean> = {}
+    Object.values(pedidosConDetalles).forEach((ped) => {
+      if (!ped.detalles?.length) {
+        result[ped.id] = true
+        return
+      }
+      const completo = ped.detalles.every((d) => {
+        const stock = stockPorProducto[d.producto_id] ?? 0
+        return stock >= d.cantidad
+      })
+      result[ped.id] = completo
+    })
+    return result
+  }, [pedidosConDetalles, stockPorProducto])
+
   const productosUnicos = useMemo(() => {
+    let list = inventarios
+    if (filtroPedidos !== 'todos' && filtroPedidos.length > 0) {
+      list = list.filter((i) => i.cantidad_requerida > 0)
+    }
     const seen = new Set<number>()
-    return inventarios
+    return list
       .map((i) => i.producto)
       .filter((p): p is Producto => p != null)
       .filter((p) => {
@@ -172,16 +215,11 @@ export function InventarioPage() {
         return true
       })
       .sort((a, b) => {
-        const matA = (a.material || '').toLowerCase()
-        const matB = (b.material || '').toLowerCase()
-        const esAluminioA = matA.includes('aluminio')
-        const esAluminioB = matB.includes('aluminio')
-        if (esAluminioA && !esAluminioB) return -1
-        if (!esAluminioA && esAluminioB) return 1
-        if (matA !== matB) return matA.localeCompare(matB)
-        return (a.referencia || '').localeCompare(b.referencia || '')
+        const refCmp = (a.referencia || '').localeCompare(b.referencia || '', 'es')
+        if (refCmp !== 0) return refCmp
+        return (a.material || '').localeCompare(b.material || '', 'es')
       })
-  }, [inventarios])
+  }, [inventarios, filtroPedidos])
 
   const productosFiltrados = useMemo(() => {
     const term = busquedaProducto.trim().toLowerCase()
@@ -198,6 +236,9 @@ export function InventarioPage() {
 
   const inventariosOrdenados = useMemo(() => {
     let list = inventarios
+    if (filtroPedidos !== 'todos' && filtroPedidos.length > 0) {
+      list = list.filter((i) => i.cantidad_requerida > 0)
+    }
     if (filtroProductos !== 'todos' && filtroProductos.length > 0) {
       const ids = new Set(filtroProductos)
       list = list.filter((i) => ids.has(i.producto_id))
@@ -206,29 +247,25 @@ export function InventarioPage() {
       list = list.filter((i) => i.stock_disponible < 0)
     }
     return [...list].sort((a, b) => {
-      const matA = (a.producto?.material || '').toLowerCase()
-      const matB = (b.producto?.material || '').toLowerCase()
       const refA = (a.producto?.referencia || '').toLowerCase()
       const refB = (b.producto?.referencia || '').toLowerCase()
-      const esAluminioA = matA.includes('aluminio')
-      const esAluminioB = matB.includes('aluminio')
-      if (esAluminioA && !esAluminioB) return -1
-      if (!esAluminioA && esAluminioB) return 1
-      if (matA !== matB) return matA.localeCompare(matB)
-      return refA.localeCompare(refB)
+      const matA = (a.producto?.material || '').toLowerCase()
+      const matB = (b.producto?.material || '').toLowerCase()
+      if (refA !== refB) return refA.localeCompare(refB)
+      return matA.localeCompare(matB)
     })
   }, [inventarios, filtroProductos, soloNegativos])
 
   const columns: Column<InventarioResumen & { producto?: Producto }>[] = [
     {
-      key: 'material',
-      header: 'Material',
-      render: (i) => i.producto?.material || '—',
-    },
-    {
       key: 'producto_id',
       header: 'Producto',
       render: (i) => i.producto?.referencia || (i.producto && getCodigoDisplay(i.producto)) || `#${i.producto_id}`,
+    },
+    {
+      key: 'material',
+      header: 'Material',
+      render: (i) => i.producto?.material || '—',
     },
     {
       key: 'stock_actual',
@@ -311,25 +348,33 @@ export function InventarioPage() {
                     Todos los pedidos (balance total)
                   </button>
                   <div className="max-h-48 overflow-y-auto border-t border-slate-200">
-                    {pedidosActivos.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => togglePedido(p.id)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-                      >
-                        <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${pedidosSeleccionados.has(p.id) ? 'border-primary-600 bg-primary-600' : 'border-slate-300'}`}>
-                          {pedidosSeleccionados.has(p.id) && (
-                            <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </span>
-                        <span className="truncate">
-                          {p.numero_pedido} - {clientes[p.cliente_id]?.razon_social || '?'} ({p.estado.replace('_', ' ')})
-                        </span>
-                      </button>
-                    ))}
+                    {pedidosActivos.map((p) => {
+                      const tieneStock = pedidoTieneStockCompleto[p.id]
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => togglePedido(p.id)}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                        >
+                          <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${pedidosSeleccionados.has(p.id) ? 'border-primary-600 bg-primary-600' : 'border-slate-300'}`}>
+                            {pedidosSeleccionados.has(p.id) && (
+                              <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </span>
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: tieneStock === true ? '#22c55e' : tieneStock === false ? '#eab308' : '#94a3b8' }}
+                            title={tieneStock === true ? 'Stock completo' : tieneStock === false ? 'Falta stock' : 'Calculando...'}
+                          />
+                          <span className="truncate">
+                            {p.numero_pedido} - {clientes[p.cliente_id]?.razon_social || '?'} ({p.estado.replace('_', ' ')})
+                          </span>
+                        </button>
+                      )
+                    })}
                     {pedidosActivos.length === 0 && (
                       <p className="px-3 py-4 text-center text-sm text-slate-500">
                         No hay pedidos en espera o proceso
@@ -484,6 +529,16 @@ export function InventarioPage() {
           </div>
           <button
             type="button"
+            onClick={() => setModalReporteOpen(true)}
+            className="flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Reporte de entradas
+          </button>
+          <button
+            type="button"
             onClick={() => setModalEntradaOpen(true)}
             className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
           >
@@ -495,6 +550,10 @@ export function InventarioPage() {
         open={modalEntradaOpen}
         onClose={() => setModalEntradaOpen(false)}
         onCreated={load}
+      />
+      <ReporteEntradasModal
+        open={modalReporteOpen}
+        onClose={() => setModalReporteOpen(false)}
       />
       {loading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-slate-500">

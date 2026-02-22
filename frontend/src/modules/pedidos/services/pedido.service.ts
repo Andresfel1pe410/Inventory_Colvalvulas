@@ -40,6 +40,9 @@ export const pedidoService = {
   marcarEnviado: (id: number, data: PedidoEnvioCreate) =>
     api.post<PedidoConDetalles>(`/pedidos/${id}/enviar`, data).then((r) => r.data),
 
+  updateIntencionEnvio: (id: number, intencion_envio: 'enviar' | 'enviar_parcial' | 'no_enviar' | null) =>
+    api.patch<PedidoConDetalles>(`/pedidos/${id}/intencion-envio`, { intencion_envio }).then((r) => r.data),
+
   update: (id: number, data: PedidoUpdateFull) =>
     api.put<PedidoConDetalles>(`/pedidos/${id}`, data).then((r) => r.data),
 }

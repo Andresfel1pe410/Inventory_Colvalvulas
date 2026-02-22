@@ -195,6 +195,16 @@ class MovimientoInventario(MovimientoInventarioBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MovimientoInventarioReporte(BaseModel):
+    """Entradas unificadas por producto (suma de cantidades)."""
+    producto_id: int
+    producto_referencia: str = ""
+    producto_material: str = ""
+    cantidad_total: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ============= PEDIDO =============
 class DetallePedidoBase(BaseModel):
     producto_id: int
@@ -253,6 +263,14 @@ class PedidoEnvioCreate(BaseModel):
     resumen_envio: Optional[str] = None  # Anotación del checklist
 
 
+class PedidoIntencionUpdate(BaseModel):
+    """Actualización de intención de envío."""
+    intencion_envio: Optional[str] = Field(
+        None,
+        pattern="^(enviar|enviar_parcial|no_enviar)$",
+    )
+
+
 class Pedido(PedidoBase):
     id: int
     numero_pedido: str
@@ -266,6 +284,7 @@ class Pedido(PedidoBase):
     numero_factura: Optional[str] = None
     numero_guia: Optional[str] = None
     resumen_envio: Optional[str] = None
+    intencion_envio: Optional[str] = None  # enviar, enviar_parcial, no_enviar
     lista_precios: Optional[str] = None
     descuento: Decimal = 0
     created_at: datetime
