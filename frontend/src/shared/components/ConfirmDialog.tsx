@@ -5,6 +5,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'danger' | 'default'
+  loading?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -16,6 +17,7 @@ export function ConfirmDialog({
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
   variant = 'default',
+  loading = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -37,11 +39,12 @@ export function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className={`rounded-md px-4 py-2 text-sm font-medium text-white ${
+            disabled={loading}
+            className={`rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
               isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-primary-600 hover:bg-primary-700'
             }`}
           >
-            {confirmLabel}
+            {loading ? 'Procesando...' : confirmLabel}
           </button>
         </div>
       </div>

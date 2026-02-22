@@ -110,6 +110,7 @@ export function OrdenEmpaqueDetailPage() {
         title="Cerrar orden de empaque"
         message="Al cerrar se registrarán las salidas de inventario. ¿Continuar?"
         confirmLabel="Cerrar"
+        loading={cerrando}
         onConfirm={handleCerrar}
         onCancel={() => setConfirmCerrar(false)}
       />

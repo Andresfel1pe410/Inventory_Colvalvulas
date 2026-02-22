@@ -6,7 +6,6 @@ import { pedidoService } from '../services/pedido.service'
 import { productoService } from '@/modules/productos/services/producto.service'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
-import type { DetallePedidoCreate } from '../types/pedido.types'
 import { useAuthStore } from '@/modules/auth'
 
 interface LineaDetalle {
