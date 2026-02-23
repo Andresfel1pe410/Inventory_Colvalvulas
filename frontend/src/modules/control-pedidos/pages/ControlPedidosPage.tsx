@@ -26,15 +26,13 @@ function colorDias(dias: number): string {
 }
 
 function colorIntencion(intencion: IntencionEnvio | null | undefined): string {
-  if (!intencion) return 'bg-slate-100 text-slate-600'
-  if (intencion === 'enviar') return 'bg-green-100 text-green-800'
+  if (!intencion || intencion === 'enviar') return 'bg-green-100 text-green-800'
   if (intencion === 'enviar_parcial') return 'bg-amber-100 text-amber-800'
   return 'bg-red-100 text-red-800'
 }
 
 function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
-  if (!intencion) return '—'
-  if (intencion === 'enviar') return 'Enviar'
+  if (!intencion || intencion === 'enviar') return 'Enviar'
   if (intencion === 'enviar_parcial') return 'Enviar Parcial'
   return 'No enviar'
 }
@@ -182,6 +180,13 @@ export function ControlPedidosPage() {
   }
 
   const columns: Column<Pedido>[] = [
+    {
+      key: 'numero_pedido',
+      header: 'Nº Pedido',
+      render: (p) => (
+        <span className="font-medium text-slate-900">{p.numero_pedido}</span>
+      ),
+    },
     {
       key: 'cliente_id',
       header: 'Cliente',
