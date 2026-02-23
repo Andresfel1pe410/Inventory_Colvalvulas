@@ -223,6 +223,49 @@ class PedidoService:
 
         return pedido
 
+    def desmarcar_enviado(self, pedido_id: int) -> Pedido:
+        """Revierte pedido de enviado a en_proceso: suma entradas al inventario y anula la remisión."""
+        pedido = self.obtener(pedido_id)
+        if pedido.estado != "enviado":
+            raise ValidationError("Solo se puede desmarcar un pedido en estado enviado")
+
+        from app.repositories.remision_repository import RemisionRepository
+        from app.services.inventario_service import InventarioService
+
+        rem_repo = RemisionRepository(self.db)
+        remision = rem_repo.get_by_pedido_id(pedido_id)
+        if not remision:
+            raise ValidationError("No se encontró remisión para este pedido")
+        remision = rem_repo.get_with_detalles(remision.id)
+        if not remision.detalles:
+            raise ValidationError("La remisión no tiene detalles")
+
+        inv_service = InventarioService(self.db)
+        for det in remision.detalles:
+            inv_service.registrar_movimiento(
+                producto_id=det.producto_id,
+                tipo="entrada",
+                cantidad=det.cantidad,
+                motivo=f"Reversión: desmarcar enviado - Pedido {pedido.numero_pedido}",
+                referencia_tipo="remision",
+                referencia_id=remision.id,
+                usuario_id=None,
+                commit=False,
+            )
+
+        remision.estado = "cancelada"
+        pedido.estado = "en_proceso"
+        pedido.fecha_envio = None
+        pedido.usuario_envio_id = None
+        pedido.transportadora = None
+        pedido.numero_factura = None
+        pedido.numero_guia = None
+        pedido.resumen_envio = None
+
+        self.db.commit()
+        self.db.refresh(pedido)
+        return pedido
+
     def _recalcular_totales(self, pedido_id: int) -> None:
         pedido = self.repo.get(pedido_id)
         if not pedido:

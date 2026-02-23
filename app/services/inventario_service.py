@@ -20,6 +20,7 @@ class InventarioService:
         referencia_tipo: str | None = None,
         referencia_id: int | None = None,
         usuario_id: int | None = None,
+        commit: bool = True,
     ) -> MovimientoInventario:
         if tipo not in ("entrada", "salida", "ajuste"):
             raise ValidationError("Tipo de movimiento inválido")
@@ -51,8 +52,9 @@ class InventarioService:
         )
         self.db.add(mov)
         inv.stock_actual = stock_nuevo
-        self.db.commit()
-        self.db.refresh(mov)
+        if commit:
+            self.db.commit()
+            self.db.refresh(mov)
         return mov
 
     def actualizar_stock(self, producto_id: int, nuevo_stock: int) -> Inventario:

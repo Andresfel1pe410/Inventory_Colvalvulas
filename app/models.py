@@ -3,7 +3,6 @@ Modelos SQLAlchemy ORM - Mapeo de tablas PostgreSQL.
 """
 from datetime import datetime, date
 from decimal import Decimal
-from uuid import UUID
 from sqlalchemy import (
     Column, BigInteger, String, Text, Boolean, Integer, 
     Numeric, DateTime, Date, ForeignKey, CheckConstraint
@@ -186,43 +185,12 @@ class DetallePedido(Base):
     producto = relationship("Producto")
 
 
-class OrdenEmpaque(Base):
-    __tablename__ = "orden_empaque"
-    
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    pedido_id = Column(BigInteger, ForeignKey("pedido.id", ondelete="CASCADE"), nullable=False)
-    numero_orden = Column(String(50), unique=True, nullable=False)
-    estado = Column(String(20), default="pendiente", nullable=False)
-    usuario_id = Column(BigInteger, ForeignKey("usuario.id", ondelete="SET NULL"))
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    detalles = relationship("DetalleEmpaque", back_populates="orden_empaque", cascade="all, delete-orphan")
-    pedido = relationship("Pedido")
-
-
-class DetalleEmpaque(Base):
-    __tablename__ = "detalle_empaque"
-    
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    orden_empaque_id = Column(BigInteger, ForeignKey("orden_empaque.id", ondelete="CASCADE"), nullable=False)
-    producto_id = Column(BigInteger, ForeignKey("producto.id", ondelete="CASCADE"), nullable=False)
-    cantidad = Column(Integer, nullable=False)
-    cantidad_empacada = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    orden_empaque = relationship("OrdenEmpaque", back_populates="detalles")
-    producto = relationship("Producto")
-
-
 class Remision(Base):
     __tablename__ = "remision"
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     numero_remision = Column(String(50), unique=True, nullable=False)
     pedido_id = Column(BigInteger, ForeignKey("pedido.id", ondelete="SET NULL"))
-    orden_empaque_id = Column(BigInteger, ForeignKey("orden_empaque.id", ondelete="SET NULL"))
     cliente_id = Column(BigInteger, ForeignKey("cliente.id", ondelete="CASCADE"), nullable=False)
     estado = Column(String(20), default="borrador", nullable=False)
     fecha_emision = Column(Date)
@@ -231,6 +199,7 @@ class Remision(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     pedido = relationship("Pedido", backref="remisiones")
+    detalles = relationship("DetalleRemision", back_populates="remision", cascade="all, delete-orphan")
 
 
 class DetalleRemision(Base):
@@ -241,3 +210,5 @@ class DetalleRemision(Base):
     producto_id = Column(BigInteger, ForeignKey("producto.id", ondelete="CASCADE"), nullable=False)
     cantidad = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    remision = relationship("Remision", back_populates="detalles")

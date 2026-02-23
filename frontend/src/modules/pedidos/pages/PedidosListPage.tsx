@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
@@ -7,6 +7,30 @@ import { clienteService } from '@/modules/clientes/services/cliente.service'
 import type { Pedido } from '../types/pedido.types'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
+const EyeIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+)
+const PencilIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+  </svg>
+)
+function diasSinEnviar(createdAt: string, estado: string): number | null {
+  if (estado === 'enviado') return null
+  const created = new Date(createdAt).getTime()
+  const hoy = Date.now()
+  return Math.floor((hoy - created) / (1000 * 60 * 60 * 24))
+}
+
+function colorDias(dias: number): string {
+  if (dias <= 6) return 'bg-green-100 text-green-800'
+  if (dias <= 10) return 'bg-amber-100 text-amber-800'
+  return 'bg-red-100 text-red-800'
+}
+
 export function PedidosListPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [clientes, setClientes] = useState<Record<number, Cliente>>({})
@@ -14,34 +38,67 @@ export function PedidosListPage() {
   const [page, setPage] = useState(1)
   const [limit] = useState(20)
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const [pedData, cliData] = await Promise.all([
-        pedidoService.list({ skip: (page - 1) * limit, limit }),
-        clienteService.list({ limit: 500 }),
-      ])
-      setPedidos(pedData)
-      setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-    } catch {
-      setPedidos([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const load = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      setLoading(true)
+      try {
+        const [pedData, cliData] = await Promise.all([
+          pedidoService.list({ skip: (page - 1) * limit, limit }),
+          clienteService.list({ limit: 500 }),
+        ])
+        if (!signal?.cancelled) {
+          setPedidos(pedData)
+          setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
+        }
+      } catch (err) {
+        if ((err as Error).message === 'Request aborted') return
+        if (!signal?.cancelled) setPedidos([])
+      } finally {
+        if (!signal?.cancelled) setLoading(false)
+      }
+    },
+    [page, limit]
+  )
 
   useEffect(() => {
-    load()
-  }, [page])
+    const signal = { cancelled: false }
+    load(signal)
+    return () => {
+      signal.cancelled = true
+    }
+  }, [load])
 
   const columns: Column<Pedido>[] = [
     { key: 'numero_pedido', header: 'Nº Pedido' },
     {
       key: 'cliente_id',
       header: 'Cliente',
-      render: (p) => clientes[p.cliente_id]?.razon_social || `#${p.cliente_id}`,
+      width: '250px',
+      render: (p) => {
+        const nombre = clientes[p.cliente_id]?.razon_social || `#${p.cliente_id}`
+        return (
+          <span className="block max-w-[250px] truncate" title={nombre}>
+            {nombre}
+          </span>
+        )
+      },
     },
     { key: 'estado', header: 'Estado' },
+    {
+      key: 'dias_sin_enviar',
+      header: 'Días sin enviar',
+      render: (p) => {
+        const dias = diasSinEnviar(p.created_at, p.estado)
+        if (dias === null) return <span className="text-slate-400">—</span>
+        return (
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${colorDias(dias)}`}
+          >
+            {dias}
+          </span>
+        )
+      },
+    },
     {
       key: 'total',
       header: 'Total',
@@ -83,19 +140,21 @@ export function PedidosListPage() {
                 header: 'Acciones',
                 width: '100px',
                 render: (p) => (
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1">
                     <Link
                       to={`/pedidos/${p.id}`}
-                      className="text-primary-600 hover:underline"
+                      className="rounded p-1.5 text-primary-600 hover:bg-primary-50"
+                      title="Ver"
                     >
-                      Ver
+                      <EyeIcon />
                     </Link>
                     {p.estado !== 'enviado' && p.estado !== 'cancelado' && (
                       <Link
                         to={`/pedidos/${p.id}/editar`}
-                        className="text-slate-600 hover:underline"
+                        className="rounded p-1.5 text-slate-600 hover:bg-slate-100"
+                        title="Editar"
                       >
-                        Editar
+                        <PencilIcon />
                       </Link>
                     )}
                   </div>

@@ -1,8 +1,9 @@
 """Router de pedidos."""
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.api.auth import get_current_user
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
@@ -33,23 +34,33 @@ def _require_admin(db: Session, usuario: Usuario) -> None:
         raise HTTPException(403, "Solo administradores pueden modificar la intención de envío")
 
 
+def _listar_pedidos_sync(skip: int, limit: int, est_list: list[str] | None, usuario_id: int):
+    db = SessionLocal()
+    try:
+        usuario = db.query(Usuario).get(usuario_id)
+        if not usuario:
+            raise HTTPException(401, "Usuario no encontrado")
+        es_vend = _es_vendedor_solo(db, usuario)
+        return PedidoService(db).listar(
+            skip, limit, est_list,
+            usuario_id=usuario_id if es_vend else None,
+            es_vendedor=es_vend,
+        )
+    finally:
+        db.close()
+
+
 @router.get("", response_model=list[Pedido])
-def listar(
+async def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     estados: str | None = Query(None, description="Filtrar por estados: en_espera,en_proceso"),
-    db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     est_list = None
     if estados:
         est_list = [e.strip() for e in estados.split(",") if e.strip()]
-    es_vend = _es_vendedor_solo(db, current_user)
-    return PedidoService(db).listar(
-        skip, limit, est_list,
-        usuario_id=current_user.id if es_vend else None,
-        es_vendedor=es_vend,
-    )
+    return await asyncio.to_thread(_listar_pedidos_sync, skip, limit, est_list, current_user.id)
 
 
 @router.get("/{id}", response_model=PedidoConDetalles)
@@ -163,6 +174,27 @@ def marcar_enviado(
         detalles_envio=data.detalles,
         resumen_envio=data.resumen_envio,
     )
+    return PedidoService(db).obtener(
+        id,
+        usuario_id=current_user.id if es_vend else None,
+        es_vendedor=es_vend,
+    )
+
+
+@router.post("/{id}/desmarcar-enviado", response_model=PedidoConDetalles)
+def desmarcar_enviado(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _require_admin(db, current_user)
+    es_vend = _es_vendedor_solo(db, current_user)
+    PedidoService(db).obtener(
+        id,
+        usuario_id=current_user.id if es_vend else None,
+        es_vendedor=es_vend,
+    )
+    PedidoService(db).desmarcar_enviado(id)
     return PedidoService(db).obtener(
         id,
         usuario_id=current_user.id if es_vend else None,

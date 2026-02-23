@@ -9,9 +9,6 @@ from app.models import Remision, DetalleRemision
 from app.repositories.remision_repository import RemisionRepository
 from app.repositories.pedido_repository import PedidoRepository
 from app.services.inventario_service import InventarioService
-from app.schemas import RemisionCreate
-
-
 class RemisionService:
     def __init__(self, db):
         self.db = db
@@ -28,7 +25,6 @@ class RemisionService:
                 "id": r.id,
                 "numero_remision": r.numero_remision,
                 "pedido_id": r.pedido_id,
-                "orden_empaque_id": r.orden_empaque_id,
                 "cliente_id": r.cliente_id,
                 "estado": r.estado,
                 "fecha_emision": r.fecha_emision,
@@ -105,50 +101,7 @@ class RemisionService:
                 referencia_tipo="remision",
                 referencia_id=remision.id,
                 usuario_id=usuario_id,
-            )
-
-        self.db.commit()
-        self.db.refresh(remision)
-        return remision
-
-    def generar(self, data: RemisionCreate, usuario_id: int) -> Remision:
-        """Legacy: genera desde orden_empaque (deprecado)."""
-        from app.repositories.orden_empaque_repository import OrdenEmpaqueRepository
-        orden_repo = OrdenEmpaqueRepository(self.db)
-        orden = orden_repo.get_with_detalles(data.orden_empaque_id)
-        if not orden:
-            raise NotFoundError("Orden de empaque no encontrada")
-        if orden.estado != "cerrada":
-            raise ValidationError("La orden debe estar cerrada para generar remisión")
-
-        numero = self.repo.generar_numero()
-        remision = Remision(
-            numero_remision=numero,
-            orden_empaque_id=data.orden_empaque_id,
-            pedido_id=orden.pedido_id,
-            cliente_id=data.cliente_id,
-            estado="emitida",
-            fecha_emision=date.today(),
-        )
-        self.db.add(remision)
-        self.db.flush()
-
-        for det in data.detalles:
-            self.db.add(
-                DetalleRemision(
-                    remision_id=remision.id,
-                    producto_id=det.producto_id,
-                    cantidad=det.cantidad,
-                )
-            )
-            self.inv_service.registrar_movimiento(
-                producto_id=det.producto_id,
-                tipo="salida",
-                cantidad=det.cantidad,
-                motivo=f"Remisión {numero}",
-                referencia_tipo="remision",
-                referencia_id=remision.id,
-                usuario_id=usuario_id,
+                commit=False,
             )
 
         self.db.commit()

@@ -86,24 +86,32 @@ export function ClientesListPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await clienteService.list({
-        skip: 0,
-        limit: 10000,
-        search: searchDebounced.trim() || undefined,
-      })
-      setClientes(data)
-    } catch {
-      setClientes([])
-    } finally {
-      setLoading(false)
-    }
-  }, [searchDebounced])
+  const load = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      setLoading(true)
+      try {
+        const data = await clienteService.list({
+          skip: 0,
+          limit: 10000,
+          search: searchDebounced.trim() || undefined,
+        })
+        if (!signal?.cancelled) setClientes(data)
+      } catch (err) {
+        if ((err as Error).message === 'Request aborted') return
+        if (!signal?.cancelled) setClientes([])
+      } finally {
+        if (!signal?.cancelled) setLoading(false)
+      }
+    },
+    [searchDebounced]
+  )
 
   useEffect(() => {
-    load()
+    const signal = { cancelled: false }
+    load(signal)
+    return () => {
+      signal.cancelled = true
+    }
   }, [load])
 
   const handleDelete = async () => {

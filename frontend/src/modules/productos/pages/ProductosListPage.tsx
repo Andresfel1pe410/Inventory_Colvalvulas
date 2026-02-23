@@ -58,29 +58,39 @@ export function ProductosListPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await productoService.list({
-        skip: 0,
-        limit: 10000,
-        search: searchDebounced.trim() || undefined,
-        lista: listaFilter || undefined,
-      })
-      setProductos(
-        [...data].sort((a, b) =>
-          (a.referencia || '').localeCompare(b.referencia || '', 'es')
-        )
-      )
-    } catch {
-      setProductos([])
-    } finally {
-      setLoading(false)
-    }
-  }, [searchDebounced, listaFilter])
+  const load = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      setLoading(true)
+      try {
+        const data = await productoService.list({
+          skip: 0,
+          limit: 10000,
+          search: searchDebounced.trim() || undefined,
+          lista: listaFilter || undefined,
+        })
+        if (!signal?.cancelled) {
+          setProductos(
+            [...data].sort((a, b) =>
+              (a.referencia || '').localeCompare(b.referencia || '', 'es')
+            )
+          )
+        }
+      } catch (err) {
+        if ((err as Error).message === 'Request aborted') return
+        if (!signal?.cancelled) setProductos([])
+      } finally {
+        if (!signal?.cancelled) setLoading(false)
+      }
+    },
+    [searchDebounced, listaFilter]
+  )
 
   useEffect(() => {
-    load()
+    const signal = { cancelled: false }
+    load(signal)
+    return () => {
+      signal.cancelled = true
+    }
   }, [load])
 
   const handleDelete = async () => {

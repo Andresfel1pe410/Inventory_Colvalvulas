@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
 from app.core.exceptions import AppException
-from app.api.auth import get_current_user
 from app.api.routers import (
     auth_router,
     clientes,
@@ -39,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ERP Inventario",
-    description="Sistema ERP: inventario, pedidos, órdenes de empaque, remisiones",
+    description="Sistema ERP: inventario, pedidos, remisiones",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -66,9 +65,11 @@ async def app_exception_handler(request: Request, exc: AppException):
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     logger.exception("Error no controlado: %s", exc)
+    # Incluir mensaje del error para facilitar diagnóstico (evitar exponer stack traces)
+    msg = str(exc) if str(exc) else "Error interno del servidor"
     return JSONResponse(
         status_code=500,
-        content={"detail": "Error interno del servidor"},
+        content={"detail": msg},
     )
 
 

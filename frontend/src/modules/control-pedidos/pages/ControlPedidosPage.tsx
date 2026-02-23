@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
 import { pedidoService } from '@/modules/pedidos/services/pedido.service'
@@ -54,7 +54,7 @@ export function ControlPedidosPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const load = async () => {
+  const load = useCallback(async (signal?: { cancelled: boolean }) => {
     setLoading(true)
     try {
       const [pedData, cliData, prodData] = await Promise.all([
@@ -62,19 +62,26 @@ export function ControlPedidosPage() {
         clienteService.list({ limit: 500 }),
         productoService.list({ limit: 500 }),
       ])
-      setPedidos(pedData)
-      setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-      setProductos(Object.fromEntries(prodData.map((p) => [p.id, p])))
-    } catch {
-      setPedidos([])
+      if (!signal?.cancelled) {
+        setPedidos(pedData)
+        setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
+        setProductos(Object.fromEntries(prodData.map((p) => [p.id, p])))
+      }
+    } catch (err) {
+      if ((err as Error).message === 'Request aborted') return
+      if (!signal?.cancelled) setPedidos([])
     } finally {
-      setLoading(false)
+      if (!signal?.cancelled) setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    load()
-  }, [])
+    const signal = { cancelled: false }
+    load(signal)
+    return () => {
+      signal.cancelled = true
+    }
+  }, [load])
 
   useEffect(() => {
     if (detailId) {
@@ -96,6 +103,21 @@ export function ControlPedidosPage() {
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cambiar estado')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleDesmarcarEnviado = async () => {
+    if (!detailId) return
+    setError('')
+    setActionLoading(true)
+    try {
+      await pedidoService.desmarcarEnviado(detailId)
+      setDetailId(null)
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al desmarcar enviado')
     } finally {
       setActionLoading(false)
     }
@@ -190,7 +212,15 @@ export function ControlPedidosPage() {
     {
       key: 'cliente_id',
       header: 'Cliente',
-      render: (p) => clientes[p.cliente_id]?.razon_social || `#${p.cliente_id}`,
+      width: '250px',
+      render: (p) => {
+        const nombre = clientes[p.cliente_id]?.razon_social || `#${p.cliente_id}`
+        return (
+          <span className="block max-w-[250px] truncate" title={nombre}>
+            {nombre}
+          </span>
+        )
+      },
     },
     {
       key: 'estado',
@@ -343,9 +373,14 @@ export function ControlPedidosPage() {
               {detail.resumen_envio && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                   <h3 className="mb-2 text-sm font-medium text-amber-900">Resumen de envío</h3>
-                  <p className="whitespace-pre-wrap text-sm text-amber-800">
-                    {detail.resumen_envio}
-                  </p>
+                  <div className="flex flex-col gap-1 text-sm text-amber-800">
+                    {detail.resumen_envio
+                      .split(/\.\s+/)
+                      .filter(Boolean)
+                      .map((linea, i) => (
+                        <div key={i}>{linea}</div>
+                      ))}
+                  </div>
                 </div>
               )}
 
@@ -353,7 +388,7 @@ export function ControlPedidosPage() {
               {detail.estado === 'enviado' && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <h3 className="mb-3 font-medium text-slate-900">Datos de entrega</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-3">
                     <div>
                       <p className="text-xs text-slate-500">Fecha envío</p>
                       <p className="text-sm font-medium">
@@ -385,6 +420,7 @@ export function ControlPedidosPage() {
                 </div>
               )}
 
+
               <div>
                 <h3 className="mb-2 font-medium text-slate-900">Detalle del pedido</h3>
                 <div className="divide-y divide-slate-200 rounded-lg border border-slate-200">
@@ -401,6 +437,20 @@ export function ControlPedidosPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Botón desmarcar enviado (solo admin) */}
+              {detail.estado === 'enviado' && (
+                <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleDesmarcarEnviado}
+                    disabled={actionLoading}
+                    className="rounded-md border border-amber-600 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                  >
+                    {actionLoading ? 'Desmarcando...' : 'Desmarcar enviado'}
+                  </button>
+                </div>
+              )}
 
               {/* Botones de cambio de estado */}
               {detail.estado !== 'enviado' && detail.estado !== 'cancelado' && (

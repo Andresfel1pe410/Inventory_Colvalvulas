@@ -306,68 +306,11 @@ class PedidoConDetalles(Pedido):
     usuario_envio: Optional[UsuarioEnvioInfo] = None
 
 
-# ============= ORDEN EMPAQUE =============
-class DetalleEmpaqueBase(BaseModel):
-    producto_id: int
-    cantidad: int = Field(gt=0)
-
-
-class DetalleEmpaqueCreate(DetalleEmpaqueBase):
-    pass
-
-
-class DetalleEmpaque(DetalleEmpaqueBase):
-    id: int
-    orden_empaque_id: int
-    cantidad_empacada: int = 0
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OrdenEmpaqueBase(BaseModel):
-    pedido_id: int
-
-
-class OrdenEmpaqueCreate(OrdenEmpaqueBase):
-    detalles: list[DetalleEmpaqueCreate]
-
-
-class OrdenEmpaqueUpdate(BaseModel):
-    estado: Optional[str] = Field(None, pattern="^(pendiente|en_proceso|cerrada|cancelada)$")
-
-
-class OrdenEmpaque(OrdenEmpaqueBase):
-    id: int
-    numero_orden: str
-    estado: str
-    usuario_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OrdenEmpaqueConDetalles(OrdenEmpaque):
-    detalles: list[DetalleEmpaque] = []
-
-
 # ============= REMISION =============
-class DetalleRemisionCreate(BaseModel):
-    producto_id: int
-    cantidad: int = Field(gt=0)
-
-
-class RemisionCreate(BaseModel):
-    orden_empaque_id: int
-    cliente_id: int
-    detalles: list[DetalleRemisionCreate]
-
-
 class Remision(BaseModel):
     id: int
     numero_remision: str
     pedido_id: Optional[int] = None
-    orden_empaque_id: Optional[int] = None
     cliente_id: int
     estado: str
     fecha_emision: Optional[date] = None

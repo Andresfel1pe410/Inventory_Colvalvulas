@@ -1,6 +1,6 @@
 # ERP Inventario - Colvalvulas
 
-Sistema ERP básico enfocado en **inventario**, **pedidos** y **órdenes de empaque**.
+Sistema ERP enfocado en **inventario**, **pedidos** y **remisiones**.
 
 - **Backend:** Python + FastAPI
 - **Base de datos:** PostgreSQL (Supabase)
@@ -11,24 +11,25 @@ Sistema ERP básico enfocado en **inventario**, **pedidos** y **órdenes de empa
 ```
 Inventario_Colvalvulas/
 ├── app/
-│   ├── main.py          # Punto de entrada FastAPI
-│   ├── config.py        # Variables de entorno
-│   ├── database.py      # Conexión SQLAlchemy
-│   ├── models.py        # Modelos ORM
-│   ├── schemas.py       # Schemas Pydantic
-│   ├── crud.py          # Lógica de negocio
-│   ├── auth.py          # JWT verification, get_current_user
-│   ├── dependencies.py  # Dependencias compartidas
-│   └── routers/
-│       ├── productos.py
-│       ├── clientes.py
-│       ├── pedidos.py
-│       ├── inventario.py
-│       └── orden_empaque.py
+│   ├── main.py              # Punto de entrada FastAPI
+│   ├── models.py            # Modelos ORM
+│   ├── schemas.py           # Schemas Pydantic
+│   ├── core/                # Config, DB, logging, excepciones
+│   ├── api/
+│   │   ├── auth.py          # JWT verification, get_current_user
+│   │   └── routers/
+│   │       ├── productos.py
+│   │       ├── clientes.py
+│   │       ├── pedidos.py
+│   │       ├── inventario.py
+│   │       ├── remisiones.py
+│   │       ├── usuarios.py
+│   │       └── roles.py
+│   ├── repositories/        # Acceso a datos
+│   └── services/            # Lógica de negocio
 ├── supabase/
-│   └── migrations/
-│       ├── 001_initial_schema.sql   # Tablas + RLS
-│       └── 002_sync_usuario_on_signup.sql  # Trigger auth → usuario
+│   └── migrations/          # Migraciones SQL
+├── frontend/                # React + Vite
 ├── .env.example
 ├── requirements.txt
 └── README.md
@@ -39,9 +40,8 @@ Inventario_Colvalvulas/
 ### 1. Supabase
 
 1. Crear proyecto en [Supabase](https://supabase.com)
-2. En **SQL Editor**, ejecutar `supabase/migrations/001_initial_schema.sql`
-3. Ejecutar `supabase/migrations/002_sync_usuario_on_signup.sql` (crea usuario al registrarse)
-4. Asignar rol `admin` al primer usuario (en `usuario_rol`)
+2. Ejecutar migraciones en orden (001 a 018)
+3. Asignar rol `admin` al primer usuario (en `usuario_rol`)
 
 ### 2. Variables de entorno
 
@@ -90,15 +90,17 @@ Documentación: http://localhost:8000/docs
 | POST | `/api/v1/productos` | Crear producto |
 | GET | `/api/v1/clientes` | Listar clientes |
 | POST | `/api/v1/pedidos` | Crear pedido |
-| POST | `/api/v1/pedidos/{id}/detalles` | Agregar detalle a pedido |
-| POST | `/api/v1/orden-empaque` | Crear orden de empaque |
-| POST | `/api/v1/orden-empaque/{id}/cerrar` | Cerrar orden (genera salidas de inventario) |
+| GET | `/api/v1/pedidos` | Listar pedidos |
+| POST | `/api/v1/pedidos/{id}/marcar-enviado` | Marcar pedido enviado (genera remisión y salidas) |
+| POST | `/api/v1/pedidos/{id}/desmarcar-enviado` | Revertir envío |
+| GET | `/api/v1/inventario` | Listar inventario |
 | POST | `/api/v1/inventario/movimientos` | Registrar movimiento (entrada/salida/ajuste) |
+| GET | `/api/v1/remisiones` | Listar remisiones |
 
 ## Reglas de negocio
 
 - **Stock negativo:** No permitido. Las salidas validan stock disponible.
-- **Cierre orden empaque:** Inserta `movimiento_inventario` tipo `salida` y actualiza `inventario.stock_actual`.
+- **Marcar enviado:** Genera remisión automática, registra salidas de inventario y actualiza stock.
 - **Totales:** Subtotal y total del pedido se calculan automáticamente.
 
 ## Seguridad

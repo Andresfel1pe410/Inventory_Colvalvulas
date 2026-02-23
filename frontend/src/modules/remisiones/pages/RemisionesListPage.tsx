@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination } from '@/shared/components'
 import { remisionService } from '../services/remision.service'
@@ -13,25 +13,35 @@ export function RemisionesListPage() {
   const [page, setPage] = useState(1)
   const [limit] = useState(20)
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const [remData, cliData] = await Promise.all([
-        remisionService.list({ skip: (page - 1) * limit, limit }),
-        clienteService.list({ limit: 500 }),
-      ])
-      setRemisiones(remData)
-      setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-    } catch {
-      setRemisiones([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const load = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      setLoading(true)
+      try {
+        const [remData, cliData] = await Promise.all([
+          remisionService.list({ skip: (page - 1) * limit, limit }),
+          clienteService.list({ limit: 500 }),
+        ])
+        if (!signal?.cancelled) {
+          setRemisiones(remData)
+          setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
+        }
+      } catch (err) {
+        if ((err as Error).message === 'Request aborted') return
+        if (!signal?.cancelled) setRemisiones([])
+      } finally {
+        if (!signal?.cancelled) setLoading(false)
+      }
+    },
+    [page, limit]
+  )
 
   useEffect(() => {
-    load()
-  }, [page])
+    const signal = { cancelled: false }
+    load(signal)
+    return () => {
+      signal.cancelled = true
+    }
+  }, [load])
 
   const columns: Column<Remision>[] = [
     { key: 'numero_remision', header: 'Nº Remisión' },

@@ -133,17 +133,26 @@ export function PedidoDetailPage() {
         </div>
       </div>
       {/* Área de impresión: solo visible al imprimir, sin precios */}
-      <div className="print-area hidden p-6">
-        <h1 className="mb-6 text-2xl font-bold">Pedido {pedido.numero_pedido}</h1>
+      <div className="print-area hidden p-4 text-sm">
+        <div className="mb-3">
+          <h1 className="text-lg font-bold">Pedido {pedido.numero_pedido}</h1>
+          <p className="text-sm text-slate-600">
+            Fecha creación: {new Date(pedido.created_at).toLocaleDateString('es-CO', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })}
+          </p>
+        </div>
         {pedido.observaciones && (
-          <div className="mb-4">
+          <div className="mb-3">
             <p className="text-sm font-medium text-slate-700">Observaciones</p>
-            <p className="text-slate-900">{pedido.observaciones}</p>
+            <p className="text-sm text-slate-900">{pedido.observaciones}</p>
           </div>
         )}
-        <div className="mb-6 rounded border border-slate-300 p-4">
-          <p className="mb-2 text-sm font-medium text-slate-700">Cliente</p>
-          <p className="font-semibold">{cliente?.razon_social}</p>
+        <div className="mb-3 rounded border border-slate-300 p-3">
+          <p className="mb-1 text-sm font-medium text-slate-700">Cliente</p>
+          <p className="text-sm font-semibold">{cliente?.razon_social}</p>
           <p className="text-sm">
             {cliente?.tipo_documento} {cliente?.numero_identificacion}
             {cliente?.dv != null && cliente.dv !== '' ? `-${cliente.dv}` : ''}
@@ -165,6 +174,9 @@ export function PedidoDetailPage() {
               <th className="border border-slate-300 px-3 py-2 text-left font-medium">Nº Referencia</th>
               <th className="border border-slate-300 px-3 py-2 text-left font-medium">Producto</th>
               <th className="border border-slate-300 px-3 py-2 text-right font-medium">Cantidad</th>
+              <th className="print-check-header border border-slate-300 pl-3 pr-1 py-2 text-center font-medium text-[9px]">A1</th>
+              <th className="print-check-header border border-slate-300 px-1 py-2 text-center font-medium text-[9px]">Check</th>
+              <th className="print-check-header border border-slate-300 pl-1 pr-2 py-2 text-center font-medium text-[9px]">Packed</th>
             </tr>
           </thead>
           <tbody>
@@ -175,9 +187,18 @@ export function PedidoDetailPage() {
                 : (prod && getCodigoDisplay(prod)) || '—'
               return (
                 <tr key={d.id}>
-                  <td className="border border-slate-300 px-3 py-2">{codigo}</td>
-                  <td className="border border-slate-300 px-3 py-2">{prod?.referencia || `#${d.producto_id}`}</td>
-                  <td className="border border-slate-300 px-3 py-2 text-right">{d.cantidad}</td>
+                  <td className="border border-slate-300 px-3 py-1.5">{codigo}</td>
+                  <td className="border border-slate-300 px-3 py-1.5">{prod?.referencia || `#${d.producto_id}`}</td>
+                  <td className="border border-slate-300 px-3 py-1.5 text-right">{d.cantidad}</td>
+                  <td className="border border-slate-300 px-1 py-1.5 text-center">
+                    <span className="inline-block h-3 w-3 border border-slate-400" />
+                  </td>
+                  <td className="border border-slate-300 px-1 py-1.5 text-center">
+                    <span className="inline-block h-3 w-3 border border-slate-400" />
+                  </td>
+                  <td className="border border-slate-300 px-1 py-1.5 text-center">
+                    <span className="inline-block h-3 w-3 border border-slate-400" />
+                  </td>
                 </tr>
               )
             })}

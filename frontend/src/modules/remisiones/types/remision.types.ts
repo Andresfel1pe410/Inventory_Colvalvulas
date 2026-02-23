@@ -9,7 +9,6 @@ export interface Remision {
   id: number
   numero_remision: string
   pedido_id?: number
-  orden_empaque_id?: number
   cliente_id: number
   estado: string
   fecha_emision?: string
@@ -21,10 +20,4 @@ export interface Remision {
   numero_factura?: string
   numero_guia?: string
   transportadora?: string
-}
-
-export interface RemisionCreate {
-  orden_empaque_id: number
-  cliente_id: number
-  detalles: { producto_id: number; cantidad: number }[]
 }

@@ -1,5 +1,6 @@
 """
 Conexión a PostgreSQL con SQLAlchemy 2.0.
+Pool configurado para 3-5 usuarios simultáneos.
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -13,7 +14,8 @@ engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
     pool_size=5,
-    max_overflow=10,
+    max_overflow=5,
+    pool_recycle=300,
     echo=False,
 )
 

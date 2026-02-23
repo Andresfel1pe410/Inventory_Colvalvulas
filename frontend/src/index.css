@@ -10,6 +10,8 @@ body {
 @media print {
   body, html {
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .no-print {
     display: none !important;
@@ -20,6 +22,21 @@ body {
     left: 0;
     top: 0;
     width: 100%;
+    padding: 12px !important;
     background: white;
+    font-size: 13px !important;
+  }
+  .print-area h1 {
+    font-size: 16px !important;
+  }
+  .print-area table {
+    font-size: 12px !important;
+  }
+  .print-area td,
+  .print-area th {
+    padding: 4px 8px !important;
+  }
+  .print-area .print-check-header {
+    font-size: 9px !important;
   }
 }

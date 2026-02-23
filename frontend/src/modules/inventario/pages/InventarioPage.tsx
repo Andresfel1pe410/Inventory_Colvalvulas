@@ -32,50 +32,67 @@ export function InventarioPage() {
   const [soloNegativos, setSoloNegativos] = useState(false)
   const [pedidosConDetalles, setPedidosConDetalles] = useState<Record<number, PedidoConDetalles>>({})
 
-  const loadPedidosActivos = useCallback(async () => {
+  const loadPedidosActivos = useCallback(async (signal?: { cancelled: boolean }) => {
     try {
       const [pedData, cliData] = await Promise.all([
         pedidoService.list({ limit: 200, estados: 'en_espera,en_proceso' }),
         clienteService.list({ limit: 500 }),
       ])
-      setPedidosActivos(pedData)
-      setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-    } catch {
-      setPedidosActivos([])
+      if (!signal?.cancelled) {
+        setPedidosActivos(pedData)
+        setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
+      }
+    } catch (err) {
+      if ((err as Error).message === 'Request aborted') return
+      if (!signal?.cancelled) setPedidosActivos([])
     }
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params: { skip: number; limit: number; pedido_ids?: string } = {
-        skip: 0,
-        limit: 10000,
+  const load = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      setLoading(true)
+      try {
+        const params: { skip: number; limit: number; pedido_ids?: string } = {
+          skip: 0,
+          limit: 10000,
+        }
+        if (filtroPedidos !== 'todos' && filtroPedidos.length > 0) {
+          params.pedido_ids = filtroPedidos.join(',')
+        }
+        const [invData, prodData] = await Promise.all([
+          inventarioService.list(params),
+          productoService.list({ limit: 10000 }),
+        ])
+        if (!signal?.cancelled) {
+          const prodMap = Object.fromEntries(prodData.map((p) => [p.id, p]))
+          setInventarios(
+            invData.map((i) => ({ ...i, producto: prodMap[i.producto_id] }))
+          )
+        }
+      } catch (err) {
+        if ((err as Error).message === 'Request aborted') return
+        if (!signal?.cancelled) setInventarios([])
+      } finally {
+        if (!signal?.cancelled) setLoading(false)
       }
-      if (filtroPedidos !== 'todos' && filtroPedidos.length > 0) {
-        params.pedido_ids = filtroPedidos.join(',')
-      }
-      const [invData, prodData] = await Promise.all([
-        inventarioService.list(params),
-        productoService.list({ limit: 10000 }),
-      ])
-      const prodMap = Object.fromEntries(prodData.map((p) => [p.id, p]))
-      setInventarios(
-        invData.map((i) => ({ ...i, producto: prodMap[i.producto_id] }))
-      )
-    } catch {
-      setInventarios([])
-    } finally {
-      setLoading(false)
-    }
-  }, [filtroPedidos])
+    },
+    [filtroPedidos]
+  )
 
   useEffect(() => {
-    loadPedidosActivos()
+    const signal = { cancelled: false }
+    loadPedidosActivos(signal)
+    return () => {
+      signal.cancelled = true
+    }
   }, [loadPedidosActivos])
 
   useEffect(() => {
-    load()
+    const signal = { cancelled: false }
+    load(signal)
+    return () => {
+      signal.cancelled = true
+    }
   }, [load])
 
   useEffect(() => {

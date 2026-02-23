@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { DataTable, Column, Pagination } from '@/shared/components'
 import { usuarioService, type Rol } from '../services/usuario.service'
 import type { UsuarioSistema } from '../types/usuario.types'
@@ -16,26 +16,38 @@ export function UsuariosListPage() {
   const [listasSeleccionadas, setListasSeleccionadas] = useState<Set<string>>(new Set())
   const [guardando, setGuardando] = useState(false)
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const [data, rolesData] = await Promise.all([
-        usuarioService.list({ skip: (page - 1) * limit, limit }),
-        usuarioService.getRoles(),
-      ])
-      setUsuarios(data)
-      setRoles(rolesData)
-    } catch {
-      setUsuarios([])
-      setRoles([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const load = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      setLoading(true)
+      try {
+        const [data, rolesData] = await Promise.all([
+          usuarioService.list({ skip: (page - 1) * limit, limit }),
+          usuarioService.getRoles(),
+        ])
+        if (!signal?.cancelled) {
+          setUsuarios(data)
+          setRoles(rolesData)
+        }
+      } catch (err) {
+        if ((err as Error).message === 'Request aborted') return
+        if (!signal?.cancelled) {
+          setUsuarios([])
+          setRoles([])
+        }
+      } finally {
+        if (!signal?.cancelled) setLoading(false)
+      }
+    },
+    [page, limit]
+  )
 
   useEffect(() => {
-    load()
-  }, [page])
+    const signal = { cancelled: false }
+    load(signal)
+    return () => {
+      signal.cancelled = true
+    }
+  }, [load])
 
   const abrirModal = (u: UsuarioSistema) => {
     setModalUsuario(u)

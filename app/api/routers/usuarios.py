@@ -1,9 +1,10 @@
 """Router de usuarios - listar y asignar roles."""
+import asyncio
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.api.auth import get_current_user
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
@@ -25,15 +26,25 @@ def _require_admin(db: Session, usuario: Usuario) -> None:
         raise HTTPException(403, "Solo administradores pueden acceder")
 
 
+def _listar_usuarios_sync(skip: int, limit: int, usuario_id: int):
+    db = SessionLocal()
+    try:
+        usuario = db.query(Usuario).get(usuario_id)
+        if not usuario:
+            raise HTTPException(401, "Usuario no encontrado")
+        _require_admin(db, usuario)
+        return UsuarioService(db).listar_con_roles(skip, limit)
+    finally:
+        db.close()
+
+
 @router.get("")
-def listar(
+async def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
-    return UsuarioService(db).listar_con_roles(skip, limit)
+    return await asyncio.to_thread(_listar_usuarios_sync, skip, limit, current_user.id)
 
 
 @router.post("/asignar-rol")

@@ -38,7 +38,7 @@ src/
 │   ├── productos/
 │   ├── inventario/
 │   ├── pedidos/
-│   ├── orden-empaque/
+│   ├── control-pedidos/
 │   ├── remisiones/
 │   └── usuarios/
 └── shared/        # Componentes y servicios compartidos
@@ -51,6 +51,5 @@ El backend FastAPI debe estar corriendo en el puerto 8000 con los endpoints:
 - `/api/v1/productos`
 - `/api/v1/inventario`
 - `/api/v1/pedidos`
-- `/api/v1/orden-empaque`
 - `/api/v1/remisiones`
 - `/api/v1/usuarios`
