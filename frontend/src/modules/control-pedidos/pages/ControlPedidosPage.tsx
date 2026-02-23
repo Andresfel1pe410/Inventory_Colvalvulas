@@ -1,14 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
-import { pedidoService } from '@/modules/pedidos/services/pedido.service'
-import { clienteService } from '@/modules/clientes/services/cliente.service'
-import { productoService } from '@/modules/productos/services/producto.service'
+import { usePedidosList, usePedido, usePedidoCambiarEstado, usePedidoDesmarcarEnviado, usePedidoMarcarEnviado } from '@/modules/pedidos/hooks/usePedidos'
+import { useClientesList } from '@/modules/clientes/hooks/useClientes'
+import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { DataTable, Column } from '@/shared/components'
 import type { Pedido, PedidoConDetalles, IntencionEnvio } from '@/modules/pedidos/types/pedido.types'
-import type { Cliente } from '@/modules/clientes/types/cliente.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
-import type { Producto } from '@/modules/productos/types/producto.types'
 
 const TRANSPORTADORAS = ['YP', 'A.N.', 'E.Express', 'Interrapidisimo'] as const
 
@@ -38,12 +36,7 @@ function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
 }
 
 export function ControlPedidosPage() {
-  const [pedidos, setPedidos] = useState<Pedido[]>([])
-  const [clientes, setClientes] = useState<Record<number, Cliente>>({})
-  const [loading, setLoading] = useState(true)
   const [detailId, setDetailId] = useState<number | null>(null)
-  const [detail, setDetail] = useState<PedidoConDetalles | null>(null)
-  const [productos, setProductos] = useState<Record<number, Producto>>({})
   const [envioModal, setEnvioModal] = useState(false)
   const [transportadora, setTransportadora] = useState('')
   const [numeroFactura, setNumeroFactura] = useState('')
@@ -51,82 +44,49 @@ export function ControlPedidosPage() {
   const [checklistEnvio, setChecklistEnvio] = useState<
     Record<number, { estado: 'completo' | 'parcial' | 'no_enviado'; cantidad: number }>
   >({})
-  const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const load = useCallback(async (signal?: { cancelled: boolean }) => {
-    setLoading(true)
-    try {
-      const [pedData, cliData, prodData] = await Promise.all([
-        pedidoService.list({ limit: 500 }),
-        clienteService.list({ limit: 500 }),
-        productoService.list({ limit: 500 }),
-      ])
-      if (!signal?.cancelled) {
-        setPedidos(pedData)
-        setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-        setProductos(Object.fromEntries(prodData.map((p) => [p.id, p])))
-      }
-    } catch (err) {
-      if ((err as Error).message === 'Request aborted') return
-      if (!signal?.cancelled) setPedidos([])
-    } finally {
-      if (!signal?.cancelled) setLoading(false)
-    }
-  }, [])
+  const { data: pedidos = [], isLoading } = usePedidosList({ limit: 500 })
+  const { data: clientesData = [] } = useClientesList({ limit: 500 })
+  const { data: productosData = [] } = useProductosList({ limit: 500 })
+  const { data: detail } = usePedido(detailId)
 
-  useEffect(() => {
-    const signal = { cancelled: false }
-    load(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [load])
+  const clientes = Object.fromEntries(clientesData.map((c) => [c.id, c]))
+  const productos = Object.fromEntries(productosData.map((p) => [p.id, p]))
 
-  useEffect(() => {
-    if (detailId) {
-      pedidoService
-        .get(detailId)
-        .then(setDetail)
-        .catch(() => setDetail(null))
-    } else {
-      setDetail(null)
-    }
-  }, [detailId])
+  const cambiarEstadoMutation = usePedidoCambiarEstado()
+  const desmarcarMutation = usePedidoDesmarcarEnviado()
+  const marcarEnviadoMutation = usePedidoMarcarEnviado()
+
+  const actionLoading =
+    cambiarEstadoMutation.isPending ||
+    desmarcarMutation.isPending ||
+    marcarEnviadoMutation.isPending
 
   const handleCambiarEstado = async (id: number, nuevoEstado: string) => {
     setError('')
-    setActionLoading(true)
     try {
-      await pedidoService.cambiarEstado(id, nuevoEstado)
+      await cambiarEstadoMutation.mutateAsync({ id, estado: nuevoEstado })
       setDetailId(null)
-      load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cambiar estado')
-    } finally {
-      setActionLoading(false)
     }
   }
 
   const handleDesmarcarEnviado = async () => {
     if (!detailId) return
     setError('')
-    setActionLoading(true)
     try {
-      await pedidoService.desmarcarEnviado(detailId)
+      await desmarcarMutation.mutateAsync(detailId)
       setDetailId(null)
-      load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al desmarcar enviado')
-    } finally {
-      setActionLoading(false)
     }
   }
 
   const handleEnviar = async () => {
     if (!detailId || !transportadora || !detail) return
     setError('')
-    setActionLoading(true)
     try {
       const detalles: { producto_id: number; cantidad_enviada: number }[] = []
       const lineasResumen: string[] = []
@@ -137,7 +97,10 @@ export function ControlPedidosPage() {
           cantidad: d.cantidad,
         }
         const qty = item.estado === 'no_enviado' ? 0 : item.cantidad
-        const prodNombre = productos[d.producto_id]?.referencia || (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) || `Producto #${d.producto_id}`
+        const prodNombre =
+          productos[d.producto_id]?.referencia ||
+          (productos[d.producto_id] && getCodigoDisplay(productos[d.producto_id])) ||
+          `Producto #${d.producto_id}`
 
         detalles.push({ producto_id: d.producto_id, cantidad_enviada: qty })
 
@@ -150,12 +113,15 @@ export function ControlPedidosPage() {
         }
       }
 
-      await pedidoService.marcarEnviado(detailId, {
-        transportadora,
-        numero_factura: numeroFactura.trim() || undefined,
-        numero_guia: numeroGuia.trim() || undefined,
-        detalles,
-        resumen_envio: lineasResumen.join('. '),
+      await marcarEnviadoMutation.mutateAsync({
+        id: detailId,
+        data: {
+          transportadora,
+          numero_factura: numeroFactura.trim() || undefined,
+          numero_guia: numeroGuia.trim() || undefined,
+          detalles,
+          resumen_envio: lineasResumen.join('. '),
+        },
       })
       setEnvioModal(false)
       setTransportadora('')
@@ -163,11 +129,8 @@ export function ControlPedidosPage() {
       setNumeroGuia('')
       setChecklistEnvio({})
       setDetailId(null)
-      load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al marcar enviado')
-    } finally {
-      setActionLoading(false)
     }
   }
 
@@ -298,7 +261,7 @@ export function ControlPedidosPage() {
         </p>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
           Cargando...
         </div>
@@ -369,7 +332,6 @@ export function ControlPedidosPage() {
                 )}
               </div>
 
-              {/* Resumen de envío (checklist) */}
               {detail.resumen_envio && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                   <h3 className="mb-2 text-sm font-medium text-amber-900">Resumen de envío</h3>
@@ -384,7 +346,6 @@ export function ControlPedidosPage() {
                 </div>
               )}
 
-              {/* Datos de envío (cuando está enviado) */}
               {detail.estado === 'enviado' && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <h3 className="mb-3 font-medium text-slate-900">Datos de entrega</h3>
@@ -420,7 +381,6 @@ export function ControlPedidosPage() {
                 </div>
               )}
 
-
               <div>
                 <h3 className="mb-2 font-medium text-slate-900">Detalle del pedido</h3>
                 <div className="divide-y divide-slate-200 rounded-lg border border-slate-200">
@@ -438,7 +398,6 @@ export function ControlPedidosPage() {
                 </div>
               </div>
 
-              {/* Botón desmarcar enviado (solo admin) */}
               {detail.estado === 'enviado' && (
                 <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
                   <button
@@ -452,7 +411,6 @@ export function ControlPedidosPage() {
                 </div>
               )}
 
-              {/* Botones de cambio de estado */}
               {detail.estado !== 'enviado' && detail.estado !== 'cancelado' && (
                 <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
                   <Link

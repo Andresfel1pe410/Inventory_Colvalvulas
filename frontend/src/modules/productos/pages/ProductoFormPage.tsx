@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { productoService } from '../services/producto.service'
+import { useProducto, useProductoCreate, useProductoUpdate } from '../hooks/useProductos'
 import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
 import type { ProductoCreate, ProductoListaPrecioInput } from '../types/producto.types'
 
@@ -22,30 +22,30 @@ export function ProductoFormPage() {
     listas_precio: emptyListasPrecio(),
   })
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+
+  const { data: producto, isLoading: loadingProducto } = useProducto(
+    isEdit && id ? Number(id) : null
+  )
+  const createMutation = useProductoCreate()
+  const updateMutation = useProductoUpdate()
 
   useEffect(() => {
-    if (isEdit && id) {
-      productoService
-        .get(Number(id))
-        .then((p) => {
-          const listas = LISTAS_PRECIOS.map((lista) => {
-            const lp = p.listas_precio?.find((l) => l.lista === lista)
-            return {
-              lista,
-              codigo: lp?.codigo ?? '',
-              precio: lp?.precio ?? 0,
-            }
-          })
-          setForm({
-            referencia: p.referencia,
-            material: p.material,
-            listas_precio: listas,
-          })
-        })
-        .catch(() => setError('Producto no encontrado'))
+    if (producto) {
+      const listas = LISTAS_PRECIOS.map((lista) => {
+        const lp = producto.listas_precio?.find((l) => l.lista === lista)
+        return {
+          lista,
+          codigo: lp?.codigo ?? '',
+          precio: lp?.precio ?? 0,
+        }
+      })
+      setForm({
+        referencia: producto.referencia,
+        material: producto.material,
+        listas_precio: listas,
+      })
     }
-  }, [id, isEdit])
+  }, [producto])
 
   const updateLista = (idx: number, field: 'codigo' | 'precio', value: string | number) => {
     setForm((f) => {
@@ -58,36 +58,59 @@ export function ProductoFormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    const listas_precio = form.listas_precio
+      .filter((lp) => lp.codigo.trim() !== '')
+      .map((lp) => ({
+        lista: lp.lista,
+        codigo: lp.codigo.trim(),
+        precio: typeof lp.precio === 'number' ? lp.precio : parseFloat(String(lp.precio)) || 0,
+      }))
+    if (listas_precio.length === 0) {
+      setError('Debe ingresar al menos un código y precio en alguna lista')
+      return
+    }
+    const data: ProductoCreate = {
+      referencia: form.referencia,
+      material: form.material,
+      listas_precio,
+    }
     try {
-      const listas_precio = form.listas_precio
-        .filter((lp) => lp.codigo.trim() !== '')
-        .map((lp) => ({
-          lista: lp.lista,
-          codigo: lp.codigo.trim(),
-          precio: typeof lp.precio === 'number' ? lp.precio : parseFloat(String(lp.precio)) || 0,
-        }))
-      if (listas_precio.length === 0) {
-        setError('Debe ingresar al menos un código y precio en alguna lista')
-        setLoading(false)
-        return
-      }
-      const data: ProductoCreate = {
-        referencia: form.referencia,
-        material: form.material,
-        listas_precio,
-      }
       if (isEdit && id) {
-        await productoService.update(Number(id), data)
+        await updateMutation.mutateAsync({ id: Number(id), data })
       } else {
-        await productoService.create(data)
+        await createMutation.mutateAsync(data)
       }
       navigate('/productos')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
-    } finally {
-      setLoading(false)
     }
+  }
+
+  const loading = createMutation.isPending || updateMutation.isPending
+
+  if (isEdit && loadingProducto) {
+    return (
+      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
+        Cargando...
+      </div>
+    )
+  }
+
+  if (isEdit && id && !loadingProducto && !producto) {
+    return (
+      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
+        Producto no encontrado
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => navigate('/productos')}
+            className="text-primary-600 hover:underline"
+          >
+            Volver a productos
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

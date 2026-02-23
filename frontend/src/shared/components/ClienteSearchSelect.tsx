@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { clienteService } from '@/modules/clientes/services/cliente.service'
+import { useState, useEffect, useRef } from 'react'
+import { useClientesList, useCliente } from '@/modules/clientes/hooks/useClientes'
 import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
 function formatClienteLabel(c: Cliente): string {
@@ -26,56 +26,30 @@ export function ClienteSearchSelect({
 }: ClienteSearchSelectProps) {
   const [query, setQuery] = useState('')
   const [queryDebounced, setQueryDebounced] = useState('')
-  const [clientes, setClientes] = useState<Cliente[]>([])
-  const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const fetchedValueRef = useRef<number | null>(null)
-
-  const selectedCliente = clientes.find((c) => c.id === value)
 
   useEffect(() => {
     const t = setTimeout(() => setQueryDebounced(query.trim()), 250)
     return () => clearTimeout(t)
   }, [query])
 
-  const search = useCallback(async () => {
-    if (!queryDebounced) {
-      setClientes([])
-      return
-    }
-    setLoading(true)
-    try {
-      const data = await clienteService.list({
-        search: queryDebounced,
-        limit: 50,
-      })
-      setClientes(data)
-      setHighlightIndex(0)
-    } catch {
-      setClientes([])
-    } finally {
-      setLoading(false)
-    }
-  }, [queryDebounced])
-
-  useEffect(() => {
-    search()
-  }, [search])
+  const { data: clientes = [], isLoading } = useClientesList({
+    search: queryDebounced || undefined,
+    limit: 50,
+  })
+  // Solo mostrar resultados cuando hay búsqueda (evitar lista enorme al abrir)
+  const clientesToShow = queryDebounced ? clientes : []
+  const { data: selectedCliente } = useCliente(
+    value !== '' && typeof value === 'number' ? value : null
+  )
 
   useEffect(() => {
     if (value && selectedCliente) {
       setQuery(formatClienteLabel(selectedCliente))
-    } else if (value && fetchedValueRef.current !== value) {
-      fetchedValueRef.current = value
-      clienteService.get(value).then((c) => {
-        setClientes((prev) => (prev.some((x) => x.id === c.id) ? prev : [c, ...prev]))
-        setQuery(formatClienteLabel(c))
-      })
-    } else if (!value) {
-      fetchedValueRef.current = null
-      if (!open) setQuery('')
+    } else if (!value && !open) {
+      setQuery('')
     }
   }, [value, selectedCliente, open])
 
@@ -101,7 +75,6 @@ export function ClienteSearchSelect({
     setOpen(true)
     if (!v.trim()) {
       onChange('')
-      setClientes([])
     }
   }
 
@@ -116,17 +89,17 @@ export function ClienteSearchSelect({
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setHighlightIndex((i) => (i < clientes.length - 1 ? i + 1 : 0))
+      setHighlightIndex((i) => (i < clientesToShow.length - 1 ? i + 1 : 0))
       return
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setHighlightIndex((i) => (i > 0 ? i - 1 : clientes.length - 1))
+      setHighlightIndex((i) => (i > 0 ? i - 1 : clientesToShow.length - 1))
       return
     }
-    if (e.key === 'Enter' && clientes[highlightIndex]) {
+    if (e.key === 'Enter' && clientesToShow[highlightIndex]) {
       e.preventDefault()
-      handleSelect(clientes[highlightIndex])
+      handleSelect(clientesToShow[highlightIndex])
     }
   }
 
@@ -151,14 +124,14 @@ export function ClienteSearchSelect({
           className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg"
           role="listbox"
         >
-          {loading ? (
+          {isLoading ? (
             <li className="px-3 py-2 text-sm text-slate-500">Buscando...</li>
-          ) : clientes.length === 0 ? (
+          ) : clientesToShow.length === 0 ? (
             <li className="px-3 py-2 text-sm text-slate-500">
               {queryDebounced ? 'Sin coincidencias' : 'Escriba para buscar por nombre o NIT'}
             </li>
           ) : (
-            clientes.map((c, idx) => (
+            clientesToShow.map((c, idx) => (
               <li
                 key={c.id}
                 role="option"

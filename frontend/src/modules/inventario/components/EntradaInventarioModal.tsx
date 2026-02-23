@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { inventarioService } from '../services/inventario.service'
-import { productoService } from '@/modules/productos/services/producto.service'
+import { useProductosList } from '@/modules/productos/hooks/useProductos'
+import { useInventarioList } from '../hooks/useInventario'
 import { ProductoSearchSelect } from '@/shared/components'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
-import type { Producto } from '@/modules/productos/types/producto.types'
+import { useInventarioRegistrarMovimiento } from '../hooks/useInventario'
 
 interface EntradaInventarioModalProps {
   open: boolean
@@ -12,56 +12,24 @@ interface EntradaInventarioModalProps {
 }
 
 export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInventarioModalProps) {
-  const [productos, setProductos] = useState<Producto[]>([])
-  const [stockMap, setStockMap] = useState<Record<number, number>>({})
   const [productoId, setProductoId] = useState<number | ''>('')
   const [cantidad, setCantidad] = useState('')
   const [motivo, setMotivo] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (open) {
-      setProductoId('')
-      setCantidad('')
-      setMotivo('')
-      setError('')
-      Promise.all([
-        productoService.list({ limit: 500 }),
-        inventarioService.list({ limit: 500 }),
-      ])
-        .then(([prodData, invData]) => {
-          setProductos(prodData)
-          const stock: Record<number, number> = {}
-          invData.forEach((i) => {
-            stock[i.producto_id] = i.stock_actual
-          })
-          setStockMap(stock)
-        })
-        .catch(() => setProductos([]))
-    }
-  }, [open])
+  const { data: productos = [] } = useProductosList({
+    limit: 500,
+  })
+  const { data: invData = [] } = useInventarioList({ limit: 500 })
+  const registrarMutation = useInventarioRegistrarMovimiento()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!productoId || !cantidad || parseInt(cantidad, 10) <= 0) return
-    setError('')
-    setLoading(true)
-    try {
-      await inventarioService.registrarMovimiento({
-        producto_id: Number(productoId),
-        tipo: 'entrada',
-        cantidad: parseInt(cantidad, 10),
-        motivo: motivo.trim() || undefined,
-      })
-      onCreated()
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al registrar entrada')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const stockMap = useMemo(() => {
+    const map: Record<number, number> = {}
+    invData.forEach((i) => {
+      map[i.producto_id] = i.stock_actual
+    })
+    return map
+  }, [invData])
 
   const productosOrdenados = useMemo(
     () =>
@@ -76,6 +44,35 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
   )
 
   const stockActual = productoId ? stockMap[productoId] ?? 0 : null
+
+  useEffect(() => {
+    if (open) {
+      setProductoId('')
+      setCantidad('')
+      setMotivo('')
+      setError('')
+    }
+  }, [open])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!productoId || !cantidad || parseInt(cantidad, 10) <= 0) return
+    setError('')
+    try {
+      await registrarMutation.mutateAsync({
+        producto_id: Number(productoId),
+        tipo: 'entrada',
+        cantidad: parseInt(cantidad, 10),
+        motivo: motivo.trim() || undefined,
+      })
+      onCreated()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al registrar entrada')
+    }
+  }
+
+  const loading = registrarMutation.isPending
 
   if (!open) return null
 

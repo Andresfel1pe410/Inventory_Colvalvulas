@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   DataTable,
@@ -6,7 +6,7 @@ import {
   ConfirmDialog,
   CopyableCell,
 } from '@/shared/components'
-import { clienteService } from '../services/cliente.service'
+import { useClientesList, useClienteDelete } from '../hooks/useClientes'
 import type { Cliente } from '../types/cliente.types'
 
 const columns: Column<Cliente>[] = [
@@ -75,8 +75,6 @@ const columns: Column<Cliente>[] = [
 ]
 
 export function ClientesListPage() {
-  const [clientes, setClientes] = useState<Cliente[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
@@ -86,40 +84,17 @@ export function ClientesListPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  const load = useCallback(
-    async (signal?: { cancelled: boolean }) => {
-      setLoading(true)
-      try {
-        const data = await clienteService.list({
-          skip: 0,
-          limit: 10000,
-          search: searchDebounced.trim() || undefined,
-        })
-        if (!signal?.cancelled) setClientes(data)
-      } catch (err) {
-        if ((err as Error).message === 'Request aborted') return
-        if (!signal?.cancelled) setClientes([])
-      } finally {
-        if (!signal?.cancelled) setLoading(false)
-      }
-    },
-    [searchDebounced]
-  )
-
-  useEffect(() => {
-    const signal = { cancelled: false }
-    load(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [load])
+  const { data: clientes = [], isLoading } = useClientesList({
+    search: searchDebounced.trim() || undefined,
+    limit: 10000,
+  })
+  const deleteMutation = useClienteDelete()
 
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      await clienteService.delete(deleteId)
+      await deleteMutation.mutateAsync(deleteId)
       setDeleteId(null)
-      load()
     } catch {
       setDeleteId(null)
     }
@@ -145,7 +120,7 @@ export function ClientesListPage() {
           </Link>
         </div>
       </div>
-      {loading ? (
+      {isLoading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
           Cargando...
         </div>

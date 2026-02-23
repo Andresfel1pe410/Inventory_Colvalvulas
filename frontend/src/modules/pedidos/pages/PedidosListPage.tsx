@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
-import { pedidoService } from '../services/pedido.service'
-import { clienteService } from '@/modules/clientes/services/cliente.service'
+import { usePedidosList } from '../hooks/usePedidos'
+import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import type { Pedido } from '../types/pedido.types'
-import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
 const EyeIcon = () => (
   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,41 +31,15 @@ function colorDias(dias: number): string {
 }
 
 export function PedidosListPage() {
-  const [pedidos, setPedidos] = useState<Pedido[]>([])
-  const [clientes, setClientes] = useState<Record<number, Cliente>>({})
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [limit] = useState(20)
+  const limit = 20
 
-  const load = useCallback(
-    async (signal?: { cancelled: boolean }) => {
-      setLoading(true)
-      try {
-        const [pedData, cliData] = await Promise.all([
-          pedidoService.list({ skip: (page - 1) * limit, limit }),
-          clienteService.list({ limit: 500 }),
-        ])
-        if (!signal?.cancelled) {
-          setPedidos(pedData)
-          setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-        }
-      } catch (err) {
-        if ((err as Error).message === 'Request aborted') return
-        if (!signal?.cancelled) setPedidos([])
-      } finally {
-        if (!signal?.cancelled) setLoading(false)
-      }
-    },
-    [page, limit]
-  )
-
-  useEffect(() => {
-    const signal = { cancelled: false }
-    load(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [load])
+  const { data: pedidos = [], isLoading } = usePedidosList({
+    skip: (page - 1) * limit,
+    limit,
+  })
+  const { data: clientesData = [] } = useClientesList({ limit: 500 })
+  const clientes = Object.fromEntries(clientesData.map((c) => [c.id, c]))
 
   const columns: Column<Pedido>[] = [
     { key: 'numero_pedido', header: 'Nº Pedido' },
@@ -126,7 +99,7 @@ export function PedidosListPage() {
           Nuevo pedido
         </Link>
       </div>
-      {loading ? (
+      {isLoading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
           Cargando...
         </div>

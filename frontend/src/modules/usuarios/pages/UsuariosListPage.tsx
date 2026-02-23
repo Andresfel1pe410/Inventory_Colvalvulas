@@ -1,53 +1,29 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { DataTable, Column, Pagination } from '@/shared/components'
-import { usuarioService, type Rol } from '../services/usuario.service'
+import {
+  useUsuariosList,
+  useRoles,
+  useUsuarioSetRoles,
+  useUsuarioAsignarListas,
+} from '../hooks/useUsuarios'
 import type { UsuarioSistema } from '../types/usuario.types'
 import { LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import { LISTAS_PRECIOS } from '@/modules/productos/types/producto.types'
 
 export function UsuariosListPage() {
-  const [usuarios, setUsuarios] = useState<UsuarioSistema[]>([])
-  const [roles, setRoles] = useState<Rol[]>([])
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [limit] = useState(20)
+  const limit = 20
   const [modalUsuario, setModalUsuario] = useState<UsuarioSistema | null>(null)
   const [rolesSeleccionados, setRolesSeleccionados] = useState<Set<number>>(new Set())
   const [listasSeleccionadas, setListasSeleccionadas] = useState<Set<string>>(new Set())
-  const [guardando, setGuardando] = useState(false)
 
-  const load = useCallback(
-    async (signal?: { cancelled: boolean }) => {
-      setLoading(true)
-      try {
-        const [data, rolesData] = await Promise.all([
-          usuarioService.list({ skip: (page - 1) * limit, limit }),
-          usuarioService.getRoles(),
-        ])
-        if (!signal?.cancelled) {
-          setUsuarios(data)
-          setRoles(rolesData)
-        }
-      } catch (err) {
-        if ((err as Error).message === 'Request aborted') return
-        if (!signal?.cancelled) {
-          setUsuarios([])
-          setRoles([])
-        }
-      } finally {
-        if (!signal?.cancelled) setLoading(false)
-      }
-    },
-    [page, limit]
-  )
-
-  useEffect(() => {
-    const signal = { cancelled: false }
-    load(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [load])
+  const { data: usuarios = [], isLoading } = useUsuariosList({
+    skip: (page - 1) * limit,
+    limit,
+  })
+  const { data: roles = [] } = useRoles()
+  const setRolesMutation = useUsuarioSetRoles()
+  const asignarListasMutation = useUsuarioAsignarListas()
 
   const abrirModal = (u: UsuarioSistema) => {
     setModalUsuario(u)
@@ -78,20 +54,24 @@ export function UsuariosListPage() {
 
   const guardar = async () => {
     if (!modalUsuario) return
-    setGuardando(true)
     try {
       await Promise.all([
-        usuarioService.setRoles(modalUsuario.id, Array.from(rolesSeleccionados)),
-        usuarioService.asignarListas(modalUsuario.id, Array.from(listasSeleccionadas)),
+        setRolesMutation.mutateAsync({
+          usuarioId: modalUsuario.id,
+          rolIds: Array.from(rolesSeleccionados),
+        }),
+        asignarListasMutation.mutateAsync({
+          usuarioId: modalUsuario.id,
+          listas: Array.from(listasSeleccionadas),
+        }),
       ])
       setModalUsuario(null)
-      load()
     } catch {
       // Error ya manejado por api interceptor
-    } finally {
-      setGuardando(false)
     }
   }
+
+  const guardando = setRolesMutation.isPending || asignarListasMutation.isPending
 
   const columns: Column<UsuarioSistema>[] = [
     { key: 'email', header: 'Email' },
@@ -140,7 +120,7 @@ export function UsuariosListPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Usuarios</h1>
       </div>
-      {loading ? (
+      {isLoading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
           Cargando...
         </div>

@@ -1,24 +1,12 @@
-import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { clienteService } from '../services/cliente.service'
-import type { Cliente } from '../types/cliente.types'
+import { useCliente } from '../hooks/useClientes'
 
 export function ClienteDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [cliente, setCliente] = useState<Cliente | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: cliente, isLoading } = useCliente(id ? Number(id) : null)
 
-  useEffect(() => {
-    if (!id) return
-    clienteService
-      .get(Number(id))
-      .then(setCliente)
-      .catch(() => setCliente(null))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
         Cargando...

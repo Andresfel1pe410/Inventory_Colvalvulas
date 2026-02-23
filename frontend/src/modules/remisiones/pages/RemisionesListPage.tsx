@@ -1,47 +1,20 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination } from '@/shared/components'
-import { remisionService } from '../services/remision.service'
-import { clienteService } from '@/modules/clientes/services/cliente.service'
+import { useRemisionesList } from '../hooks/useRemisiones'
+import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import type { Remision } from '../types/remision.types'
-import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
 export function RemisionesListPage() {
-  const [remisiones, setRemisiones] = useState<Remision[]>([])
-  const [clientes, setClientes] = useState<Record<number, Cliente>>({})
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [limit] = useState(20)
+  const limit = 20
 
-  const load = useCallback(
-    async (signal?: { cancelled: boolean }) => {
-      setLoading(true)
-      try {
-        const [remData, cliData] = await Promise.all([
-          remisionService.list({ skip: (page - 1) * limit, limit }),
-          clienteService.list({ limit: 500 }),
-        ])
-        if (!signal?.cancelled) {
-          setRemisiones(remData)
-          setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-        }
-      } catch (err) {
-        if ((err as Error).message === 'Request aborted') return
-        if (!signal?.cancelled) setRemisiones([])
-      } finally {
-        if (!signal?.cancelled) setLoading(false)
-      }
-    },
-    [page, limit]
-  )
-
-  useEffect(() => {
-    const signal = { cancelled: false }
-    load(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [load])
+  const { data: remisiones = [], isLoading } = useRemisionesList({
+    skip: (page - 1) * limit,
+    limit,
+  })
+  const { data: clientesData = [] } = useClientesList({ limit: 500 })
+  const clientes = Object.fromEntries(clientesData.map((c) => [c.id, c]))
 
   const columns: Column<Remision>[] = [
     { key: 'numero_remision', header: 'Nº Remisión' },
@@ -88,7 +61,7 @@ export function RemisionesListPage() {
           Se generan automáticamente al marcar un pedido como Enviado en Control Pedidos
         </p>
       </div>
-      {loading ? (
+      {isLoading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
           Cargando...
         </div>

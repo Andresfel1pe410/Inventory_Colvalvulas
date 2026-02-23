@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
 import { ClienteSearchSelect, ProductoSearchSelect } from '@/shared/components'
-import { pedidoService } from '../services/pedido.service'
-import { productoService } from '@/modules/productos/services/producto.service'
+import { usePedido, usePedidoUpdate } from '../hooks/usePedidos'
+import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import { useAuthStore } from '@/modules/auth'
@@ -23,51 +23,45 @@ export function PedidoEditPage() {
       ? user.listas_precio
       : [...LISTAS_PRECIOS]
 
-  const [productos, setProductos] = useState<Producto[]>([])
+  const { data: pedido, isLoading: loadingPedido } = usePedido(id ? Number(id) : null)
+  const { data: productos = [] } = useProductosList({ limit: 500 })
+  const updateMutation = usePedidoUpdate()
+
   const [clienteId, setClienteId] = useState<number | ''>('')
   const [observaciones, setObservaciones] = useState('')
   const [listaPrecios, setListaPrecios] = useState<string>('lista_1')
   const [descuento, setDescuento] = useState<number | ''>(0)
   const [detalles, setDetalles] = useState<LineaDetalle[]>([])
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [loadingPedido, setLoadingPedido] = useState(true)
   const [noEditable, setNoEditable] = useState(false)
 
   useEffect(() => {
-    if (!id) return
-    setLoadingPedido(true)
-    Promise.all([
-      productoService.list({ limit: 500 }),
-      pedidoService.get(Number(id)),
-    ])
-      .then(([p, ped]) => {
-        setProductos(p)
-        if (ped.estado === 'enviado' || ped.estado === 'cancelado') {
-          setNoEditable(true)
-          return
-        }
-        setClienteId(ped.cliente_id)
-        setObservaciones(ped.observaciones || '')
-        const pedLista = ped.lista_precios || 'lista_1'
-        setListaPrecios(
-          listasDisponibles.includes(pedLista) ? pedLista : listasDisponibles[0] || 'lista_1'
-        )
-        setDescuento(ped.descuento ?? 0)
-        setDetalles(
-          ped.detalles.map((d) => ({
-            producto_id: d.producto_id,
-            producto: p.find((pr) => pr.id === d.producto_id),
-            cantidad: d.cantidad,
-          }))
-        )
-      })
-      .catch(() => {
-        setError('Pedido no encontrado')
-        setProductos([])
-      })
-      .finally(() => setLoadingPedido(false))
-  }, [id])
+    if (!pedido || !productos.length) return
+    if (pedido.estado === 'enviado' || pedido.estado === 'cancelado') {
+      setNoEditable(true)
+      return
+    }
+    setClienteId(pedido.cliente_id)
+    setObservaciones(pedido.observaciones || '')
+    const pedLista = pedido.lista_precios || 'lista_1'
+    setListaPrecios(
+      listasDisponibles.includes(pedLista) ? pedLista : listasDisponibles[0] || 'lista_1'
+    )
+    setDescuento(pedido.descuento ?? 0)
+    setDetalles(
+      pedido.detalles.map((d) => ({
+        producto_id: d.producto_id,
+        producto: productos.find((pr) => pr.id === d.producto_id),
+        cantidad: d.cantidad,
+      }))
+    )
+  }, [pedido, productos])
+
+  useEffect(() => {
+    if (!loadingPedido && !pedido && id) {
+      setError('Pedido no encontrado')
+    }
+  }, [loadingPedido, pedido, id])
 
   const productosLista = productos
     .filter(
@@ -114,7 +108,6 @@ export function PedidoEditPage() {
       return
     }
     setError('')
-    setLoading(true)
     try {
       const payload = {
         cliente_id: Number(clienteId),
@@ -132,14 +125,14 @@ export function PedidoEditPage() {
           }
         }),
       }
-      await pedidoService.update(Number(id), payload)
+      await updateMutation.mutateAsync({ id: Number(id), data: payload })
       navigate(`/pedidos/${id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
-    } finally {
-      setLoading(false)
     }
   }
+
+  const loading = updateMutation.isPending
 
   if (loadingPedido) {
     return (

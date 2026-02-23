@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
 import { ClienteSearchSelect, ProductoSearchSelect } from '@/shared/components'
-import { pedidoService } from '../services/pedido.service'
-import { productoService } from '@/modules/productos/services/producto.service'
+import { usePedidoCreate } from '../hooks/usePedidos'
+import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import { useAuthStore } from '@/modules/auth'
@@ -24,21 +24,14 @@ export function PedidoFormPage() {
   const listaDefault =
     listasDisponibles.includes('lista_1') ? 'lista_1' : listasDisponibles[0] || 'lista_1'
 
-  const [productos, setProductos] = useState<Producto[]>([])
+  const { data: productos = [] } = useProductosList({ limit: 500 })
+  const createMutation = usePedidoCreate()
   const [clienteId, setClienteId] = useState<number | ''>('')
   const [observaciones, setObservaciones] = useState('')
   const [listaPrecios, setListaPrecios] = useState<string>(listaDefault)
   const [descuento, setDescuento] = useState<number | ''>(0)
   const [detalles, setDetalles] = useState<LineaDetalle[]>([])
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    productoService
-      .list({ limit: 500 })
-      .then(setProductos)
-      .catch(() => setProductos([]))
-  }, [])
 
   const productosLista = productos.filter(
     (p) => tieneLista(p, listaPrecios) || !p.listas_precio?.length
@@ -79,7 +72,6 @@ export function PedidoFormPage() {
       return
     }
     setError('')
-    setLoading(true)
     try {
       const payload = {
         cliente_id: Number(clienteId),
@@ -96,14 +88,14 @@ export function PedidoFormPage() {
           }
         }),
       }
-      await pedidoService.create(payload)
+      await createMutation.mutateAsync(payload)
       navigate('/pedidos')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear pedido')
-    } finally {
-      setLoading(false)
     }
   }
+
+  const loading = createMutation.isPending
 
   return (
     <div>

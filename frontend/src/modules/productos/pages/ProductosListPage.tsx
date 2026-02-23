@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, ConfirmDialog } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
-import { productoService } from '../services/producto.service'
+import { useProductosList, useProductoDelete } from '../hooks/useProductos'
 import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
 import type { Producto } from '../types/producto.types'
 import { useAuthStore } from '@/modules/auth'
@@ -41,13 +41,13 @@ function buildListaColumns(listas: readonly string[]): Column<Producto>[] {
 export function ProductosListPage() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.roles?.includes('admin')
-  const listasVendedor = user?.listas_precio && user.listas_precio.length > 0
-    ? user.listas_precio
-    : [...LISTAS_PRECIOS]
+  const listasVendedor =
+    user?.listas_precio && user.listas_precio.length > 0
+      ? user.listas_precio
+      : [...LISTAS_PRECIOS]
   const listasToShow = isAdmin ? [...LISTAS_PRECIOS] : listasVendedor
   const baseColumns = buildListaColumns(listasToShow)
-  const [productos, setProductos] = useState<Producto[]>([])
-  const [loading, setLoading] = useState(true)
+
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [listaFilter, setListaFilter] = useState<string>('')
@@ -58,47 +58,21 @@ export function ProductosListPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  const load = useCallback(
-    async (signal?: { cancelled: boolean }) => {
-      setLoading(true)
-      try {
-        const data = await productoService.list({
-          skip: 0,
-          limit: 10000,
-          search: searchDebounced.trim() || undefined,
-          lista: listaFilter || undefined,
-        })
-        if (!signal?.cancelled) {
-          setProductos(
-            [...data].sort((a, b) =>
-              (a.referencia || '').localeCompare(b.referencia || '', 'es')
-            )
-          )
-        }
-      } catch (err) {
-        if ((err as Error).message === 'Request aborted') return
-        if (!signal?.cancelled) setProductos([])
-      } finally {
-        if (!signal?.cancelled) setLoading(false)
-      }
-    },
-    [searchDebounced, listaFilter]
+  const { data: productosData = [], isLoading } = useProductosList({
+    search: searchDebounced.trim() || undefined,
+    limit: 10000,
+    lista: listaFilter || undefined,
+  })
+  const productos = [...productosData].sort((a, b) =>
+    (a.referencia || '').localeCompare(b.referencia || '', 'es')
   )
-
-  useEffect(() => {
-    const signal = { cancelled: false }
-    load(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [load])
+  const deleteMutation = useProductoDelete()
 
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      await productoService.delete(deleteId)
+      await deleteMutation.mutateAsync(deleteId)
       setDeleteId(null)
-      load()
     } catch {
       setDeleteId(null)
     }
@@ -138,7 +112,7 @@ export function ProductosListPage() {
           )}
         </div>
       </div>
-      {loading ? (
+      {isLoading ? (
         <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
           Cargando...
         </div>

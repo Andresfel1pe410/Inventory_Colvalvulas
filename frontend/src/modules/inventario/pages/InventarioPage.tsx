@@ -1,25 +1,19 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { DataTable, Column } from '@/shared/components'
-import { inventarioService } from '../services/inventario.service'
-import { productoService } from '@/modules/productos/services/producto.service'
-import { pedidoService } from '@/modules/pedidos/services/pedido.service'
-import { clienteService } from '@/modules/clientes/services/cliente.service'
+import { useInventarioList } from '../hooks/useInventario'
+import { useProductosList } from '@/modules/productos/hooks/useProductos'
+import { usePedidosList, usePedidosDetails } from '@/modules/pedidos/hooks/usePedidos'
+import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import { EntradaInventarioModal } from '../components/EntradaInventarioModal'
 import { ReporteEntradasModal } from '../components/ReporteEntradasModal'
 import type { InventarioResumen } from '../types/inventario.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
-import type { Pedido, PedidoConDetalles } from '@/modules/pedidos/types/pedido.types'
-import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
-type FiltroPedidos = 'todos' | number[]  // 'todos' = todos, number[] = IDs seleccionados
-type FiltroProductos = 'todos' | number[]  // 'todos' = todos, number[] = IDs seleccionados
+type FiltroPedidos = 'todos' | number[]
+type FiltroProductos = 'todos' | number[]
 
 export function InventarioPage() {
-  const [inventarios, setInventarios] = useState<(InventarioResumen & { producto?: Producto })[]>([])
-  const [pedidosActivos, setPedidosActivos] = useState<Pedido[]>([])
-  const [clientes, setClientes] = useState<Record<number, Cliente>>({})
-  const [loading, setLoading] = useState(true)
   const [modalEntradaOpen, setModalEntradaOpen] = useState(false)
   const [modalReporteOpen, setModalReporteOpen] = useState(false)
   const [filtroPedidos, setFiltroPedidos] = useState<FiltroPedidos>('todos')
@@ -30,84 +24,57 @@ export function InventarioPage() {
   const [productosSeleccionados, setProductosSeleccionados] = useState<Set<number>>(new Set())
   const [busquedaProducto, setBusquedaProducto] = useState('')
   const [soloNegativos, setSoloNegativos] = useState(false)
-  const [pedidosConDetalles, setPedidosConDetalles] = useState<Record<number, PedidoConDetalles>>({})
 
-  const loadPedidosActivos = useCallback(async (signal?: { cancelled: boolean }) => {
-    try {
-      const [pedData, cliData] = await Promise.all([
-        pedidoService.list({ limit: 200, estados: 'en_espera,en_proceso' }),
-        clienteService.list({ limit: 500 }),
-      ])
-      if (!signal?.cancelled) {
-        setPedidosActivos(pedData)
-        setClientes(Object.fromEntries(cliData.map((c) => [c.id, c])))
-      }
-    } catch (err) {
-      if ((err as Error).message === 'Request aborted') return
-      if (!signal?.cancelled) setPedidosActivos([])
-    }
-  }, [])
+  const { data: pedidosActivos = [] } = usePedidosList({
+    limit: 200,
+    estados: 'en_espera,en_proceso',
+  })
+  const { data: clientesData = [] } = useClientesList({ limit: 500 })
+  const clientes = Object.fromEntries(clientesData.map((c) => [c.id, c]))
 
-  const load = useCallback(
-    async (signal?: { cancelled: boolean }) => {
-      setLoading(true)
-      try {
-        const params: { skip: number; limit: number; pedido_ids?: string } = {
-          skip: 0,
-          limit: 10000,
-        }
-        if (filtroPedidos !== 'todos' && filtroPedidos.length > 0) {
-          params.pedido_ids = filtroPedidos.join(',')
-        }
-        const [invData, prodData] = await Promise.all([
-          inventarioService.list(params),
-          productoService.list({ limit: 10000 }),
-        ])
-        if (!signal?.cancelled) {
-          const prodMap = Object.fromEntries(prodData.map((p) => [p.id, p]))
-          setInventarios(
-            invData.map((i) => ({ ...i, producto: prodMap[i.producto_id] }))
-          )
-        }
-      } catch (err) {
-        if ((err as Error).message === 'Request aborted') return
-        if (!signal?.cancelled) setInventarios([])
-      } finally {
-        if (!signal?.cancelled) setLoading(false)
-      }
-    },
-    [filtroPedidos]
+  const pedidosConDetalles = usePedidosDetails(pedidosActivos.map((p) => p.id))
+
+  const {
+    data: invData = [],
+    isLoading: loadingInv,
+    isFetching: fetchingInv,
+    refetch: refetchInv,
+  } = useInventarioList({
+    pedido_ids:
+      filtroPedidos !== 'todos' && filtroPedidos.length > 0
+        ? filtroPedidos.join(',')
+        : undefined,
+    limit: 10000,
+  })
+  const {
+    data: prodData = [],
+    isLoading: loadingProd,
+    isFetching: fetchingProd,
+    refetch: refetchProd,
+  } = useProductosList({
+    limit: 10000,
+  })
+
+  const isRefreshing = fetchingInv || fetchingProd
+  const handleRefresh = () => {
+    refetchInv()
+    refetchProd()
+  }
+
+  const prodMap = useMemo(
+    () => Object.fromEntries(prodData.map((p) => [p.id, p])),
+    [prodData]
+  )
+  const inventarios: (InventarioResumen & { producto?: Producto })[] = useMemo(
+    () => invData.map((i) => ({ ...i, producto: prodMap[i.producto_id] })),
+    [invData, prodMap]
   )
 
-  useEffect(() => {
-    const signal = { cancelled: false }
-    loadPedidosActivos(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [loadPedidosActivos])
+  const loading = loadingInv || loadingProd
 
-  useEffect(() => {
-    const signal = { cancelled: false }
-    load(signal)
-    return () => {
-      signal.cancelled = true
-    }
-  }, [load])
-
-  useEffect(() => {
-    if (pedidosActivos.length === 0) {
-      setPedidosConDetalles({})
-      return
-    }
-    Promise.all(pedidosActivos.map((p) => pedidoService.get(p.id)))
-      .then((results) => {
-        const map: Record<number, PedidoConDetalles> = {}
-        results.forEach((ped) => { map[ped.id] = ped })
-        setPedidosConDetalles(map)
-      })
-      .catch(() => setPedidosConDetalles({}))
-  }, [pedidosActivos])
+  const handleEntradaCreated = () => {
+    setModalEntradaOpen(false)
+  }
 
   useEffect(() => {
     if (filtroOpen) {
@@ -324,7 +291,32 @@ export function InventarioPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Inventario</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-slate-900">Inventario</h1>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Actualizar"
+            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isRefreshing ? (
+              <span
+                className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-primary-600"
+                aria-hidden="true"
+              />
+            ) : (
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
         <div className="flex items-center gap-2">
           {/* Filtro de pedidos */}
           <div className="relative">
@@ -442,7 +434,7 @@ export function InventarioPage() {
                 </svg>
               )}
             </span>
-            Solo en negativo
+            Negativo
           </button>
           {/* Filtro por producto */}
           <div className="relative">
@@ -566,7 +558,7 @@ export function InventarioPage() {
       <EntradaInventarioModal
         open={modalEntradaOpen}
         onClose={() => setModalEntradaOpen(false)}
-        onCreated={load}
+        onCreated={handleEntradaCreated}
       />
       <ReporteEntradasModal
         open={modalReporteOpen}

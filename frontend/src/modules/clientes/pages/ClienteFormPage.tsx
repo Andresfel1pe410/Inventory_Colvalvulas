@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { clienteService } from '../services/cliente.service'
+import { useCliente, useClienteCreate, useClienteUpdate } from '../hooks/useClientes'
 import {
   DEPARTAMENTOS_COLOMBIA,
   MUNICIPIOS_POR_DEPARTAMENTO,
@@ -32,74 +32,96 @@ export function ClienteFormPage() {
     vendedor: '',
   })
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+
+  const { data: cliente, isLoading: loadingCliente } = useCliente(isEdit && id ? Number(id) : null)
+  const createMutation = useClienteCreate()
+  const updateMutation = useClienteUpdate()
+
+  useEffect(() => {
+    if (cliente) {
+      setForm({
+        razon_social: cliente.razon_social || '',
+        tipo_documento: cliente.tipo_documento || 'NIT',
+        numero_identificacion: cliente.numero_identificacion || '',
+        dv: cliente.dv || '',
+        regimen: cliente.regimen || '',
+        pais: cliente.pais || 'Colombia',
+        ciudad: cliente.ciudad || '',
+        direccion: cliente.direccion || '',
+        telefono: cliente.telefono || '',
+        departamento: cliente.departamento || '',
+        codigo_postal: cliente.codigo_postal || '',
+        email: cliente.email || '',
+        responsabilidad_fiscal: cliente.responsabilidad_fiscal || '',
+        detalles_tributarios: cliente.detalles_tributarios || '',
+        vendedor: cliente.vendedor || '',
+      })
+    }
+  }, [cliente])
 
   const municipiosDisponibles = form.departamento
     ? MUNICIPIOS_POR_DEPARTAMENTO[form.departamento] ?? []
     : []
 
-  useEffect(() => {
-    if (isEdit && id) {
-      clienteService
-        .get(Number(id))
-        .then((c) =>
-          setForm({
-            razon_social: c.razon_social || '',
-            tipo_documento: c.tipo_documento || 'NIT',
-            numero_identificacion: c.numero_identificacion || '',
-            dv: c.dv || '',
-            regimen: c.regimen || '',
-            pais: c.pais || 'Colombia',
-            ciudad: c.ciudad || '',
-            direccion: c.direccion || '',
-            telefono: c.telefono || '',
-            departamento: c.departamento || '',
-            codigo_postal: c.codigo_postal || '',
-            email: c.email || '',
-            responsabilidad_fiscal: c.responsabilidad_fiscal || '',
-            detalles_tributarios: c.detalles_tributarios || '',
-            vendedor: c.vendedor || '',
-          })
-        )
-        .catch(() => setError('Cliente no encontrado'))
-    }
-  }, [id, isEdit])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    const data: ClienteCreate = {
+      ...form,
+      dv: form.dv || undefined,
+      regimen: form.regimen || undefined,
+      pais: form.pais || undefined,
+      ciudad: form.ciudad || undefined,
+      direccion: form.direccion || undefined,
+      telefono: form.telefono || undefined,
+      departamento: form.departamento || undefined,
+      codigo_postal: form.codigo_postal || undefined,
+      email: form.email || undefined,
+      responsabilidad_fiscal: form.responsabilidad_fiscal || undefined,
+      detalles_tributarios: form.detalles_tributarios || undefined,
+      vendedor: form.vendedor || undefined,
+    }
     try {
-      const data: ClienteCreate = {
-        ...form,
-        dv: form.dv || undefined,
-        regimen: form.regimen || undefined,
-        pais: form.pais || undefined,
-        ciudad: form.ciudad || undefined,
-        direccion: form.direccion || undefined,
-        telefono: form.telefono || undefined,
-        departamento: form.departamento || undefined,
-        codigo_postal: form.codigo_postal || undefined,
-        email: form.email || undefined,
-        responsabilidad_fiscal: form.responsabilidad_fiscal || undefined,
-        detalles_tributarios: form.detalles_tributarios || undefined,
-        vendedor: form.vendedor || undefined,
-      }
       if (isEdit && id) {
-        await clienteService.update(Number(id), data)
+        await updateMutation.mutateAsync({ id: Number(id), data })
       } else {
-        await clienteService.create(data)
+        await createMutation.mutateAsync(data)
       }
       navigate('/clientes')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
-    } finally {
-      setLoading(false)
     }
   }
 
+  const loading = createMutation.isPending || updateMutation.isPending
+
   const handleDepartamentoChange = (dep: string) => {
     setForm((f) => ({ ...f, departamento: dep, ciudad: '' }))
+  }
+
+  if (isEdit && loadingCliente) {
+    return (
+      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
+        Cargando...
+      </div>
+    )
+  }
+
+  if (isEdit && id && !loadingCliente && !cliente) {
+    return (
+      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
+        Cliente no encontrado
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => navigate('/clientes')}
+            className="text-primary-600 hover:underline"
+          >
+            Volver a clientes
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

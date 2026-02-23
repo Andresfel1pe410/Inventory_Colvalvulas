@@ -1,14 +1,11 @@
-import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { formatPesos } from '@/shared/utils/format'
-import { pedidoService } from '../services/pedido.service'
-import { productoService } from '@/modules/productos/services/producto.service'
-import { clienteService } from '@/modules/clientes/services/cliente.service'
+import { usePedido, usePedidoUpdateIntencionEnvio } from '../hooks/usePedidos'
+import { useProductosList } from '@/modules/productos/hooks/useProductos'
+import { useCliente } from '@/modules/clientes/hooks/useClientes'
 import type { PedidoConDetalles, IntencionEnvio } from '../types/pedido.types'
 import { getCodigoDisplay, getCodigoByLista } from '@/modules/productos/types/producto.types'
-import type { Producto } from '@/modules/productos/types/producto.types'
-import type { Cliente } from '@/modules/clientes/types/cliente.types'
 
 const OPCIONES_INTENCION: { value: IntencionEnvio | ''; label: string }[] = [
   { value: 'enviar', label: 'Enviar' },
@@ -48,28 +45,15 @@ export function PedidoDetailPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.roles?.includes('admin')
-  const [pedido, setPedido] = useState<PedidoConDetalles | null>(null)
-  const [productos, setProductos] = useState<Record<number, Producto>>({})
-  const [cliente, setCliente] = useState<Cliente | null>(null)
-  const [savingIntencion, setSavingIntencion] = useState(false)
 
-  useEffect(() => {
-    if (!id) return
-    pedidoService
-      .get(Number(id))
-      .then(async (p) => {
-        setPedido(p)
-        const [prods, cli] = await Promise.all([
-          productoService.list({ limit: 500 }),
-          clienteService.get(p.cliente_id),
-        ])
-        setProductos(Object.fromEntries(prods.map((pr) => [pr.id, pr])))
-        setCliente(cli)
-      })
-      .catch(() => setPedido(null))
-  }, [id])
+  const { data: pedido, isLoading } = usePedido(id ? Number(id) : null)
+  const { data: productosData = [] } = useProductosList({ limit: 500 })
+  const { data: cliente } = useCliente(pedido?.cliente_id ?? null)
 
-  if (!pedido) {
+  const productos = Object.fromEntries(productosData.map((p) => [p.id, p]))
+  const intencionMutation = usePedidoUpdateIntencionEnvio()
+
+  if (isLoading) {
     return (
       <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
         Cargando...
@@ -77,17 +61,32 @@ export function PedidoDetailPage() {
     )
   }
 
+  if (!pedido) {
+    return (
+      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
+        Pedido no encontrado
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => navigate('/pedidos')}
+            className="text-primary-600 hover:underline"
+          >
+            Volver a pedidos
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const handlePrint = () => window.print()
 
   const handleIntencionChange = async (value: IntencionEnvio | '') => {
-    if (!pedido || savingIntencion) return
+    if (!pedido || intencionMutation.isPending) return
     const val = value === '' ? null : value
-    setSavingIntencion(true)
     try {
-      const updated = await pedidoService.updateIntencionEnvio(pedido.id, val)
-      setPedido(updated)
-    } finally {
-      setSavingIntencion(false)
+      await intencionMutation.mutateAsync({ id: pedido.id, intencion_envio: val })
+    } catch {
+      // Error manejado por interceptor
     }
   }
 
@@ -232,7 +231,7 @@ export function PedidoDetailPage() {
                 <select
                   value={pedido.intencion_envio ?? ''}
                   onChange={(e) => handleIntencionChange(e.target.value as IntencionEnvio | '')}
-                  disabled={savingIntencion}
+                  disabled={intencionMutation.isPending}
                   className={`rounded-lg border-2 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 ${colorIntencion(pedido.intencion_envio ?? undefined)}`}
                 >
                   <option value="">Seleccionar...</option>
