@@ -96,9 +96,10 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
               value={productoId}
               onChange={setProductoId}
               products={productosOrdenados}
-              formatLabel={(p) =>
-                `${p.referencia || getCodigoDisplay(p) || `#${p.id}`}${p.material ? ` [${p.material}]` : ''} (stock: ${stockMap[p.id] ?? 0})`
-              }
+              formatLabel={(p) => {
+                const base = p.material ? `${p.referencia || getCodigoDisplay(p)} [${p.material}]` : (p.referencia || getCodigoDisplay(p) || `#${p.id}`)
+                return `${base} (stock: ${stockMap[p.id] ?? 0})`
+              }}
               placeholder="Buscar por referencia, código o material..."
               className="mt-1"
             />
