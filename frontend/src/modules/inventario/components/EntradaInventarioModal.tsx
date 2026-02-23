@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { inventarioService } from '../services/inventario.service'
 import { productoService } from '@/modules/productos/services/producto.service'
+import { ProductoSearchSelect } from '@/shared/components'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 
@@ -62,9 +63,21 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
     }
   }
 
-  if (!open) return null
+  const productosOrdenados = useMemo(
+    () =>
+      [...productos].sort((a, b) => {
+        const refA = (a.referencia || '').toLowerCase()
+        const refB = (b.referencia || '').toLowerCase()
+        const cmp = refA.localeCompare(refB, 'es')
+        if (cmp !== 0) return cmp
+        return (a.material || '').localeCompare(b.material || '', 'es')
+      }),
+    [productos]
+  )
 
   const stockActual = productoId ? stockMap[productoId] ?? 0 : null
+
+  if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -79,19 +92,16 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
           )}
           <div>
             <label className="block text-sm font-medium text-slate-700">Producto</label>
-            <select
+            <ProductoSearchSelect
               value={productoId}
-              onChange={(e) => setProductoId(e.target.value ? Number(e.target.value) : '')}
-              required
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-            >
-              <option value="">Seleccione producto...</option>
-              {productos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.referencia || getCodigoDisplay(p) || `#${p.id}`} (stock: {stockMap[p.id] ?? 0})
-                </option>
-              ))}
-            </select>
+              onChange={setProductoId}
+              products={productosOrdenados}
+              formatLabel={(p) =>
+                `${p.referencia || getCodigoDisplay(p) || `#${p.id}`}${p.material ? ` [${p.material}]` : ''} (stock: ${stockMap[p.id] ?? 0})`
+              }
+              placeholder="Buscar por referencia, código o material..."
+              className="mt-1"
+            />
             {stockActual !== null && (
               <p className="mt-1 text-xs text-slate-500">Stock actual: {stockActual}</p>
             )}
