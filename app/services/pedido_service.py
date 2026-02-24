@@ -50,6 +50,17 @@ class PedidoService:
             raise ForbiddenError("No tiene acceso a este pedido")
         return p
 
+    def obtener_bulk(
+        self, ids: list[int], usuario_id: int | None = None, es_vendedor: bool = False
+    ) -> list[Pedido]:
+        """Trae varios pedidos con detalles en una sola consulta (evita N+1)."""
+        if not ids:
+            return []
+        pedidos = self.repo.get_with_detalles_bulk(ids)
+        if es_vendedor and usuario_id:
+            return [p for p in pedidos if p.usuario_id == usuario_id]
+        return pedidos
+
     def crear(self, data: PedidoCreate, usuario_id: int) -> Pedido:
         lista = data.lista_precios or "lista_1"
         if lista not in LISTAS_PRECIOS:
@@ -69,8 +80,10 @@ class PedidoService:
         self.db.add(pedido)
         self.db.flush()
 
+        producto_ids = list({d.producto_id for d in data.detalles})
+        productos_map = {p.id: p for p in self.producto_repo.get_by_ids(producto_ids)}
         for det in data.detalles:
-            prod = self.producto_repo.get(det.producto_id)
+            prod = productos_map.get(det.producto_id)
             if not prod:
                 raise NotFoundError(f"Producto {det.producto_id} no encontrado")
             precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(self.producto_repo, det.producto_id, lista)
@@ -113,9 +126,11 @@ class PedidoService:
             self.db.delete(det)
         self.db.flush()
 
-        # Agregar nuevos detalles
+        # Agregar nuevos detalles (batch fetch productos para evitar N+1)
+        producto_ids = list({d.producto_id for d in data.detalles})
+        productos_map = {p.id: p for p in self.producto_repo.get_by_ids(producto_ids)}
         for det in data.detalles:
-            prod = self.producto_repo.get(det.producto_id)
+            prod = productos_map.get(det.producto_id)
             if not prod:
                 raise NotFoundError(f"Producto {det.producto_id} no encontrado")
             precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(self.producto_repo, det.producto_id, lista)

@@ -42,6 +42,15 @@ export function usePedidosDetails(ids: number[]) {
   return map
 }
 
+/** Una sola petición para traer varios pedidos con detalles (evita N+1). */
+export function usePedidosDetailsBulk(ids: number[]) {
+  return useQuery({
+    queryKey: queryKeys.pedidos.bulk(ids),
+    queryFn: () => pedidoService.getBulk(ids),
+    enabled: ids.length > 0,
+  })
+}
+
 export function usePedidoCreate() {
   const qc = useQueryClient()
   return useMutation({

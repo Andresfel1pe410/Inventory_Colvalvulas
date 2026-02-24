@@ -17,6 +17,7 @@ export const queryKeys = {
     list: (params?: { skip?: number; limit?: number; estados?: string }) =>
       ['pedidos', 'list', params] as const,
     detail: (id: number) => ['pedidos', id] as const,
+    bulk: (ids: number[]) => ['pedidos', 'bulk', [...ids].sort((a, b) => a - b)] as const,
   },
   inventario: {
     all: ['inventario'] as const,

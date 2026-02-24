@@ -31,9 +31,29 @@ class PedidoRepository(BaseRepository[Pedido]):
     def get_with_detalles(self, pedido_id: int) -> Pedido | None:
         return (
             self.db.query(Pedido)
-            .options(joinedload(Pedido.detalles), joinedload(Pedido.cliente), joinedload(Pedido.usuario_envio))
+            .options(
+                joinedload(Pedido.detalles).joinedload(DetallePedido.producto),
+                joinedload(Pedido.cliente),
+                joinedload(Pedido.usuario_envio),
+            )
             .filter(Pedido.id == pedido_id)
             .first()
+        )
+
+    def get_with_detalles_bulk(self, ids: list[int]) -> list[Pedido]:
+        """Trae varios pedidos con detalles y producto en una sola consulta (evita N+1)."""
+        if not ids:
+            return []
+        return (
+            self.db.query(Pedido)
+            .options(
+                joinedload(Pedido.detalles).joinedload(DetallePedido.producto),
+                joinedload(Pedido.cliente),
+                joinedload(Pedido.usuario_envio),
+            )
+            .filter(Pedido.id.in_(ids))
+            .order_by(ORDEN_ESTADO, Pedido.id.desc())
+            .all()
         )
 
     def get_by_estados(self, estados: list[str], skip: int = 0, limit: int = 500) -> list[Pedido]:

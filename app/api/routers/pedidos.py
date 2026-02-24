@@ -50,6 +50,24 @@ def _listar_pedidos_sync(skip: int, limit: int, est_list: list[str] | None, usua
         db.close()
 
 
+@router.get("/bulk", response_model=list[PedidoConDetalles])
+def obtener_bulk(
+    ids: str = Query(..., description="IDs de pedidos separados por coma, ej: 1,2,3"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Trae varios pedidos con detalles en una sola consulta (evita N+1)."""
+    id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]
+    if not id_list:
+        return []
+    es_vend = _es_vendedor_solo(db, current_user)
+    return PedidoService(db).obtener_bulk(
+        id_list,
+        usuario_id=current_user.id if es_vend else None,
+        es_vendedor=es_vend,
+    )
+
+
 @router.get("", response_model=list[Pedido])
 async def listar(
     skip: int = Query(0, ge=0),

@@ -28,6 +28,15 @@ export const pedidoService = {
   get: (id: number) =>
     api.get<PedidoConDetalles>(`/pedidos/${id}`).then((r) => r.data),
 
+  getBulk: (ids: number[]) =>
+    ids.length === 0
+      ? Promise.resolve([])
+      : api
+          .get<PedidoConDetalles[]>('/pedidos/bulk', {
+            params: { ids: ids.join(',') },
+          })
+          .then((r) => r.data),
+
   create: (data: PedidoCreate) =>
     api.post<PedidoConDetalles>('/pedidos', data).then((r) => r.data),
 

@@ -39,6 +39,12 @@ class ProductoRepository(BaseRepository[Producto]):
             q = q.filter(ProductoListaPrecio.producto_id != exclude_producto_id)
         return q.first() is not None
 
+    def get_by_ids(self, ids: list[int]) -> list[Producto]:
+        """Trae varios productos en una sola consulta (evita N+1)."""
+        if not ids:
+            return []
+        return self.db.query(Producto).filter(Producto.id.in_(ids)).all()
+
     def get_precio_lista(self, producto_id: int, lista: str) -> float | None:
         plp = (
             self.db.query(ProductoListaPrecio)

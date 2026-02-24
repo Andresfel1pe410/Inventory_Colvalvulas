@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { DataTable, Column } from '@/shared/components'
 import { useInventarioList } from '../hooks/useInventario'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
-import { usePedidosList, usePedidosDetails } from '@/modules/pedidos/hooks/usePedidos'
+import { usePedidosList, usePedidosDetailsBulk } from '@/modules/pedidos/hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import { EntradaInventarioModal } from '../components/EntradaInventarioModal'
 import { ReporteEntradasModal } from '../components/ReporteEntradasModal'
@@ -32,7 +32,8 @@ export function InventarioPage() {
   const { data: clientesData = [] } = useClientesList({ limit: 500 })
   const clientes = Object.fromEntries(clientesData.map((c) => [c.id, c]))
 
-  const pedidosConDetalles = usePedidosDetails(pedidosActivos.map((p) => p.id))
+  const { data: pedidosBulk = [] } = usePedidosDetailsBulk(pedidosActivos.map((p) => p.id))
+  const pedidosConDetalles = Object.fromEntries(pedidosBulk.map((p) => [p.id, p]))
 
   const {
     data: invData = [],
