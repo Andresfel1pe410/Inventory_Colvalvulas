@@ -171,6 +171,13 @@ class InventarioResumen(Inventario):
     stock_disponible: int = 0
 
 
+class InventarioResumenConProducto(InventarioResumen):
+    """Inventario resumen con producto embebido (evita petición separada de productos)."""
+    producto: Optional[Producto] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ============= MOVIMIENTO INVENTARIO =============
 class MovimientoInventarioBase(BaseModel):
     producto_id: int

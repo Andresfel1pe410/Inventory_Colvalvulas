@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { DataTable, Column, Pagination } from '@/shared/components'
+import { DataTable, Column, Pagination, PageLoading } from '@/shared/components'
 import { useRemisionesList } from '../hooks/useRemisiones'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import type { Remision } from '../types/remision.types'
@@ -62,9 +62,7 @@ export function RemisionesListPage() {
         </p>
       </div>
       {isLoading ? (
-        <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-          Cargando...
-        </div>
+        <PageLoading />
       ) : (
         <>
           <DataTable

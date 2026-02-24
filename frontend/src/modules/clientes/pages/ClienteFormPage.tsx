@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCliente, useClienteCreate, useClienteUpdate } from '../hooks/useClientes'
+import { PageLoading } from '@/shared/components'
 import {
   DEPARTAMENTOS_COLOMBIA,
   MUNICIPIOS_POR_DEPARTAMENTO,
@@ -100,11 +101,7 @@ export function ClienteFormPage() {
   }
 
   if (isEdit && loadingCliente) {
-    return (
-      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-        Cargando...
-      </div>
-    )
+    return <PageLoading />
   }
 
   if (isEdit && id && !loadingCliente && !cliente) {

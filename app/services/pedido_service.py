@@ -20,6 +20,12 @@ def _precio_desde_lista(producto_repo, producto_id: int, lista: str) -> Decimal:
     return Decimal(str(precio)) if precio is not None else Decimal("0")
 
 
+def _precios_desde_lista_batch(producto_repo, producto_ids: list[int], lista: str) -> dict[int, Decimal]:
+    """Precios de varios productos en una consulta. {producto_id: precio}."""
+    precios = producto_repo.get_precios_por_lista(producto_ids, lista)
+    return {pid: Decimal(str(p)) for pid, p in precios.items()}
+
+
 class PedidoService:
     def __init__(self, db):
         self.db = db
@@ -82,31 +88,41 @@ class PedidoService:
 
         producto_ids = list({d.producto_id for d in data.detalles})
         productos_map = {p.id: p for p in self.producto_repo.get_by_ids(producto_ids)}
+        precios_map = _precios_desde_lista_batch(self.producto_repo, producto_ids, lista)
+        detalles_objs = []
         for det in data.detalles:
             prod = productos_map.get(det.producto_id)
             if not prod:
                 raise NotFoundError(f"Producto {det.producto_id} no encontrado")
-            precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(self.producto_repo, det.producto_id, lista)
+            precio = det.precio_unitario if det.precio_unitario else precios_map.get(det.producto_id, Decimal("0"))
             subtotal = Decimal(str(precio)) * det.cantidad
-            self.db.add(
-                DetallePedido(
-                    pedido_id=pedido.id,
-                    producto_id=det.producto_id,
-                    cantidad=det.cantidad,
-                    precio_unitario=precio,
-                    subtotal=subtotal,
-                )
+            d = DetallePedido(
+                pedido_id=pedido.id,
+                producto_id=det.producto_id,
+                cantidad=det.cantidad,
+                precio_unitario=precio,
+                subtotal=subtotal,
             )
+            self.db.add(d)
+            detalles_objs.append(d)
 
         self.db.flush()
-        self._recalcular_totales(pedido.id)
+        pedido.detalles = detalles_objs
+        self._recalcular_totales(pedido)
         self.db.commit()
         self.db.refresh(pedido)
         return pedido
 
-    def actualizar(self, pedido_id: int, data: PedidoUpdateFull, usuario_id: int) -> Pedido:
+    def actualizar(
+        self,
+        pedido_id: int,
+        data: PedidoUpdateFull,
+        usuario_id: int,
+        usuario_id_check: int | None = None,
+        es_vendedor: bool = False,
+    ) -> Pedido:
         """Actualiza pedido completo. Solo en_espera o en_proceso."""
-        pedido = self.obtener(pedido_id)
+        pedido = self.obtener(pedido_id, usuario_id=usuario_id_check, es_vendedor=es_vendedor)
         if pedido.estado == "enviado":
             raise ValidationError("No se puede modificar un pedido ya enviado")
         if pedido.estado == "cancelado":
@@ -126,30 +142,32 @@ class PedidoService:
             self.db.delete(det)
         self.db.flush()
 
-        # Agregar nuevos detalles (batch fetch productos para evitar N+1)
+        # Agregar nuevos detalles (batch fetch productos y precios para evitar N+1)
         producto_ids = list({d.producto_id for d in data.detalles})
         productos_map = {p.id: p for p in self.producto_repo.get_by_ids(producto_ids)}
+        precios_map = _precios_desde_lista_batch(self.producto_repo, producto_ids, lista)
+        detalles_objs = []
         for det in data.detalles:
             prod = productos_map.get(det.producto_id)
             if not prod:
                 raise NotFoundError(f"Producto {det.producto_id} no encontrado")
-            precio = det.precio_unitario if det.precio_unitario else _precio_desde_lista(self.producto_repo, det.producto_id, lista)
+            precio = det.precio_unitario if det.precio_unitario else precios_map.get(det.producto_id, Decimal("0"))
             subtotal = Decimal(str(precio)) * det.cantidad
-            self.db.add(
-                DetallePedido(
-                    pedido_id=pedido_id,
-                    producto_id=det.producto_id,
-                    cantidad=det.cantidad,
-                    precio_unitario=precio,
-                    subtotal=subtotal,
-                )
+            d = DetallePedido(
+                pedido_id=pedido_id,
+                producto_id=det.producto_id,
+                cantidad=det.cantidad,
+                precio_unitario=precio,
+                subtotal=subtotal,
             )
+            self.db.add(d)
+            detalles_objs.append(d)
 
         self.db.flush()
-        self._recalcular_totales(pedido_id)
+        pedido.detalles = detalles_objs
+        self._recalcular_totales(pedido)
         self.db.commit()
-        self.db.refresh(pedido)
-        return pedido
+        return self.repo.get_with_detalles(pedido_id)
 
     def agregar_detalle(self, pedido_id: int, data: DetallePedidoCreate, usuario_id: int) -> DetallePedido:
         pedido = self.obtener(pedido_id)
@@ -174,23 +192,35 @@ class PedidoService:
         )
         self.db.add(det)
         self.db.flush()
-        self._recalcular_totales(pedido_id)
+        pedido.detalles.append(det)  # incluir en colección para _recalcular_totales
+        self._recalcular_totales(pedido)
         self.db.commit()
         self.db.refresh(det)
         return det
 
-    def actualizar_intencion_envio(self, pedido_id: int, intencion_envio: str | None) -> Pedido:
+    def actualizar_intencion_envio(
+        self,
+        pedido_id: int,
+        intencion_envio: str | None,
+        usuario_id: int | None = None,
+        es_vendedor: bool = False,
+    ) -> Pedido:
         """Actualiza la intención de envío del pedido (enviar, enviar_parcial, no_enviar)."""
-        pedido = self.obtener(pedido_id)
+        pedido = self.obtener(pedido_id, usuario_id=usuario_id, es_vendedor=es_vendedor)
         if intencion_envio and intencion_envio not in ("enviar", "enviar_parcial", "no_enviar"):
             raise ValidationError("Intención inválida. Válidas: enviar, enviar_parcial, no_enviar")
         pedido.intencion_envio = intencion_envio
         self.db.commit()
-        self.db.refresh(pedido)
-        return pedido
+        return self.repo.get_with_detalles(pedido_id)
 
-    def cambiar_estado(self, pedido_id: int, nuevo_estado: str) -> Pedido:
-        pedido = self.obtener(pedido_id)
+    def cambiar_estado(
+        self,
+        pedido_id: int,
+        nuevo_estado: str,
+        usuario_id: int | None = None,
+        es_vendedor: bool = False,
+    ) -> Pedido:
+        pedido = self.obtener(pedido_id, usuario_id=usuario_id, es_vendedor=es_vendedor)
         if nuevo_estado not in ESTADOS_VALIDOS:
             raise ValidationError(f"Estado inválido. Válidos: {ESTADOS_VALIDOS}")
         if pedido.estado == "enviado":
@@ -211,8 +241,10 @@ class PedidoService:
         numero_guia: str | None = None,
         detalles_envio: list | None = None,
         resumen_envio: str | None = None,
+        usuario_id_check: int | None = None,
+        es_vendedor: bool = False,
     ) -> Pedido:
-        pedido = self.obtener(pedido_id)
+        pedido = self.obtener(pedido_id, usuario_id=usuario_id_check, es_vendedor=es_vendedor)
         if pedido.estado == "enviado":
             raise ValidationError("El pedido ya está enviado")
         if pedido.estado == "cancelado":
@@ -236,11 +268,16 @@ class PedidoService:
             pedido_id, usuario_id, detalles_envio=detalles_envio
         )
 
-        return pedido
+        return self.repo.get_with_detalles(pedido_id)
 
-    def desmarcar_enviado(self, pedido_id: int) -> Pedido:
+    def desmarcar_enviado(
+        self,
+        pedido_id: int,
+        usuario_id: int | None = None,
+        es_vendedor: bool = False,
+    ) -> Pedido:
         """Revierte pedido de enviado a en_proceso: suma entradas al inventario y anula la remisión."""
-        pedido = self.obtener(pedido_id)
+        pedido = self.obtener(pedido_id, usuario_id=usuario_id, es_vendedor=es_vendedor)
         if pedido.estado != "enviado":
             raise ValidationError("Solo se puede desmarcar un pedido en estado enviado")
 
@@ -278,13 +315,9 @@ class PedidoService:
         pedido.resumen_envio = None
 
         self.db.commit()
-        self.db.refresh(pedido)
-        return pedido
+        return self.repo.get_with_detalles(pedido_id)
 
-    def _recalcular_totales(self, pedido_id: int) -> None:
-        pedido = self.repo.get(pedido_id)
-        if not pedido:
-            return
+    def _recalcular_totales(self, pedido: Pedido) -> None:
         detalles = [d for d in pedido.detalles]
         subtotal = sum(d.subtotal for d in detalles)
         descuento = pedido.descuento or 0

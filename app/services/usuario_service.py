@@ -19,10 +19,15 @@ class UsuarioService:
         from app.repositories.vendedor_lista_repository import VendedorListaRepository
         vendedor_repo = VendedorListaRepository(self.db)
         usuarios = self.repo.get_all(skip, limit)
+        if not usuarios:
+            return []
+        ids = [u.id for u in usuarios]
+        roles_map = self.repo.get_roles_bulk(ids)
+        listas_map = vendedor_repo.get_listas_by_usuarios_bulk(ids)
         result = []
         for u in usuarios:
-            roles = self.repo.get_roles(u.id)
-            listas = vendedor_repo.get_listas_by_usuario(u.id) if "vendedor" in roles else []
+            roles = roles_map.get(u.id, [])
+            listas = listas_map.get(u.id, []) if "vendedor" in roles else []
             result.append({
                 "id": u.id,
                 "email": u.email,

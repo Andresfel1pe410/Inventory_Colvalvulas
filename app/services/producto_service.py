@@ -37,11 +37,9 @@ class ProductoService:
         return p
 
     def obtener_por_codigo_lista(self, codigo: str, lista: str) -> Producto:
-        p = self.repo.get_by_codigo_lista(codigo, lista)
+        p = self.repo.get_by_codigo_lista_with_listas(codigo, lista)
         if not p:
             raise NotFoundError("Producto no encontrado")
-        self.db.refresh(p)
-        p = self.repo.get_with_listas(p.id)
         return p
 
     def crear(self, data: ProductoCreate) -> Producto:
@@ -67,8 +65,7 @@ class ProductoService:
         inv = Inventario(producto_id=producto.id, stock_actual=0, stock_minimo=0)
         self.db.add(inv)
         self.db.commit()
-        self.db.refresh(producto)
-        return self.obtener(producto.id)
+        return self.repo.get_with_listas(producto.id)
 
     def actualizar(self, id: int, data: ProductoUpdate) -> Producto:
         producto = self.obtener(id)
@@ -98,8 +95,7 @@ class ProductoService:
                     )
                 )
         self.db.commit()
-        self.db.refresh(producto)
-        return self.obtener(id)
+        return self.repo.get_with_listas(id)
 
     def eliminar(self, id: int) -> None:
         producto = self.obtener(id)

@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCliente } from '../hooks/useClientes'
+import { PageLoading } from '@/shared/components'
 
 export function ClienteDetailPage() {
   const { id } = useParams()
@@ -7,11 +8,7 @@ export function ClienteDetailPage() {
   const { data: cliente, isLoading } = useCliente(id ? Number(id) : null)
 
   if (isLoading) {
-    return (
-      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-        Cargando...
-      </div>
-    )
+    return <PageLoading />
   }
 
   if (!cliente) {

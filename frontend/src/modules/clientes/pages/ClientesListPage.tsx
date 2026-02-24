@@ -5,6 +5,7 @@ import {
   Column,
   ConfirmDialog,
   CopyableCell,
+  PageLoading,
 } from '@/shared/components'
 import { useClientesList, useClienteDelete } from '../hooks/useClientes'
 import type { Cliente } from '../types/cliente.types'
@@ -121,9 +122,7 @@ export function ClientesListPage() {
         </div>
       </div>
       {isLoading ? (
-        <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-          Cargando...
-        </div>
+        <PageLoading />
       ) : (
         <>
           <DataTable

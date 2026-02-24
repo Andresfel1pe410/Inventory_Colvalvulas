@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { DataTable, Column, Pagination } from '@/shared/components'
+import { DataTable, Column, Pagination, PageLoading } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
 import { usePedidosList } from '../hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
@@ -100,9 +100,7 @@ export function PedidosListPage() {
         </Link>
       </div>
       {isLoading ? (
-        <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-          Cargando...
-        </div>
+        <PageLoading />
       ) : (
         <>
           <DataTable

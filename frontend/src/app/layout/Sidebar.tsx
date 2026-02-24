@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { useIsFetching } from '@tanstack/react-query'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { logout as authLogout } from '@/modules/auth/services/auth.service'
 
@@ -87,6 +88,8 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
+  const location = useLocation()
+  const isFetching = useIsFetching() > 0
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -161,6 +164,9 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {itemsToShow.map((item) => {
           const blocked = 'blocked' in item && item.blocked
+          const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + '/')
+          const navDisabled = !blocked && isFetching
+
           if (blocked) {
             return (
               <div
@@ -173,16 +179,36 @@ export function Sidebar() {
               </div>
             )
           }
+
+          if (navDisabled) {
+            return (
+              <div
+                key={item.to}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
+                  collapsed ? 'justify-center' : ''
+                } ${
+                  isActive
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'cursor-not-allowed opacity-60 text-slate-500'
+                }`}
+                title={isFetching ? 'Cargando... Espere antes de cambiar de pestaña' : item.label}
+              >
+                {item.icon}
+                {!collapsed && <span>{item.label}</span>}
+              </div>
+            )
+          }
+
           return (
             <NavLink
               key={item.to}
               to={item.to}
               title={collapsed ? item.label : undefined}
-              className={({ isActive }) =>
+              className={({ isActive: active }) =>
                 `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
                   collapsed ? 'justify-center' : ''
                 } ${
-                  isActive
+                  active
                     ? 'bg-primary-50 text-primary-700'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`

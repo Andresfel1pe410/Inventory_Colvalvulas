@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DataTable, Column, Pagination } from '@/shared/components'
+import { DataTable, Column, Pagination, PageLoading } from '@/shared/components'
 import {
   useUsuariosList,
   useRoles,
@@ -121,9 +121,7 @@ export function UsuariosListPage() {
         <h1 className="text-2xl font-semibold text-slate-900">Usuarios</h1>
       </div>
       {isLoading ? (
-        <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-          Cargando...
-        </div>
+        <PageLoading />
       ) : (
         <>
           <DataTable

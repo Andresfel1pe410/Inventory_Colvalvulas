@@ -1,5 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/authStore'
+import { PageLoading } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
 import { usePedido, usePedidoUpdateIntencionEnvio } from '../hooks/usePedidos'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
@@ -54,11 +55,7 @@ export function PedidoDetailPage() {
   const intencionMutation = usePedidoUpdateIntencionEnvio()
 
   if (isLoading) {
-    return (
-      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-        Cargando...
-      </div>
-    )
+    return <PageLoading />
   }
 
   if (!pedido) {

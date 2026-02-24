@@ -28,6 +28,19 @@ class ProductoRepository(BaseRepository[Producto]):
         )
         return plp.producto if plp else None
 
+    def get_by_codigo_lista_with_listas(self, codigo: str, lista: str) -> Producto | None:
+        """Producto por código+lista con listas_precio en una sola consulta."""
+        return (
+            self.db.query(Producto)
+            .join(ProductoListaPrecio)
+            .options(joinedload(Producto.listas_precio))
+            .filter(
+                ProductoListaPrecio.lista == lista,
+                ProductoListaPrecio.codigo == codigo,
+            )
+            .first()
+        )
+
     def exists_codigo_en_lista(
         self, codigo: str, lista: str, exclude_producto_id: int | None = None
     ) -> bool:
@@ -55,6 +68,20 @@ class ProductoRepository(BaseRepository[Producto]):
             .first()
         )
         return float(plp.precio) if plp else None
+
+    def get_precios_por_lista(self, producto_ids: list[int], lista: str) -> dict[int, float]:
+        """Trae precios de varios productos en una sola consulta (evita N+1)."""
+        if not producto_ids:
+            return {}
+        rows = (
+            self.db.query(ProductoListaPrecio.producto_id, ProductoListaPrecio.precio)
+            .filter(
+                ProductoListaPrecio.producto_id.in_(producto_ids),
+                ProductoListaPrecio.lista == lista,
+            )
+            .all()
+        )
+        return {r[0]: float(r[1]) for r in rows}
 
     def list_all(
         self,

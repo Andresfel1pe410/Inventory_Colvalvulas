@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { DataTable, Column, ConfirmDialog } from '@/shared/components'
+import { DataTable, Column, ConfirmDialog, PageLoading } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
 import { useProductosList, useProductoDelete } from '../hooks/useProductos'
 import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
@@ -113,9 +113,7 @@ export function ProductosListPage() {
         </div>
       </div>
       {isLoading ? (
-        <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-          Cargando...
-        </div>
+        <PageLoading />
       ) : (
         <>
           <DataTable

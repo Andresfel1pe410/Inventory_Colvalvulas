@@ -1,9 +1,8 @@
 """Router de productos - CRUD sin eliminación."""
-import asyncio
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db, SessionLocal
+from app.core.database import get_db
 from app.api.auth import get_current_user
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
@@ -21,27 +20,17 @@ def _listas_vendedor(db: Session, usuario: Usuario) -> list[str] | None:
     return None
 
 
-def _listar_productos_sync(skip: int, limit: int, search: str | None, lista: str | None, usuario_id: int):
-    db = SessionLocal()
-    try:
-        usuario = db.query(Usuario).get(usuario_id)
-        if not usuario:
-            raise HTTPException(401, "Usuario no encontrado")
-        listas = _listas_vendedor(db, usuario)
-        return ProductoService(db).listar(skip, limit, search, lista, listas_vendedor=listas)
-    finally:
-        db.close()
-
-
 @router.get("", response_model=list[Producto])
-async def listar(
+def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=10000),
     search: str | None = Query(None, description="Buscar por código, referencia o material"),
     lista: str | None = Query(None, description="Filtrar productos por lista de precios"),
+    db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    return await asyncio.to_thread(_listar_productos_sync, skip, limit, search, lista, current_user.id)
+    listas = _listas_vendedor(db, current_user)
+    return ProductoService(db).listar(skip, limit, search, lista, listas_vendedor=listas)
 
 
 @router.get("/codigo/{codigo}", response_model=Producto)

@@ -1,9 +1,9 @@
-"""Router de pedidos."""
 import asyncio
+"""Router de pedidos."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db, SessionLocal
+from app.core.database import get_db
 from app.api.auth import get_current_user
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
@@ -31,23 +31,7 @@ def _es_vendedor_solo(db: Session, usuario: Usuario) -> bool:
 def _require_admin(db: Session, usuario: Usuario) -> None:
     roles = UsuarioRepository(db).get_roles(usuario.id)
     if "admin" not in roles:
-        raise HTTPException(403, "Solo administradores pueden modificar la intención de envío")
-
-
-def _listar_pedidos_sync(skip: int, limit: int, est_list: list[str] | None, usuario_id: int):
-    db = SessionLocal()
-    try:
-        usuario = db.query(Usuario).get(usuario_id)
-        if not usuario:
-            raise HTTPException(401, "Usuario no encontrado")
-        es_vend = _es_vendedor_solo(db, usuario)
-        return PedidoService(db).listar(
-            skip, limit, est_list,
-            usuario_id=usuario_id if es_vend else None,
-            es_vendedor=es_vend,
-        )
-    finally:
-        db.close()
+        raise HTTPException(403, "Solo administradores pueden realizar esta acción")
 
 
 @router.get("/bulk", response_model=list[PedidoConDetalles])
@@ -69,16 +53,22 @@ def obtener_bulk(
 
 
 @router.get("", response_model=list[Pedido])
-async def listar(
+def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     estados: str | None = Query(None, description="Filtrar por estados: en_espera,en_proceso"),
+    db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     est_list = None
     if estados:
         est_list = [e.strip() for e in estados.split(",") if e.strip()]
-    return await asyncio.to_thread(_listar_pedidos_sync, skip, limit, est_list, current_user.id)
+    es_vend = _es_vendedor_solo(db, current_user)
+    return PedidoService(db).listar(
+        skip, limit, est_list,
+        usuario_id=current_user.id if es_vend else None,
+        es_vendedor=es_vend,
+    )
 
 
 @router.get("/{id}", response_model=PedidoConDetalles)
@@ -112,10 +102,9 @@ def actualizar(
     current_user: Usuario = Depends(get_current_user),
 ):
     es_vend = _es_vendedor_solo(db, current_user)
-    PedidoService(db).actualizar(id, data, current_user.id)
-    return PedidoService(db).obtener(
-        id,
-        usuario_id=current_user.id if es_vend else None,
+    return PedidoService(db).actualizar(
+        id, data, current_user.id,
+        usuario_id_check=current_user.id if es_vend else None,
         es_vendedor=es_vend,
     )
 
@@ -139,14 +128,8 @@ def actualizar_intencion_envio(
 ):
     _require_admin(db, current_user)
     es_vend = _es_vendedor_solo(db, current_user)
-    PedidoService(db).obtener(
-        id,
-        usuario_id=current_user.id if es_vend else None,
-        es_vendedor=es_vend,
-    )
-    PedidoService(db).actualizar_intencion_envio(id, data.intencion_envio)
-    return PedidoService(db).obtener(
-        id,
+    return PedidoService(db).actualizar_intencion_envio(
+        id, data.intencion_envio,
         usuario_id=current_user.id if es_vend else None,
         es_vendedor=es_vend,
     )
@@ -160,15 +143,13 @@ def cambiar_estado(
     current_user: Usuario = Depends(get_current_user),
 ):
     if not data.estado:
-        from fastapi import HTTPException
         raise HTTPException(400, "Se requiere estado")
     es_vend = _es_vendedor_solo(db, current_user)
-    PedidoService(db).obtener(
-        id,
+    return PedidoService(db).cambiar_estado(
+        id, data.estado,
         usuario_id=current_user.id if es_vend else None,
         es_vendedor=es_vend,
     )
-    return PedidoService(db).cambiar_estado(id, data.estado)
 
 
 @router.post("/{id}/enviar", response_model=PedidoConDetalles)
@@ -179,22 +160,14 @@ def marcar_enviado(
     current_user: Usuario = Depends(get_current_user),
 ):
     es_vend = _es_vendedor_solo(db, current_user)
-    PedidoService(db).obtener(
-        id,
-        usuario_id=current_user.id if es_vend else None,
-        es_vendedor=es_vend,
-    )
-    pedido = PedidoService(db).marcar_enviado(
+    return PedidoService(db).marcar_enviado(
         id, current_user.id,
         transportadora=data.transportadora,
         numero_factura=data.numero_factura,
         numero_guia=data.numero_guia,
         detalles_envio=data.detalles,
         resumen_envio=data.resumen_envio,
-    )
-    return PedidoService(db).obtener(
-        id,
-        usuario_id=current_user.id if es_vend else None,
+        usuario_id_check=current_user.id if es_vend else None,
         es_vendedor=es_vend,
     )
 
@@ -207,13 +180,7 @@ def desmarcar_enviado(
 ):
     _require_admin(db, current_user)
     es_vend = _es_vendedor_solo(db, current_user)
-    PedidoService(db).obtener(
-        id,
-        usuario_id=current_user.id if es_vend else None,
-        es_vendedor=es_vend,
-    )
-    PedidoService(db).desmarcar_enviado(id)
-    return PedidoService(db).obtener(
+    return PedidoService(db).desmarcar_enviado(
         id,
         usuario_id=current_user.id if es_vend else None,
         es_vendedor=es_vend,

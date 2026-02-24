@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useProducto, useProductoCreate, useProductoUpdate } from '../hooks/useProductos'
+import { PageLoading } from '@/shared/components'
 import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
 import type { ProductoCreate, ProductoListaPrecioInput } from '../types/producto.types'
 
@@ -89,11 +90,7 @@ export function ProductoFormPage() {
   const loading = createMutation.isPending || updateMutation.isPending
 
   if (isEdit && loadingProducto) {
-    return (
-      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-        Cargando...
-      </div>
-    )
+    return <PageLoading />
   }
 
   if (isEdit && id && !loadingProducto && !producto) {

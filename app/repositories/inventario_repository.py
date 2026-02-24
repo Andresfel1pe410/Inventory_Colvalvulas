@@ -1,7 +1,8 @@
 """Repositorio de inventario."""
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 from app.repositories.base_repository import BaseRepository
-from app.models import Inventario, DetallePedido, Pedido
+from app.models import Inventario, DetallePedido, Pedido, Producto
 
 
 class InventarioRepository(BaseRepository[Inventario]):
@@ -37,7 +38,11 @@ class InventarioRepository(BaseRepository[Inventario]):
                 Inventario,
                 func.coalesce(subq.c.requerido, 0).label("cantidad_requerida"),
             )
+            .options(
+                joinedload(Inventario.producto).joinedload(Producto.listas_precio),
+            )
             .outerjoin(subq, Inventario.producto_id == subq.c.producto_id)
+            .order_by(Inventario.producto_id)
             .offset(skip)
             .limit(limit)
             .all()
@@ -46,7 +51,7 @@ class InventarioRepository(BaseRepository[Inventario]):
         result = []
         for inv, cantidad_requerida in rows:
             req = int(cantidad_requerida) if cantidad_requerida else 0
-            result.append({
+            item = {
                 "id": inv.id,
                 "producto_id": inv.producto_id,
                 "stock_actual": inv.stock_actual,
@@ -56,5 +61,8 @@ class InventarioRepository(BaseRepository[Inventario]):
                 "updated_at": inv.updated_at,
                 "cantidad_requerida": req,
                 "stock_disponible": inv.stock_actual - req,
-            })
+            }
+            if inv.producto:
+                item["producto"] = inv.producto
+            result.append(item)
         return result

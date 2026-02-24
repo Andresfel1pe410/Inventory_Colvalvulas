@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { DataTable, Column } from '@/shared/components'
+import { DataTable, Column, PageLoading } from '@/shared/components'
 import { useInventarioList } from '../hooks/useInventario'
-import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { usePedidosList, usePedidosDetailsBulk } from '@/modules/pedidos/hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import { EntradaInventarioModal } from '../components/EntradaInventarioModal'
 import { ReporteEntradasModal } from '../components/ReporteEntradasModal'
-import type { InventarioResumen } from '../types/inventario.types'
+import type { InventarioResumenConProducto } from '../types/inventario.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 
@@ -47,31 +46,14 @@ export function InventarioPage() {
         : undefined,
     limit: 10000,
   })
-  const {
-    data: prodData = [],
-    isLoading: loadingProd,
-    isFetching: fetchingProd,
-    refetch: refetchProd,
-  } = useProductosList({
-    limit: 10000,
-  })
 
-  const isRefreshing = fetchingInv || fetchingProd
-  const handleRefresh = () => {
-    refetchInv()
-    refetchProd()
-  }
+  const isRefreshing = fetchingInv
+  const handleRefresh = () => refetchInv()
 
-  const prodMap = useMemo(
-    () => Object.fromEntries(prodData.map((p) => [p.id, p])),
-    [prodData]
-  )
-  const inventarios: (InventarioResumen & { producto?: Producto })[] = useMemo(
-    () => invData.map((i) => ({ ...i, producto: prodMap[i.producto_id] })),
-    [invData, prodMap]
-  )
+  /** Inventario ya trae producto embebido desde el backend */
+  const inventarios: InventarioResumenConProducto[] = invData
 
-  const loading = loadingInv || loadingProd
+  const loading = loadingInv
 
   const handleEntradaCreated = () => {
     setModalEntradaOpen(false)
@@ -241,7 +223,7 @@ export function InventarioPage() {
     })
   }, [inventarios, filtroProductos, soloNegativos])
 
-  const columns: Column<InventarioResumen & { producto?: Producto }>[] = [
+  const columns: Column<InventarioResumenConProducto>[] = [
     {
       key: 'producto_id',
       header: 'Producto',
@@ -566,9 +548,7 @@ export function InventarioPage() {
         onClose={() => setModalReporteOpen(false)}
       />
       {loading ? (
-        <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-          Cargando...
-        </div>
+        <PageLoading />
       ) : (
         <>
           <DataTable

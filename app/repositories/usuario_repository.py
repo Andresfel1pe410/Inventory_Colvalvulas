@@ -22,3 +22,18 @@ class UsuarioRepository(BaseRepository[Usuario]):
             .all()
         )
         return [r.nombre for r in roles]
+
+    def get_roles_bulk(self, usuario_ids: list[int]) -> dict[int, list[str]]:
+        """Roles de varios usuarios en una sola consulta. {usuario_id: [rol1, rol2]}."""
+        if not usuario_ids:
+            return {}
+        rows = (
+            self.db.query(UsuarioRol.usuario_id, Rol.nombre)
+            .join(Rol, UsuarioRol.rol_id == Rol.id)
+            .filter(UsuarioRol.usuario_id.in_(usuario_ids))
+            .all()
+        )
+        result: dict[int, list[str]] = {uid: [] for uid in usuario_ids}
+        for usuario_id, rol_nombre in rows:
+            result[usuario_id].append(rol_nombre)
+        return result

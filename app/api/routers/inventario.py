@@ -1,15 +1,14 @@
 """Router de inventario - solo lectura y movimientos."""
-import asyncio
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db, SessionLocal
+from app.core.database import get_db
 from app.api.auth import get_current_user
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
 from app.repositories.movimiento_inventario_repository import MovimientoInventarioRepository
-from app.schemas import Inventario, InventarioResumen, MovimientoInventario, MovimientoInventarioCreate, MovimientoInventarioReporte
+from app.schemas import Inventario, InventarioResumen, InventarioResumenConProducto, MovimientoInventario, MovimientoInventarioCreate, MovimientoInventarioReporte
 from app.services.inventario_service import InventarioService
 from app.repositories.inventario_repository import InventarioRepository
 
@@ -22,32 +21,22 @@ def _require_admin(db: Session, usuario: Usuario) -> None:
         raise HTTPException(403, "Solo administradores pueden acceder al inventario")
 
 
-def _listar_inventario_sync(skip: int, limit: int, ids: list[int] | None, usuario_id: int):
-    db = SessionLocal()
-    try:
-        usuario = db.query(Usuario).get(usuario_id)
-        if not usuario:
-            raise HTTPException(401, "Usuario no encontrado")
-        _require_admin(db, usuario)
-        return InventarioRepository(db).get_all_con_requerido(skip, limit, ids)
-    finally:
-        db.close()
-
-
-@router.get("", response_model=list[InventarioResumen])
-async def listar(
+@router.get("", response_model=list[InventarioResumenConProducto])
+def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=10000),
     pedido_ids: str | None = Query(None, description="IDs de pedidos separados por coma. Si no se envía, usa todos en espera/proceso."),
+    db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _require_admin(db, current_user)
     ids = None
     if pedido_ids:
         try:
             ids = [int(x.strip()) for x in pedido_ids.split(",") if x.strip()]
         except ValueError:
             ids = []
-    return await asyncio.to_thread(_listar_inventario_sync, skip, limit, ids, current_user.id)
+    return InventarioRepository(db).get_all_con_requerido(skip, limit, ids)
 
 
 @router.get("/producto/{producto_id}", response_model=Inventario)

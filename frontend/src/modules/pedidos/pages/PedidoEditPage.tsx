@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
-import { ClienteSearchSelect, ProductoSearchSelect } from '@/shared/components'
+import { ClienteSearchSelect, ProductoSearchSelect, PageLoading } from '@/shared/components'
 import { usePedido, usePedidoUpdate } from '../hooks/usePedidos'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
@@ -135,11 +135,7 @@ export function PedidoEditPage() {
   const loading = updateMutation.isPending
 
   if (loadingPedido) {
-    return (
-      <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
-        Cargando pedido...
-      </div>
-    )
+    return <PageLoading />
   }
 
   if (noEditable) {

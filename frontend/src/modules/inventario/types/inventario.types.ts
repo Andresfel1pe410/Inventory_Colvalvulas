@@ -1,3 +1,5 @@
+import type { Producto } from '@/modules/productos/types/producto.types'
+
 export interface Inventario {
   id: number
   producto_id: number
@@ -11,6 +13,11 @@ export interface Inventario {
 export interface InventarioResumen extends Inventario {
   cantidad_requerida: number
   stock_disponible: number
+}
+
+/** Inventario con producto embebido (evita petición separada) */
+export interface InventarioResumenConProducto extends InventarioResumen {
+  producto?: Producto
 }
 
 export interface MovimientoInventarioCreate {
