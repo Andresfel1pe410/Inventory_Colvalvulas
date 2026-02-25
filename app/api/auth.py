@@ -39,13 +39,15 @@ def verify_token(token: str) -> dict:
         )
 
     try:
+        # leeway=60: tolera desfase de reloj entre servidor y Supabase
+        decode_opts = {"verify_exp": True, "leeway": 60}
         if alg == "HS256" and settings.SUPABASE_JWT_SECRET:
             return jwt.decode(
                 token,
                 settings.SUPABASE_JWT_SECRET,
                 algorithms=["HS256"],
                 audience="authenticated",
-                options={"verify_exp": True},
+                options=decode_opts,
             )
         if alg in ("RS256", "ES256"):
             global _jwks_client
@@ -58,7 +60,7 @@ def verify_token(token: str) -> dict:
                 signing_key.key,
                 algorithms=[alg],
                 audience="authenticated",
-                options={"verify_exp": True},
+                options=decode_opts,
             )
     except jwt.ExpiredSignatureError:
         raise HTTPException(
@@ -66,10 +68,11 @@ def verify_token(token: str) -> dict:
             detail="Token expirado",
         )
     except jwt.InvalidTokenError as e:
-        logger.warning("JWT inválido: %s", e)
+        err_msg = str(e)
+        logger.warning("JWT inválido: %s (%s)", type(e).__name__, err_msg)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido o expirado",
+            detail=f"Token inválido: {err_msg}",
         )
 
     raise HTTPException(

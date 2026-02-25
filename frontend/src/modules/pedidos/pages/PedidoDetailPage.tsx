@@ -169,6 +169,7 @@ export function PedidoDetailPage() {
             <tr className="bg-slate-100">
               <th className="border border-slate-300 px-3 py-2 text-left font-medium">Nº Referencia</th>
               <th className="border border-slate-300 px-3 py-2 text-left font-medium">Producto</th>
+              <th className="border border-slate-300 px-3 py-2 text-left font-medium">Material</th>
               <th className="border border-slate-300 px-3 py-2 text-right font-medium">Cantidad</th>
               <th className="print-check-header border border-slate-300 pl-3 pr-1 py-2 text-center font-medium text-[9px]">A1</th>
               <th className="print-check-header border border-slate-300 px-1 py-2 text-center font-medium text-[9px]">Check</th>
@@ -185,6 +186,7 @@ export function PedidoDetailPage() {
                 <tr key={d.id}>
                   <td className="border border-slate-300 px-3 py-1.5">{codigo}</td>
                   <td className="border border-slate-300 px-3 py-1.5">{prod?.referencia || `#${d.producto_id}`}</td>
+                  <td className="border border-slate-300 px-3 py-1.5">{prod?.material || '—'}</td>
                   <td className="border border-slate-300 px-3 py-1.5 text-right">{d.cantidad}</td>
                   <td className="border border-slate-300 px-1 py-1.5 text-center">
                     <span className="inline-block h-3 w-3 border border-slate-400" />

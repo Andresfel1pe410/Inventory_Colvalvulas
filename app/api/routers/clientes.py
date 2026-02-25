@@ -26,7 +26,7 @@ def listar(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
+    # Vendedor puede listar clientes (para seleccionar al crear pedidos); admin para crear/editar/eliminar
     return ClienteService(db).listar(skip, limit, search)
 
 
