@@ -27,6 +27,7 @@ export interface Pedido {
   intencion_envio?: IntencionEnvio | null
   lista_precios?: string
   descuento?: number
+  impreso?: boolean
   created_at: string
   updated_at: string
 }

@@ -303,6 +303,11 @@ class PedidoIntencionUpdate(BaseModel):
     )
 
 
+class PedidoImpresoUpdate(BaseModel):
+    """Marca si el pedido ya fue impreso."""
+    impreso: bool
+
+
 class Pedido(PedidoBase):
     id: int
     numero_pedido: str
@@ -319,6 +324,7 @@ class Pedido(PedidoBase):
     intencion_envio: Optional[str] = None  # enviar, enviar_parcial, no_enviar
     lista_precios: Optional[str] = None
     descuento: Decimal = 0
+    impreso: bool = False
     created_at: datetime
     updated_at: datetime
 

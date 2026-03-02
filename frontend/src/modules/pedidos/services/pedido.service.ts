@@ -46,6 +46,9 @@ export const pedidoService = {
   cambiarEstado: (id: number, estado: string) =>
     api.patch<Pedido>(`/pedidos/${id}/estado`, { estado }).then((r) => r.data),
 
+  marcarImpreso: (id: number, impreso: boolean) =>
+    api.patch<Pedido>(`/pedidos/${id}/impreso`, { impreso }).then((r) => r.data),
+
   marcarEnviado: (id: number, data: PedidoEnvioCreate) =>
     api.post<PedidoConDetalles>(`/pedidos/${id}/enviar`, data).then((r) => r.data),
 

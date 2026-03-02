@@ -17,6 +17,7 @@ from app.schemas import (
     PedidoEnvioCreate,
     DetallePedido,
     DetallePedidoCreate,
+    PedidoImpresoUpdate,
 )
 from app.services.pedido_service import PedidoService
 
@@ -147,6 +148,22 @@ def cambiar_estado(
     es_vend = _es_vendedor_solo(db, current_user)
     return PedidoService(db).cambiar_estado(
         id, data.estado,
+        usuario_id=current_user.id if es_vend else None,
+        es_vendedor=es_vend,
+    )
+
+
+@router.patch("/{id}/impreso", response_model=Pedido)
+def actualizar_impreso(
+    id: int,
+    data: PedidoImpresoUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    es_vend = _es_vendedor_solo(db, current_user)
+    return PedidoService(db).marcar_impreso(
+        id,
+        data.impreso,
         usuario_id=current_user.id if es_vend else None,
         es_vendedor=es_vend,
     )

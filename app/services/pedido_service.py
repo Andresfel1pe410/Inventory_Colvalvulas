@@ -232,6 +232,20 @@ class PedidoService:
         self.db.refresh(pedido)
         return pedido
 
+    def marcar_impreso(
+        self,
+        pedido_id: int,
+        impreso: bool,
+        usuario_id: int | None = None,
+        es_vendedor: bool = False,
+    ) -> Pedido:
+        """Actualiza el flag de impresión del pedido."""
+        pedido = self.obtener(pedido_id, usuario_id=usuario_id, es_vendedor=es_vendedor)
+        pedido.impreso = impreso
+        self.db.commit()
+        self.db.refresh(pedido)
+        return pedido
+
     def marcar_enviado(
         self,
         pedido_id: int,

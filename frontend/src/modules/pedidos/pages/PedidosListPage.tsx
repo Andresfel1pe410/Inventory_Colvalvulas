@@ -41,6 +41,27 @@ export function PedidosListPage() {
   const { data: clientesData = [] } = useClientesList({ limit: 500 })
   const clientes = Object.fromEntries(clientesData.map((c) => [c.id, c]))
 
+  const renderImpresoBadge = (impreso?: boolean) => {
+    const isImpreso = !!impreso
+    const color = isImpreso
+      ? 'bg-green-100 text-green-800 border-green-300'
+      : 'bg-red-100 text-red-800 border-red-300'
+    const label = isImpreso ? 'Impreso' : 'Pendiente impresión'
+    return (
+      <span
+        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${color}`}
+        title={label}
+      >
+        <span
+          className={`mr-1 h-2 w-2 rounded-full ${
+            isImpreso ? 'bg-green-500' : 'bg-red-500'
+          }`}
+        />
+        {isImpreso ? 'OK' : 'Pendiente'}
+      </span>
+    )
+  }
+
   const columns: Column<Pedido>[] = [
     { key: 'numero_pedido', header: 'Nº Pedido' },
     {
@@ -112,6 +133,7 @@ export function PedidosListPage() {
                 width: '100px',
                 render: (p) => (
                   <div className="flex items-center gap-1">
+                    {renderImpresoBadge(p.impreso)}
                     <Link
                       to={`/pedidos/${p.id}`}
                       className="rounded p-1.5 text-primary-600 hover:bg-primary-50"

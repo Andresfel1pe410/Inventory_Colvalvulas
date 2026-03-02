@@ -100,6 +100,18 @@ export function usePedidoCambiarEstado() {
   })
 }
 
+export function usePedidoMarcarImpreso() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, impreso }: { id: number; impreso: boolean }) =>
+      pedidoService.marcarImpreso(id, impreso),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.pedidos.all })
+      qc.invalidateQueries({ queryKey: queryKeys.pedidos.detail(id) })
+    },
+  })
+}
+
 export function usePedidoMarcarEnviado() {
   const qc = useQueryClient()
   return useMutation({

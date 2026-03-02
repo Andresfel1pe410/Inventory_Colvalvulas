@@ -1,8 +1,9 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { PageLoading } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
-import { usePedido, usePedidoUpdateIntencionEnvio } from '../hooks/usePedidos'
+import { usePedido, usePedidoUpdateIntencionEnvio, usePedidoMarcarImpreso } from '../hooks/usePedidos'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { useCliente } from '@/modules/clientes/hooks/useClientes'
 import type { PedidoConDetalles, IntencionEnvio } from '../types/pedido.types'
@@ -53,6 +54,14 @@ export function PedidoDetailPage() {
 
   const productos = Object.fromEntries(productosData.map((p) => [p.id, p]))
   const intencionMutation = usePedidoUpdateIntencionEnvio()
+  const impresoMutation = usePedidoMarcarImpreso()
+  const [localImpreso, setLocalImpreso] = useState(false)
+
+  useEffect(() => {
+    if (pedido) {
+      setLocalImpreso(!!pedido.impreso)
+    }
+  }, [pedido])
 
   if (isLoading) {
     return <PageLoading />
@@ -77,6 +86,17 @@ export function PedidoDetailPage() {
 
   const handlePrint = () => window.print()
 
+  const handleToggleImpreso = async () => {
+    if (!pedido || impresoMutation.isPending) return
+    const next = !localImpreso
+    setLocalImpreso(next)
+    try {
+      await impresoMutation.mutateAsync({ id: pedido.id, impreso: next })
+    } catch {
+      setLocalImpreso(!next)
+    }
+  }
+
   const handleIntencionChange = async (value: IntencionEnvio | '') => {
     if (!pedido || intencionMutation.isPending) return
     const val = value === '' ? null : value
@@ -89,21 +109,41 @@ export function PedidoDetailPage() {
 
   return (
     <div>
-      <div className="no-print mb-6 flex items-center justify-between">
+        <div className="no-print mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">
           Pedido {pedido.numero_pedido}
         </h1>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Imprimir
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Imprimir
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleImpreso}
+              disabled={impresoMutation.isPending}
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition
+                ${localImpreso ? 'border-green-500 bg-green-100 text-green-800' : 'border-slate-300 bg-white text-slate-600'}
+                ${impresoMutation.isPending ? 'opacity-70 cursor-wait' : ''}`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  localImpreso ? 'bg-green-500' : 'bg-slate-300'
+                }`}
+              />
+              <span>{localImpreso ? 'Pedido impreso' : 'Marcar como impreso'}</span>
+              {impresoMutation.isPending && (
+                <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" />
+              )}
+            </button>
+          </div>
           {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' && (
             <>
               <Link
