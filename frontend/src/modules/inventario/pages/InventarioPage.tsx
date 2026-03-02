@@ -239,8 +239,6 @@ export function InventarioPage() {
         return `<tr>
   <td style="padding:4px 8px;border:1px solid #e5e7eb;">${ref}</td>
   <td style="padding:4px 8px;border:1px solid #e5e7eb;">${material}</td>
-  <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${i.stock_actual}</td>
-  <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${i.cantidad_requerida}</td>
   <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${i.stock_disponible}</td>
 </tr>`
       })
@@ -274,8 +272,6 @@ export function InventarioPage() {
         <tr>
           <th>Producto</th>
           <th>Material</th>
-          <th>Stock actual</th>
-          <th>Requerido (pedidos)</th>
           <th>Disponible</th>
         </tr>
       </thead>
