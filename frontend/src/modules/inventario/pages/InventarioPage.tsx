@@ -223,6 +223,73 @@ export function InventarioPage() {
     })
   }, [inventarios, filtroProductos, soloNegativos])
 
+  const handlePrint = () => {
+    if (typeof window === 'undefined') return
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    const now = new Date().toLocaleString()
+    const rowsHtml = inventariosOrdenados
+      .map((i) => {
+        const ref =
+          i.producto?.referencia ||
+          (i.producto && getCodigoDisplay(i.producto)) ||
+          `#${i.producto_id}`
+        const material = i.producto?.material || '—'
+        return `<tr>
+  <td style="padding:4px 8px;border:1px solid #e5e7eb;">${ref}</td>
+  <td style="padding:4px 8px;border:1px solid #e5e7eb;">${material}</td>
+  <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${i.stock_actual}</td>
+  <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${i.cantidad_requerida}</td>
+  <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;">${i.stock_disponible}</td>
+</tr>`
+      })
+      .join('')
+
+    const totalLabel =
+      inventariosOrdenados.length < inventarios.length
+        ? `Mostrando: ${inventariosOrdenados.length} de ${inventarios.length} registros`
+        : `Total: ${inventariosOrdenados.length} registros`
+
+    printWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charSet="utf-8" />
+    <title>Inventario</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 16px; color: #0f172a; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      p { font-size: 12px; margin: 2px 0; color: #64748b; }
+      table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+      thead { background: #f1f5f9; }
+      th { padding: 6px 8px; text-align: left; border: 1px solid #e5e7eb; }
+    </style>
+  </head>
+  <body>
+    <h1>Inventario</h1>
+    <p>${now}</p>
+    <p>${totalLabel}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Material</th>
+          <th>Stock actual</th>
+          <th>Requerido (pedidos)</th>
+          <th>Disponible</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  </body>
+</html>`)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
+
   const columns: Column<InventarioResumenConProducto>[] = [
     {
       key: 'producto_id',
@@ -298,6 +365,21 @@ export function InventarioPage() {
                 />
               </svg>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={handlePrint}
+            title="Imprimir inventario visible"
+            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 9V4h12v5M6 18h12v2H6v-2zm0-3h12a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z"
+              />
+            </svg>
           </button>
         </div>
         <div className="flex items-center gap-2">
