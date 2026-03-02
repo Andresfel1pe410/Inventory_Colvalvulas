@@ -56,13 +56,14 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!productoId || !cantidad || parseInt(cantidad, 10) <= 0) return
+    const qty = parseInt(cantidad, 10)
+    if (!productoId || cantidad === '' || isNaN(qty) || qty === 0) return
     setError('')
     try {
       await registrarMutation.mutateAsync({
         producto_id: Number(productoId),
         tipo: 'entrada',
-        cantidad: parseInt(cantidad, 10),
+        cantidad: qty,
         motivo: motivo.trim() || undefined,
       })
       onCreated()
@@ -81,7 +82,7 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-slate-900">Agregar entrada de inventario</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Registra el stock que llega de proveedores o producción
+          Registra el stock que llega de proveedores o producción. Use negativo para correcciones.
         </p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           {error && (
@@ -108,11 +109,10 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
             <label className="block text-sm font-medium text-slate-700">Cantidad</label>
             <input
               type="number"
-              min="1"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
               required
-              placeholder="Ej: 50"
+              placeholder="Ej: 50 o -10 para corrección"
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </div>

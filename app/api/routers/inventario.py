@@ -8,7 +8,16 @@ from app.api.auth import get_current_user
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
 from app.repositories.movimiento_inventario_repository import MovimientoInventarioRepository
-from app.schemas import Inventario, InventarioResumen, InventarioResumenConProducto, MovimientoInventario, MovimientoInventarioCreate, MovimientoInventarioReporte
+from app.schemas import (
+    Inventario,
+    InventarioResumen,
+    InventarioResumenConProducto,
+    MovimientoInventario,
+    MovimientoInventarioCreate,
+    MovimientoInventarioReporte,
+    MovimientoEntradaDetalle,
+    CorregirMovimientoRequest,
+)
 from app.services.inventario_service import InventarioService
 from app.repositories.inventario_repository import InventarioRepository
 
@@ -70,6 +79,43 @@ def listar_entradas(
     if dt_inicio > dt_fin:
         raise HTTPException(400, "La fecha de inicio debe ser menor o igual a la fecha fin")
     return MovimientoInventarioRepository(db).get_entradas_por_fecha(dt_inicio, dt_fin, skip, limit)
+
+
+@router.get("/movimientos/entradas/detalle", response_model=list[MovimientoEntradaDetalle])
+def listar_entradas_detalle(
+    fecha_inicio: str = Query(..., description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: str = Query(..., description="Fecha fin (YYYY-MM-DD)"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(5000, ge=1, le=10000),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _require_admin(db, current_user)
+    try:
+        dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+        dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(400, "Formato de fecha inválido. Use YYYY-MM-DD")
+    if dt_inicio > dt_fin:
+        raise HTTPException(400, "La fecha de inicio debe ser menor o igual a la fecha fin")
+    return MovimientoInventarioRepository(db).get_entradas_detalle(dt_inicio, dt_fin, skip, limit)
+
+
+@router.patch("/movimientos/{movimiento_id}/corregir", response_model=MovimientoInventario)
+def corregir_movimiento(
+    movimiento_id: int,
+    data: CorregirMovimientoRequest,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _require_admin(db, current_user)
+    _, nuevo_mov = InventarioService(db).corregir_movimiento(
+        movimiento_id=movimiento_id,
+        nuevo_producto_id=data.nuevo_producto_id,
+        nueva_cantidad=data.nueva_cantidad,
+        usuario_id=current_user.id,
+    )
+    return nuevo_mov
 
 
 @router.post("/movimientos", response_model=MovimientoInventario, status_code=201)

@@ -4,7 +4,7 @@ Schemas Pydantic para validación y serialización.
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 # ============= ROL =============
@@ -182,7 +182,14 @@ class InventarioResumenConProducto(InventarioResumen):
 class MovimientoInventarioBase(BaseModel):
     producto_id: int
     tipo: str = Field(..., pattern="^(entrada|salida|ajuste)$")
-    cantidad: int = Field(gt=0)
+    cantidad: int = Field(description="Cantidad (puede ser negativa en entradas para correcciones)")
+
+    @field_validator("cantidad")
+    @classmethod
+    def cantidad_no_cero(cls, v: int) -> int:
+        if v == 0:
+            raise ValueError("La cantidad no puede ser cero")
+        return v
     motivo: Optional[str] = None
     referencia_tipo: Optional[str] = None
     referencia_id: Optional[int] = None
@@ -210,6 +217,24 @@ class MovimientoInventarioReporte(BaseModel):
     cantidad_total: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MovimientoEntradaDetalle(BaseModel):
+    """Movimiento de entrada individual (no agregado)."""
+    id: int
+    producto_id: int
+    producto_referencia: str = ""
+    producto_material: str = ""
+    cantidad: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CorregirMovimientoRequest(BaseModel):
+    """Datos para corregir un movimiento de entrada."""
+    nuevo_producto_id: int = Field(gt=0)
+    nueva_cantidad: int = Field(description="Cantidad (puede ser negativa)")
 
 
 # ============= PEDIDO =============
