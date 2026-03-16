@@ -9,6 +9,7 @@ import { PedidosListPage, PedidoFormPage, PedidoDetailPage, PedidoEditPage } fro
 import { ControlPedidosPage } from '@/modules/control-pedidos'
 import { RemisionesListPage } from '@/modules/remisiones'
 import { UsuariosListPage } from '@/modules/usuarios'
+import { VentasVendedoresPage } from '@/modules/reportes'
 import { useAuthStore } from '@/modules/auth'
 
 function DefaultRedirect() {
@@ -44,6 +45,7 @@ export function AppRoutes() {
         <Route path="control-pedidos" element={<ControlPedidosPage />} />
         <Route path="remisiones" element={<RoleGuard requireAdmin><RemisionesListPage /></RoleGuard>} />
         <Route path="usuarios" element={<RoleGuard requireAdmin><UsuariosListPage /></RoleGuard>} />
+        <Route path="graficas" element={<RoleGuard requireAdmin><VentasVendedoresPage /></RoleGuard>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

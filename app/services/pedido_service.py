@@ -72,10 +72,11 @@ class PedidoService:
         if lista not in LISTAS_PRECIOS:
             raise ValidationError(f"Lista inválida. Válidas: {LISTAS_PRECIOS}")
         numero = self.repo.generar_numero()
+        vendedor_id = data.vendedor_id or usuario_id
         pedido = Pedido(
             numero_pedido=numero,
             cliente_id=data.cliente_id,
-            usuario_id=usuario_id,
+            usuario_id=vendedor_id,
             estado="en_espera",
             observaciones=data.observaciones,
             lista_precios=lista,

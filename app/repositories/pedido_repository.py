@@ -34,6 +34,7 @@ class PedidoRepository(BaseRepository[Pedido]):
             .options(
                 joinedload(Pedido.detalles).joinedload(DetallePedido.producto),
                 joinedload(Pedido.cliente),
+                joinedload(Pedido.usuario),
                 joinedload(Pedido.usuario_envio),
             )
             .filter(Pedido.id == pedido_id)
@@ -49,6 +50,7 @@ class PedidoRepository(BaseRepository[Pedido]):
             .options(
                 joinedload(Pedido.detalles).joinedload(DetallePedido.producto),
                 joinedload(Pedido.cliente),
+                joinedload(Pedido.usuario),
                 joinedload(Pedido.usuario_envio),
             )
             .filter(Pedido.id.in_(ids))

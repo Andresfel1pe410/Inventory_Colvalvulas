@@ -7,6 +7,7 @@ import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import { useAuthStore } from '@/modules/auth'
+import { useUsuariosList } from '@/modules/usuarios/hooks/useUsuarios'
 
 interface LineaDetalle {
   producto_id: number
@@ -25,13 +26,17 @@ export function PedidoFormPage() {
     listasDisponibles.includes('lista_1') ? 'lista_1' : listasDisponibles[0] || 'lista_1'
 
   const { data: productos = [] } = useProductosList({ limit: 500 })
+  const { data: usuarios = [] } = useUsuariosList({ limit: 200 })
   const createMutation = usePedidoCreate()
+  const currentUserId = user ? Number(user.id) : undefined
   const [clienteId, setClienteId] = useState<number | ''>('')
   const [observaciones, setObservaciones] = useState('')
   const [listaPrecios, setListaPrecios] = useState<string>(listaDefault)
   const [descuento, setDescuento] = useState<number | ''>(0)
   const [detalles, setDetalles] = useState<LineaDetalle[]>([])
   const [error, setError] = useState('')
+  const initialVendedorId: number | '' = currentUserId ?? ''
+  const [vendedorId, setVendedorId] = useState<number | ''>(initialVendedorId)
 
   const productosLista = productos.filter(
     (p) => tieneLista(p, listaPrecios) || !p.listas_precio?.length
@@ -78,6 +83,7 @@ export function PedidoFormPage() {
         observaciones: observaciones || undefined,
         lista_precios: listaPrecios,
         descuento: typeof descuento === 'number' ? descuento : (parseFloat(String(descuento)) || 0),
+        vendedor_id: vendedorId || undefined,
         detalles: detalles.map((d) => {
           const prod = productos.find((p) => p.id === d.producto_id)
           const cant = typeof d.cantidad === 'number' ? d.cantidad : parseInt(String(d.cantidad), 10) || 1
@@ -114,6 +120,32 @@ export function PedidoFormPage() {
                 placeholder="Buscar por nombre o NIT..."
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Vendedor</label>
+              <select
+                value={vendedorId === '' ? '' : vendedorId}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setVendedorId(v === '' ? '' : Number(v))
+                }}
+                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value={currentUserId ?? ''}>
+                  {(user?.nombre && user?.apellido
+                    ? `${user.nombre} ${user.apellido}`
+                    : user?.nombre || user?.email) || 'Usuario actual'}
+                </option>
+                {usuarios
+                  .filter((u) => currentUserId == null || u.id !== currentUserId && u.roles?.includes('vendedor'))
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre && u.apellido
+                        ? `${u.nombre} ${u.apellido}`
+                        : u.nombre || u.email}
+                    </option>
+                  ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">Lista de precios</label>

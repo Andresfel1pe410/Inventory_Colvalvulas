@@ -265,6 +265,7 @@ class PedidoCreate(PedidoBase):
     detalles: list[DetallePedidoCreate]
     lista_precios: str = "lista_1"  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
     descuento: Decimal = Field(default=0, ge=0, le=100)  # Porcentaje 0-100
+    vendedor_id: Optional[int] = None
 
 
 class PedidoUpdate(BaseModel):
@@ -334,6 +335,7 @@ class Pedido(PedidoBase):
 class UsuarioEnvioInfo(BaseModel):
     id: int
     nombre: str
+    apellido: Optional[str] = None
     email: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -342,6 +344,7 @@ class UsuarioEnvioInfo(BaseModel):
 class PedidoConDetalles(Pedido):
     detalles: list[DetallePedido] = []
     usuario_envio: Optional[UsuarioEnvioInfo] = None
+    usuario: Optional[UsuarioEnvioInfo] = None
 
 
 # ============= REMISION =============

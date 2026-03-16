@@ -34,7 +34,8 @@ export interface Pedido {
 
 export interface PedidoConDetalles extends Pedido {
   detalles: DetallePedido[]
-  usuario_envio?: { id: number; nombre: string; email: string }
+  usuario_envio?: { id: number; nombre: string; apellido?: string; email: string }
+  usuario?: { id: number; nombre: string; apellido?: string; email: string }
 }
 
 export interface DetallePedidoCreate {
@@ -49,6 +50,7 @@ export interface PedidoCreate {
   detalles: DetallePedidoCreate[]
   lista_precios?: string
   descuento?: number
+  vendedor_id?: number
 }
 
 export interface PedidoUpdateFull {

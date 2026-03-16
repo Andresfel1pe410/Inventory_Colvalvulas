@@ -249,6 +249,17 @@ export function PedidoDetailPage() {
             Cliente: <span className="font-medium">{cliente?.razon_social}</span>
           </p>
           <p className="text-sm text-slate-600">
+            Vendedor:{' '}
+            <span className="font-medium">
+              {(() => {
+                const v = (pedido as PedidoConDetalles).usuario
+                if (!v) return '—'
+                if (v.apellido) return `${v.nombre} ${v.apellido}`
+                return v.nombre
+              })()}
+            </span>
+          </p>
+          <p className="text-sm text-slate-600">
             Estado:{' '}
             <span className="font-medium capitalize">{pedido.estado.replace('_', ' ')}</span>
           </p>
@@ -332,12 +343,7 @@ export function PedidoDetailPage() {
           <p className="text-sm text-slate-600">
             Total:{' '}
             <span className="font-medium">
-              {formatPesos(
-                pedido.detalles?.length
-                  ? pedido.detalles.reduce((s, d) => s + (d.subtotal ?? 0), 0) *
-                      (1 - ((pedido.descuento ?? 0) / 100))
-                  : pedido.total
-              )}
+              {formatPesos(pedido.total)}
             </span>
           </p>
           {pedido.lista_precios && (

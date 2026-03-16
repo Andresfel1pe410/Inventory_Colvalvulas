@@ -22,6 +22,7 @@ from app.api.routers import (
     usuarios,
     roles,
     debug_auth,
+    reportes,
 )
 
 setup_logging()
@@ -82,6 +83,7 @@ app.include_router(remisiones.router, prefix=settings.API_V1_PREFIX)
 app.include_router(usuarios.router, prefix=settings.API_V1_PREFIX)
 app.include_router(roles.router, prefix=settings.API_V1_PREFIX)
 app.include_router(debug_auth.router, prefix=settings.API_V1_PREFIX)
+app.include_router(reportes.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")
