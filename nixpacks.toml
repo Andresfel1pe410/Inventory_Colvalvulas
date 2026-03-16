@@ -1,15 +1,11 @@
-["phases.setup"]
-nixPkgs = ["python311"]
+[variables]
+    PYTHONUNBUFFERED = "1"
 
-["phases.install"]
-cmds = [
-  "python311 -m pip install --upgrade pip",
-  "python311 -m pip install -r requirements.txt",
-]
+[phases.setup]
+    nixPkgs = ["python3", "gcc"] # Agrega gcc si alguna librería necesita compilar
 
-["phases.build"]
-cmds = []
+[phases.install]
+    cmds = ["python -m venv /opt/venv && /opt/venv/bin/pip install -r requirements.txt"]
 
-["start"]
-cmd = "python311 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4"
-
+[start]
+    cmd = "/opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4"
