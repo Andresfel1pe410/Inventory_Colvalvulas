@@ -72,7 +72,7 @@ def listar(
     )
 
 
-@router.get("/{id}", response_model=PedidoConDetalles)
+@router.get("/{id:int}", response_model=PedidoConDetalles)
 def obtener(
     id: int,
     db: Session = Depends(get_db),
@@ -95,7 +95,7 @@ def crear(
     return PedidoService(db).crear(data, current_user.id)
 
 
-@router.put("/{id}", response_model=PedidoConDetalles)
+@router.put("/{id:int}", response_model=PedidoConDetalles)
 def actualizar(
     id: int,
     data: PedidoUpdateFull,
@@ -110,7 +110,7 @@ def actualizar(
     )
 
 
-@router.post("/{id}/detalles", response_model=DetallePedido, status_code=201)
+@router.post("/{id:int}/detalles", response_model=DetallePedido, status_code=201)
 def agregar_detalle(
     id: int,
     data: DetallePedidoCreate,
@@ -120,7 +120,7 @@ def agregar_detalle(
     return PedidoService(db).agregar_detalle(id, data, current_user.id)
 
 
-@router.patch("/{id}/intencion-envio", response_model=PedidoConDetalles)
+@router.patch("/{id:int}/intencion-envio", response_model=PedidoConDetalles)
 def actualizar_intencion_envio(
     id: int,
     data: PedidoIntencionUpdate,
@@ -136,7 +136,7 @@ def actualizar_intencion_envio(
     )
 
 
-@router.patch("/{id}/estado", response_model=Pedido)
+@router.patch("/{id:int}/estado", response_model=Pedido)
 def cambiar_estado(
     id: int,
     data: PedidoUpdate,
@@ -153,7 +153,7 @@ def cambiar_estado(
     )
 
 
-@router.patch("/{id}/impreso", response_model=Pedido)
+@router.patch("/{id:int}/impreso", response_model=Pedido)
 def actualizar_impreso(
     id: int,
     data: PedidoImpresoUpdate,
@@ -169,7 +169,7 @@ def actualizar_impreso(
     )
 
 
-@router.post("/{id}/enviar", response_model=PedidoConDetalles)
+@router.post("/{id:int}/enviar", response_model=PedidoConDetalles)
 def marcar_enviado(
     id: int,
     data: PedidoEnvioCreate,
@@ -189,7 +189,7 @@ def marcar_enviado(
     )
 
 
-@router.post("/{id}/desmarcar-enviado", response_model=PedidoConDetalles)
+@router.post("/{id:int}/desmarcar-enviado", response_model=PedidoConDetalles)
 def desmarcar_enviado(
     id: int,
     db: Session = Depends(get_db),
