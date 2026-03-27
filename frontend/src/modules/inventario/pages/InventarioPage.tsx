@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
 import { DataTable, Column, PageLoading } from '@/shared/components'
 import { useInventarioList } from '../hooks/useInventario'
 import { usePedidosList, usePedidosDetailsBulk } from '@/modules/pedidos/hooks/usePedidos'
@@ -31,8 +31,146 @@ export function InventarioPage() {
   const { data: clientesData = [] } = useClientesList({ limit: 500 })
   const clientes = Object.fromEntries(clientesData.map((c) => [c.id, c]))
 
-  const { data: pedidosBulk = [] } = usePedidosDetailsBulk(pedidosActivos.map((p) => p.id))
+  const { data: pedidosBulk = [], isLoading: loadingPedidosBulk } = usePedidosDetailsBulk(
+    pedidosActivos.map((p) => p.id),
+  )
   const pedidosConDetalles = Object.fromEntries(pedidosBulk.map((p) => [p.id, p]))
+
+  const pedidoIdsParaRequeridos = useMemo(() => {
+    if (filtroPedidos !== 'todos' && filtroPedidos.length > 0) return filtroPedidos
+    return pedidosActivos.map((p) => p.id)
+  }, [filtroPedidos, pedidosActivos])
+
+  type ClienteRequerido = { clienteId: number; nombre: string; qty: number }
+
+  const requeridosDetallePorProducto = useMemo(() => {
+    const productoToClienteQty: Record<number, Record<number, number>> = {}
+
+    for (const pedidoId of pedidoIdsParaRequeridos) {
+      const ped = pedidosConDetalles[pedidoId]
+      if (!ped?.detalles?.length) continue
+      const clienteId = ped.cliente_id
+      if (!clienteId) continue
+
+      for (const det of ped.detalles) {
+        const pid = det.producto_id
+        if (!pid) continue
+        if (!productoToClienteQty[pid]) productoToClienteQty[pid] = {}
+        productoToClienteQty[pid][clienteId] = (productoToClienteQty[pid][clienteId] || 0) + (det.cantidad || 0)
+      }
+    }
+
+    const detalle: Record<number, ClienteRequerido[]> = {}
+    Object.entries(productoToClienteQty).forEach(([productoIdStr, clienteMap]) => {
+      const productoId = Number(productoIdStr)
+      const items = Object.entries(clienteMap)
+        .map(([clienteIdStr, qty]) => ({ clienteId: Number(clienteIdStr), qty: Number(qty) }))
+        .filter((x) => x.qty > 0)
+        .sort((a, b) => b.qty - a.qty)
+        .map((x) => ({
+          clienteId: x.clienteId,
+          nombre: clientes[x.clienteId]?.razon_social || `Cliente #${x.clienteId}`,
+          qty: x.qty,
+        }))
+
+      if (items.length > 0) detalle[productoId] = items
+    })
+
+    return detalle
+  }, [pedidoIdsParaRequeridos, pedidosConDetalles, clientes])
+
+  const RequeridoTooltip = ({
+    open,
+    productoId,
+    requerido,
+    placement,
+  }: {
+    open: boolean
+    productoId: number
+    requerido: number
+    placement: 'top' | 'bottom'
+  }) => {
+    if (!open || requerido <= 0) return null
+
+    const baseBox =
+      'pointer-events-none absolute left-1/2 z-50 w-80 -translate-x-1/2 rounded-md border border-slate-200 bg-white shadow-lg'
+    const pos = placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+
+    if (loadingPedidosBulk) {
+      return (
+        <div className={`${baseBox} ${pos} w-72 p-3 text-xs text-slate-700`}>
+          Cargando detalle de pedidos...
+        </div>
+      )
+    }
+
+    const items = requeridosDetallePorProducto[productoId]
+    if (!items || items.length === 0) {
+      return (
+        <div className={`${baseBox} ${pos} w-72 p-3 text-xs text-slate-700`}>
+          No hay detalle disponible para este requerido.
+        </div>
+      )
+    }
+
+    return (
+      <div className={`${baseBox} ${pos}`}>
+        <div className="border-b border-slate-200 px-3 py-2">
+          <div className="text-xs font-semibold text-slate-900">Clientes que requieren esta referencia</div>
+          <div className="mt-0.5 text-[11px] text-slate-500">
+            Total requerido: {requerido}
+          </div>
+        </div>
+        <div className="max-h-56 overflow-auto px-3 py-2">
+          <div className="space-y-1">
+            {items.map((it) => (
+              <div key={it.clienteId} className="flex items-start justify-between gap-3 text-xs">
+                <span className="min-w-0 flex-1 truncate" title={it.nombre}>
+                  {it.nombre}
+                </span>
+                <span className="shrink-0 font-medium text-slate-800">{it.qty}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const RequeridoCell = ({
+    productoId,
+    requerido,
+  }: {
+    productoId: number
+    requerido: number
+  }) => {
+    const [open, setOpen] = useState(false)
+    const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom')
+    const anchorRef = useRef<HTMLSpanElement | null>(null)
+
+    useLayoutEffect(() => {
+      if (!open) return
+      const el = anchorRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      // si no hay suficiente espacio abajo (tooltip ~260px), mostrar arriba
+      setPlacement(spaceBelow < 260 && spaceAbove > spaceBelow ? 'top' : 'bottom')
+    }, [open])
+
+    return (
+      <span
+        ref={anchorRef}
+        className={`relative inline-flex ${requerido > 0 ? 'cursor-help font-medium text-amber-600' : ''}`}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        {requerido}
+        <RequeridoTooltip open={open} productoId={productoId} requerido={requerido} placement={placement} />
+      </span>
+    )
+  }
 
   const {
     data: invData = [],
@@ -309,11 +447,7 @@ export function InventarioPage() {
     {
       key: 'cantidad_requerida',
       header: 'Requerido (pedidos)',
-      render: (i) => (
-        <span className={i.cantidad_requerida > 0 ? 'font-medium text-amber-600' : ''}>
-          {i.cantidad_requerida}
-        </span>
-      ),
+      render: (i) => <RequeridoCell productoId={i.producto_id} requerido={i.cantidad_requerida} />,
     },
     {
       key: 'stock_disponible',
