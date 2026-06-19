@@ -14,6 +14,12 @@ import { useAuthStore } from '@/modules/auth'
 
 function DefaultRedirect() {
   const isAdmin = useAuthStore((s) => s.user?.roles?.includes('admin'))
+  const isAlmacen = useAuthStore((s) => s.user?.roles?.includes('almacen'))
+  
+  if (isAlmacen) {
+    return <Navigate to="/inventario" replace />
+  }
+  
   return <Navigate to={isAdmin ? '/clientes' : '/pedidos'} replace />
 }
 
@@ -37,7 +43,7 @@ export function AppRoutes() {
         <Route path="productos" element={<ProductosListPage />} />
         <Route path="productos/nuevo" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
         <Route path="productos/:id/editar" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
-        <Route path="inventario" element={<RoleGuard requireAdmin><InventarioPage /></RoleGuard>} />
+        <Route path="inventario" element={<RoleGuard allowedRoles={['admin', 'almacen']}><InventarioPage /></RoleGuard>} />
         <Route path="pedidos" element={<PedidosListPage />} />
         <Route path="pedidos/nuevo" element={<PedidoFormPage />} />
         <Route path="pedidos/:id" element={<PedidoDetailPage />} />

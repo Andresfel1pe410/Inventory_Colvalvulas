@@ -9,19 +9,19 @@ const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
 interface NavItem {
   to: string
   label: string
-  roles?: string[]
-  vendedor?: boolean
+  roles?: string[] // Roles que tienen acceso (undefined = todos excepto vendedor)
+  vendedor?: boolean // Si está disponible para vendedor
   icon: React.ReactNode
 }
 
 const navItems: NavItem[] = [
-  { to: '/clientes', label: 'Clientes', icon: <ClientsIcon /> },
+  { to: '/clientes', label: 'Clientes', roles: ['admin'], icon: <ClientsIcon /> },
   { to: '/productos', label: 'Productos', vendedor: true, icon: <ProductsIcon /> },
-  { to: '/inventario', label: 'Inventario', icon: <InventoryIcon /> },
+  { to: '/inventario', label: 'Inventario', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
   { to: '/pedidos', label: 'Pedidos', vendedor: true, icon: <OrdersIcon /> },
   { to: '/control-pedidos', label: 'Control Pedidos', vendedor: true, icon: <ControlIcon /> },
-  { to: '/graficas', label: 'Reportes', icon: <ChartIcon /> },
-  { to: '/remisiones', label: 'Remisiones', icon: <RemisionIcon /> },
+  { to: '/graficas', label: 'Reportes', roles: ['admin'], icon: <ChartIcon /> },
+  { to: '/remisiones', label: 'Remisiones', roles: ['admin'], icon: <RemisionIcon /> },
   { to: '/usuarios', label: 'Usuarios', roles: ['admin'], icon: <UsersIcon /> },
 ]
 
@@ -123,6 +123,7 @@ export function Sidebar() {
 
   const isAdmin = user?.roles?.includes('admin')
   const isVendedor = user?.roles?.includes('vendedor') && !isAdmin
+  const isAlmacen = user?.roles?.includes('almacen') && !isAdmin
 
   const handleLogout = async () => {
     await authLogout()
@@ -130,17 +131,30 @@ export function Sidebar() {
     navigate('/login', { replace: true })
   }
 
-  const itemsToShow = isVendedor
-    ? navItems.map((item) => ({
-        ...item,
-        blocked: !item.vendedor,
-      }))
-    : navItems
-        .filter((item) => {
-          if (item.roles) return user?.roles?.some((r) => item.roles!.includes(r))
-          return true
-        })
-        .map((item) => ({ ...item, blocked: false }))
+  // Función para determinar si un usuario tiene acceso a un item
+  const canAccessItem = (item: NavItem): boolean => {
+    // Si el usuario es admin
+    if (isAdmin) {
+      return true
+    }
+    
+    // Si el usuario es vendedor
+    if (isVendedor) {
+      return item.vendedor === true
+    }
+    
+    // Si el usuario es almacen
+    if (isAlmacen) {
+      return item.roles?.includes('almacen') || false
+    }
+    
+    // Otros roles: solo items sin restricción y que no requieren roles específicos
+    return !item.roles && !item.vendedor
+  }
+
+  const itemsToShow = navItems
+    .filter(item => canAccessItem(item))
+    .map(item => ({ ...item, blocked: false }))
 
   return (
     <aside

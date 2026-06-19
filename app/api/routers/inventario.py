@@ -24,10 +24,11 @@ from app.repositories.inventario_repository import InventarioRepository
 router = APIRouter(prefix="/inventario", tags=["inventario"])
 
 
-def _require_admin(db: Session, usuario: Usuario) -> None:
+def _require_admin_or_almacen(db: Session, usuario: Usuario) -> None:
+    """Requiere que el usuario sea admin o almacen."""
     roles = UsuarioRepository(db).get_roles(usuario.id)
-    if "admin" not in roles:
-        raise HTTPException(403, "Solo administradores pueden acceder al inventario")
+    if "admin" not in roles and "almacen" not in roles:
+        raise HTTPException(403, "Solo administradores y almacenes pueden acceder al inventario")
 
 
 @router.get("", response_model=list[InventarioResumenConProducto])
@@ -38,7 +39,7 @@ def listar(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
+    _require_admin_or_almacen(db, current_user)
     ids = None
     if pedido_ids:
         try:
@@ -54,7 +55,7 @@ def obtener_por_producto(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
+    _require_admin_or_almacen(db, current_user)
     inv = InventarioRepository(db).get_by_producto(producto_id)
     if not inv:
         raise HTTPException(404, "Inventario no encontrado")
@@ -70,7 +71,7 @@ def listar_entradas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
+    _require_admin_or_almacen(db, current_user)
     try:
         dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
         dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
@@ -90,7 +91,7 @@ def listar_entradas_detalle(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
+    _require_admin_or_almacen(db, current_user)
     try:
         dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
         dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
@@ -108,7 +109,7 @@ def corregir_movimiento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
+    _require_admin_or_almacen(db, current_user)
     _, nuevo_mov = InventarioService(db).corregir_movimiento(
         movimiento_id=movimiento_id,
         nuevo_producto_id=data.nuevo_producto_id,
@@ -124,7 +125,7 @@ def registrar_movimiento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
+    _require_admin_or_almacen(db, current_user)
     return InventarioService(db).registrar_movimiento(
         producto_id=data.producto_id,
         tipo=data.tipo,
