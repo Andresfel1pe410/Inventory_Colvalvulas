@@ -5,6 +5,7 @@ import { LoginPage } from '@/modules/auth'
 import { ClientesListPage, ClienteFormPage, ClienteDetailPage } from '@/modules/clientes'
 import { ProductosListPage, ProductoFormPage } from '@/modules/productos'
 import { InventarioPage } from '@/modules/inventario'
+import { InventarioProcesoPage } from '@/modules/inventario-proceso'
 import { PedidosListPage, PedidoFormPage, PedidoDetailPage, PedidoEditPage } from '@/modules/pedidos'
 import { ControlPedidosPage } from '@/modules/control-pedidos'
 import { RemisionesListPage } from '@/modules/remisiones'
@@ -44,6 +45,7 @@ export function AppRoutes() {
         <Route path="productos/nuevo" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
         <Route path="productos/:id/editar" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
         <Route path="inventario" element={<RoleGuard allowedRoles={['admin', 'almacen']}><InventarioPage /></RoleGuard>} />
+        <Route path="inventario-proceso" element={<RoleGuard allowedRoles={['admin', 'almacen']}><InventarioProcesoPage /></RoleGuard>} />
         <Route path="pedidos" element={<PedidosListPage />} />
         <Route path="pedidos/nuevo" element={<PedidoFormPage />} />
         <Route path="pedidos/:id" element={<PedidoDetailPage />} />

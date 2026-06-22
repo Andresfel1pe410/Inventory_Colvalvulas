@@ -364,3 +364,39 @@ class Remision(BaseModel):
     transportadora: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ============= INVENTARIO PROCESO =============
+class InventarioProcesoBase(BaseModel):
+    referencia: str
+    material: str
+    cantidad: int = 0
+
+
+class InventarioProceso(InventarioProcesoBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MovimientoInventarioProcesoBase(BaseModel):
+    tipo: str = Field(..., pattern="^(entrada|salida)$")
+    cantidad: int = Field(gt=0)
+    usuario_realizo: str
+
+
+class MovimientoInventarioProcesoCreate(MovimientoInventarioProcesoBase):
+    referencia: str
+    material: str
+
+
+class MovimientoInventarioProceso(MovimientoInventarioProcesoBase):
+    id: int
+    inventario_proceso_id: int
+    cantidad_anterior: int
+    cantidad_nueva: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

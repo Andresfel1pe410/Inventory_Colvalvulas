@@ -5,7 +5,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from sqlalchemy import (
     Column, BigInteger, String, Text, Boolean, Integer, 
-    Numeric, DateTime, Date, ForeignKey, CheckConstraint
+    Numeric, DateTime, Date, ForeignKey, CheckConstraint, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -213,3 +213,31 @@ class DetalleRemision(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     remision = relationship("Remision", back_populates="detalles")
+
+
+class InventarioProceso(Base):
+    __tablename__ = "inventario_proceso"
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    referencia = Column(String(200), nullable=False)
+    material = Column(String(255), nullable=False)
+    cantidad = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (UniqueConstraint('referencia', 'material', name='_referencia_material_uc'),)
+
+
+class MovimientoInventarioProceso(Base):
+    __tablename__ = "movimiento_inventario_proceso"
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    inventario_proceso_id = Column(BigInteger, ForeignKey("inventario_proceso.id", ondelete="CASCADE"), nullable=False)
+    tipo = Column(String(20), nullable=False)  # entrada, salida
+    cantidad = Column(Integer, nullable=False)
+    usuario_realizo = Column(String(100), nullable=False)
+    cantidad_anterior = Column(Integer, nullable=False)
+    cantidad_nueva = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    
+    inventario_proceso = relationship("InventarioProceso")

@@ -17,6 +17,7 @@ from app.api.routers import (
     clientes,
     productos,
     inventario,
+    inventario_proceso,
     pedidos,
     remisiones,
     usuarios,
@@ -78,6 +79,7 @@ app.include_router(auth_router.router, prefix=settings.API_V1_PREFIX)
 app.include_router(clientes.router, prefix=settings.API_V1_PREFIX)
 app.include_router(productos.router, prefix=settings.API_V1_PREFIX)
 app.include_router(inventario.router, prefix=settings.API_V1_PREFIX)
+app.include_router(inventario_proceso.router, prefix=settings.API_V1_PREFIX)
 app.include_router(pedidos.router, prefix=settings.API_V1_PREFIX)
 app.include_router(remisiones.router, prefix=settings.API_V1_PREFIX)
 app.include_router(usuarios.router, prefix=settings.API_V1_PREFIX)

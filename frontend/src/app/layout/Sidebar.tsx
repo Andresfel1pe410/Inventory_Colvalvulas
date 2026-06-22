@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { to: '/clientes', label: 'Clientes', roles: ['admin'], icon: <ClientsIcon /> },
   { to: '/productos', label: 'Productos', vendedor: true, icon: <ProductsIcon /> },
   { to: '/inventario', label: 'Inventario', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
+  { to: '/inventario-proceso', label: 'Inventario de Proceso', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
   { to: '/pedidos', label: 'Pedidos', vendedor: true, icon: <OrdersIcon /> },
   { to: '/control-pedidos', label: 'Control Pedidos', vendedor: true, icon: <ControlIcon /> },
   { to: '/graficas', label: 'Reportes', roles: ['admin'], icon: <ChartIcon /> },

@@ -24,6 +24,7 @@ export const queryKeys = {
     list: (params?: { pedido_ids?: string; limit?: number }) =>
       ['inventario', 'list', params] as const,
     producto: (id: number) => ['inventario', 'producto', id] as const,
+    proceso: ['inventario', 'proceso'] as const,
   },
   remisiones: {
     all: ['remisiones'] as const,
