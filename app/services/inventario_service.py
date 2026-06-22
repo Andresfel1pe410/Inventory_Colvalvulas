@@ -1,11 +1,7 @@
-"""
-Servicio de inventario - movimientos y actualización de stock.
-"""
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models import Inventario, MovimientoInventario
 from app.repositories.inventario_repository import InventarioRepository
 from app.repositories.movimiento_inventario_repository import MovimientoInventarioRepository
-
 
 class InventarioService:
     def __init__(self, db):

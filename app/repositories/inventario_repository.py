@@ -1,9 +1,7 @@
-"""Repositorio de inventario."""
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 from app.repositories.base_repository import BaseRepository
 from app.models import Inventario, DetallePedido, Pedido, Producto
-
 
 class InventarioRepository(BaseRepository[Inventario]):
     def __init__(self, db):

@@ -1,8 +1,6 @@
-"""Repositorio de Inventario de Proceso."""
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from app.models import InventarioProceso, MovimientoInventarioProceso
-
 
 class InventarioProcesoRepository:
     """Repositorio para manejar inventario de proceso."""

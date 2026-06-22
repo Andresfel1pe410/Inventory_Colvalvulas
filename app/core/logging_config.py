@@ -1,12 +1,8 @@
-"""
-Configuración de logging.
-"""
 import logging
 import sys
 from app.core.config import get_settings
 
 settings = get_settings()
-
 
 def setup_logging() -> None:
     """Configura el logging de la aplicación."""
@@ -19,3 +15,5 @@ def setup_logging() -> None:
     )
     logging.getLogger("uvicorn").setLevel(level)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+setup_logging()

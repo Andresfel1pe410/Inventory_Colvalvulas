@@ -1,8 +1,4 @@
-"""
-Manejo centralizado de errores.
-"""
 from fastapi import HTTPException, status
-
 
 class AppException(Exception):
     """Excepción base de la aplicación."""

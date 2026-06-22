@@ -1,9 +1,5 @@
-"""
-Servicio de inventario de proceso.
-"""
 from app.core.exceptions import ValidationError
 from app.repositories.inventario_proceso_repository import InventarioProcesoRepository
-
 
 class InventarioProcesoService:
     def __init__(self, db):
