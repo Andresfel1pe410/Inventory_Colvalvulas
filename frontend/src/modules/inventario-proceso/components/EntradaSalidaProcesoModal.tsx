@@ -7,6 +7,7 @@ interface EntradaSalidaProcesoModalProps {
   onClose: () => void
   onCreated: () => void
   tipo: 'entrada' | 'salida'
+  items: InventarioProceso[]
   item: InventarioProceso | null
 }
 
@@ -25,6 +26,7 @@ export function EntradaSalidaProcesoModal({
   onClose,
   onCreated,
   tipo,
+  items,
   item,
 }: EntradaSalidaProcesoModalProps) {
   const [referencia, setReferencia] = useState('')
@@ -32,10 +34,16 @@ export function EntradaSalidaProcesoModal({
   const [cantidad, setCantidad] = useState('')
   const [usuario, setUsuario] = useState('')
   const [error, setError] = useState('')
+  const [busqueda, setBusqueda] = useState('')
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
 
   const registrarMutation = useInventarioProcesoRegistrarMovimiento()
 
   const isNew = item === null
+  const sugerencias = items.filter((registro) => {
+    const texto = `${registro.referencia} ${registro.material}`.toLowerCase()
+    return texto.includes(busqueda.toLowerCase())
+  })
 
   useEffect(() => {
     if (open) {
@@ -44,8 +52,31 @@ export function EntradaSalidaProcesoModal({
       setCantidad('')
       setUsuario('')
       setError('')
+      setBusqueda(item?.referencia || '')
+      setMostrarSugerencias(false)
     }
   }, [open, item])
+
+  useEffect(() => {
+    if (!busqueda.trim()) {
+      setReferencia('')
+      setMaterial('')
+      return
+    }
+
+    const seleccionado = items.find((registro) => registro.referencia === busqueda.trim())
+    if (seleccionado) {
+      setReferencia(seleccionado.referencia)
+      setMaterial(seleccionado.material)
+    }
+  }, [busqueda, items])
+
+  const seleccionarSugerencia = (registro: InventarioProceso) => {
+    setBusqueda(registro.referencia)
+    setReferencia(registro.referencia)
+    setMaterial(registro.material)
+    setMostrarSugerencias(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,14 +122,39 @@ export function EntradaSalidaProcesoModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">Referencia *</label>
-            <input
-              type="text"
-              value={referencia}
-              onChange={(e) => setReferencia(e.target.value)}
-              placeholder="Ej: REF-001"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-primary-600 focus:outline-none"
-              disabled={!isNew || registrarMutation.isPending}
-            />
+            <div className="relative">
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value)
+                  setReferencia(e.target.value)
+                  setMaterial('')
+                  setMostrarSugerencias(true)
+                }}
+                onFocus={() => setMostrarSugerencias(true)}
+                placeholder="Buscar referencia o material"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-primary-600 focus:outline-none"
+                disabled={registrarMutation.isPending}
+                autoComplete="off"
+              />
+
+              {mostrarSugerencias && sugerencias.length > 0 && (
+                <div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                  {sugerencias.map((registro) => (
+                    <button
+                      key={registro.id}
+                      type="button"
+                      onClick={() => seleccionarSugerencia(registro)}
+                      className="flex w-full flex-col gap-0.5 border-b border-slate-100 px-3 py-2 text-left hover:bg-slate-50 last:border-b-0"
+                    >
+                      <span className="text-sm font-medium text-slate-900">{registro.referencia}</span>
+                      <span className="text-xs text-slate-500">{registro.material}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -109,7 +165,7 @@ export function EntradaSalidaProcesoModal({
               onChange={(e) => setMaterial(e.target.value)}
               placeholder="Ej: Acero Inox"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-primary-600 focus:outline-none"
-              disabled={!isNew || registrarMutation.isPending}
+              disabled={registrarMutation.isPending}
             />
           </div>
 

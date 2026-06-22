@@ -20,21 +20,15 @@ export function InventarioProcesoTable({
   const [tipoModal, setTipoModal] = useState<'entrada' | 'salida'>('entrada')
   const [itemSeleccionado, setItemSeleccionado] = useState<InventarioProceso | null>(null)
 
-  const handleEntrada = (inv: InventarioProceso) => {
-    setItemSeleccionado(inv)
-    setTipoModal('entrada')
-    setModalOpen(true)
-  }
-
-  const handleSalida = (inv: InventarioProceso) => {
-    setItemSeleccionado(inv)
-    setTipoModal('salida')
-    setModalOpen(true)
-  }
-
   const handleNuevaEntrada = () => {
     setItemSeleccionado(null)
     setTipoModal('entrada')
+    setModalOpen(true)
+  }
+
+  const handleNuevaSalida = () => {
+    setItemSeleccionado(null)
+    setTipoModal('salida')
     setModalOpen(true)
   }
 
@@ -54,26 +48,6 @@ export function InventarioProcesoTable({
         <span className={i.cantidad < 0 ? 'font-medium text-red-600' : 'font-medium'}>
           {i.cantidad}
         </span>
-      ),
-    },
-    {
-      key: 'acciones',
-      header: 'Acciones',
-      render: (i) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleEntrada(i)}
-            className="rounded-md bg-green-50 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-100"
-          >
-            Entrada
-          </button>
-          <button
-            onClick={() => handleSalida(i)}
-            className="rounded-md bg-red-50 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-100"
-          >
-            Salida
-          </button>
-        </div>
       ),
     },
   ]
@@ -111,7 +85,14 @@ export function InventarioProcesoTable({
             onClick={handleNuevaEntrada}
             className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
           >
-            Nueva Entrada
+            Entrada
+          </button>
+          <button
+            type="button"
+            onClick={handleNuevaSalida}
+            className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+          >
+            Salida
           </button>
         </div>
       </div>
@@ -125,6 +106,7 @@ export function InventarioProcesoTable({
 
       <EntradaSalidaProcesoModal
         open={modalOpen}
+        items={sortedData}
         onClose={() => {
           setModalOpen(false)
           setItemSeleccionado(null)

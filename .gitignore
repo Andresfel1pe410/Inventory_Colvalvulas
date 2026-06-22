@@ -96,3 +96,4 @@ coverage/
 secrets/
 credentials/
 *.credentials
+.aider*

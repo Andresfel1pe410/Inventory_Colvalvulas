@@ -1,12 +1,17 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_user
+
+from app.api.auth import get_current_user
+from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models import Usuario
 from app.repositories.inventario_repository import InventarioRepository
-from app.schemas import MovimientoInventarioCreate
+from app.schemas import MovimientoInventario, MovimientoInventarioCreate
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post("/movimientos", response_model=MovimientoInventario, status_code=201)
 def registrar_movimiento(
