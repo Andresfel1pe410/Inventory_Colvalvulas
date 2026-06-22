@@ -17,6 +17,7 @@ const USUARIOS_HARDCODEADOS = [
   'Jose',
   'Neifer',
   'Mauricio',
+  'Andres Nieto'
 ]
 
 export function EntradaSalidaProcesoModal({
