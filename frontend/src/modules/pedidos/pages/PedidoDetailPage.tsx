@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { PageLoading } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { usePedido, usePedidoUpdateIntencionEnvio, usePedidoMarcarImpreso } from '../hooks/usePedidos'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { useCliente } from '@/modules/clientes/hooks/useClientes'
@@ -45,6 +46,7 @@ function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
 export function PedidoDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const sectionPath = useSectionPath()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.roles?.includes('admin')
 
@@ -74,7 +76,7 @@ export function PedidoDetailPage() {
         <div className="mt-4">
           <button
             type="button"
-            onClick={() => navigate('/pedidos')}
+            onClick={() => navigate(sectionPath('/pedidos'))}
             className="text-primary-600 hover:underline"
           >
             Volver a pedidos
@@ -147,13 +149,13 @@ export function PedidoDetailPage() {
           {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' && (
             <>
               <Link
-                to={`/pedidos/${pedido.id}/editar`}
+                to={sectionPath(`/pedidos/${pedido.id}/editar`)}
                 className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
                 Editar pedido
               </Link>
               <Link
-                to="/control-pedidos"
+                to={sectionPath('/control-pedidos')}
                 className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
               >
                 Gestionar en Control Pedidos
@@ -161,7 +163,7 @@ export function PedidoDetailPage() {
             </>
           )}
           <button
-            onClick={() => navigate('/pedidos')}
+            onClick={() => navigate(sectionPath('/pedidos'))}
             className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
           >
             Volver

@@ -7,6 +7,7 @@ import {
   CopyableCell,
   PageLoading,
 } from '@/shared/components'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { useClientesList, useClienteDelete } from '../hooks/useClientes'
 import type { Cliente } from '../types/cliente.types'
 
@@ -76,6 +77,7 @@ const columns: Column<Cliente>[] = [
 ]
 
 export function ClientesListPage() {
+  const sectionPath = useSectionPath()
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
@@ -114,7 +116,7 @@ export function ClientesListPage() {
             className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-64"
           />
           <Link
-            to="/clientes/nuevo"
+            to={sectionPath('/clientes/nuevo')}
             className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
           >
             Nuevo cliente
@@ -135,13 +137,13 @@ export function ClientesListPage() {
                 render: (c) => (
                   <div className="flex gap-2">
                     <Link
-                      to={`/clientes/${c.id}`}
+                      to={sectionPath(`/clientes/${c.id}`)}
                       className="text-primary-600 hover:underline"
                     >
                       Detalles
                     </Link>
                     <Link
-                      to={`/clientes/${c.id}/editar`}
+                      to={sectionPath(`/clientes/${c.id}/editar`)}
                       className="text-primary-600 hover:underline"
                     >
                       Editar

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useProducto, useProductoCreate, useProductoUpdate } from '../hooks/useProductos'
 import { PageLoading } from '@/shared/components'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
 import type { ProductoCreate, ProductoListaPrecioInput } from '../types/producto.types'
 
@@ -11,6 +12,7 @@ const emptyListasPrecio = (): ProductoListaPrecioInput[] =>
 export function ProductoFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const sectionPath = useSectionPath()
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState<{
@@ -81,7 +83,7 @@ export function ProductoFormPage() {
       } else {
         await createMutation.mutateAsync(data)
       }
-      navigate('/productos')
+      navigate(sectionPath('/productos'))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
     }
@@ -100,7 +102,7 @@ export function ProductoFormPage() {
         <div className="mt-4">
           <button
             type="button"
-            onClick={() => navigate('/productos')}
+            onClick={() => navigate(sectionPath('/productos'))}
             className="text-primary-600 hover:underline"
           >
             Volver a productos
@@ -193,7 +195,7 @@ export function ProductoFormPage() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/productos')}
+            onClick={() => navigate(sectionPath('/productos'))}
             className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
           >
             Cancelar

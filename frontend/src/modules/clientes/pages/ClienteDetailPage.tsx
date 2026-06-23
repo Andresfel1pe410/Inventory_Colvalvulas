@@ -1,10 +1,12 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCliente } from '../hooks/useClientes'
 import { PageLoading } from '@/shared/components'
+import { useSectionPath } from '@/app/routing/sectionPath'
 
 export function ClienteDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const sectionPath = useSectionPath()
   const { data: cliente, isLoading } = useCliente(id ? Number(id) : null)
 
   if (isLoading) {
@@ -16,7 +18,7 @@ export function ClienteDetailPage() {
       <div className="rounded-lg border bg-white p-8 text-center text-slate-500">
         Cliente no encontrado
         <div className="mt-4">
-          <Link to="/clientes" className="text-primary-600 hover:underline">
+          <Link to={sectionPath('/clientes')} className="text-primary-600 hover:underline">
             Volver a clientes
           </Link>
         </div>
@@ -30,13 +32,13 @@ export function ClienteDetailPage() {
         <h1 className="text-2xl font-semibold text-slate-900">Detalles del cliente</h1>
         <div className="flex gap-2">
           <Link
-            to={`/clientes/${cliente.id}/editar`}
+            to={sectionPath(`/clientes/${cliente.id}/editar`)}
             className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
           >
             Editar
           </Link>
           <button
-            onClick={() => navigate('/clientes')}
+            onClick={() => navigate(sectionPath('/clientes'))}
             className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
           >
             Volver

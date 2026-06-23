@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { createClient, Session } from '@supabase/supabase-js'
 import { User } from '../types/auth.types'
-import { API_BASE } from '@/shared/config'
+import { AUTH_API_BASE } from '@/shared/config'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -37,7 +37,7 @@ export interface MeResponse {
 
 export async function fetchMe(token: string): Promise<User> {
   try {
-    const { data } = await axios.get<MeResponse>(`${API_BASE}/auth/me`, {
+    const { data } = await axios.get<MeResponse>(`${AUTH_API_BASE}/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     return {
@@ -65,7 +65,7 @@ export async function fetchMe(token: string): Promise<User> {
       // Diagnóstico: llamar al endpoint de debug para obtener causa exacta
       try {
         const res = await axios.get<{ step?: string; error?: string; hint?: string }>(
-          `${API_BASE}/debug/auth`,
+          `${AUTH_API_BASE}/debug/auth`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         const d = res.data

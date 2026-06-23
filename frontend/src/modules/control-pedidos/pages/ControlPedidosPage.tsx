@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { usePedidosList, usePedido, usePedidoCambiarEstado, usePedidoDesmarcarEnviado, usePedidoMarcarEnviado } from '@/modules/pedidos/hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
@@ -36,6 +37,7 @@ function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
 }
 
 export function ControlPedidosPage() {
+  const sectionPath = useSectionPath()
   const [detailId, setDetailId] = useState<number | null>(null)
   const [envioModal, setEnvioModal] = useState(false)
   const [transportadora, setTransportadora] = useState('')
@@ -414,7 +416,7 @@ export function ControlPedidosPage() {
               {detail.estado !== 'enviado' && detail.estado !== 'cancelado' && (
                 <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
                   <Link
-                    to={`/pedidos/${detail.id}/editar`}
+                    to={sectionPath(`/pedidos/${detail.id}/editar`)}
                     className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   >
                     Editar pedido

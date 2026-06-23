@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCliente, useClienteCreate, useClienteUpdate } from '../hooks/useClientes'
 import { PageLoading } from '@/shared/components'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import {
   DEPARTAMENTOS_COLOMBIA,
   MUNICIPIOS_POR_DEPARTAMENTO,
@@ -13,6 +14,7 @@ import type { ClienteCreate } from '../types/cliente.types'
 export function ClienteFormPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const sectionPath = useSectionPath()
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState<ClienteCreate>({
@@ -88,7 +90,7 @@ export function ClienteFormPage() {
       } else {
         await createMutation.mutateAsync(data)
       }
-      navigate('/clientes')
+      navigate(sectionPath('/clientes'))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
     }
@@ -111,7 +113,7 @@ export function ClienteFormPage() {
         <div className="mt-4">
           <button
             type="button"
-            onClick={() => navigate('/clientes')}
+            onClick={() => navigate(sectionPath('/clientes'))}
             className="text-primary-600 hover:underline"
           >
             Volver a clientes
@@ -333,7 +335,7 @@ export function ClienteFormPage() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/clientes')}
+            onClick={() => navigate(sectionPath('/clientes'))}
             className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
           >
             Cancelar

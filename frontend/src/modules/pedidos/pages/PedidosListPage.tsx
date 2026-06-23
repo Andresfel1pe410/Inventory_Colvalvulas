@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination, PageLoading } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { usePedidosList } from '../hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import type { Pedido } from '../types/pedido.types'
@@ -31,6 +32,7 @@ function colorDias(dias: number): string {
 }
 
 export function PedidosListPage() {
+  const sectionPath = useSectionPath()
   const [page, setPage] = useState(1)
   const limit = 20
 
@@ -114,7 +116,7 @@ export function PedidosListPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Pedidos</h1>
         <Link
-          to="/pedidos/nuevo"
+          to={sectionPath('/pedidos/nuevo')}
           className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
         >
           Nuevo pedido
@@ -135,7 +137,7 @@ export function PedidosListPage() {
                   <div className="flex items-center gap-1">
                     {renderImpresoBadge(p.impreso)}
                     <Link
-                      to={`/pedidos/${p.id}`}
+                      to={sectionPath(`/pedidos/${p.id}`)}
                       className="rounded p-1.5 text-primary-600 hover:bg-primary-50"
                       title="Ver"
                     >
@@ -143,7 +145,7 @@ export function PedidosListPage() {
                     </Link>
                     {p.estado !== 'enviado' && p.estado !== 'cancelado' && (
                       <Link
-                        to={`/pedidos/${p.id}/editar`}
+                        to={sectionPath(`/pedidos/${p.id}/editar`)}
                         className="rounded p-1.5 text-slate-600 hover:bg-slate-100"
                         title="Editar"
                       >

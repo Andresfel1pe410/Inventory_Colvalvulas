@@ -39,8 +39,9 @@ def verify_token(token: str) -> dict:
         )
 
     try:
-        # leeway=60: tolera desfase de reloj entre servidor y Supabase
-        decode_opts = {"verify_exp": True, "leeway": 60}
+        # leeway=60: tolera desfase de reloj entre servidor y Supabase.
+        # verify_iat=False: evita rechazos por iat ligeramente adelantado cuando hay skew.
+        decode_opts = {"verify_exp": True, "verify_iat": False}
         if alg == "HS256" and settings.SUPABASE_JWT_SECRET:
             return jwt.decode(
                 token,
@@ -48,6 +49,7 @@ def verify_token(token: str) -> dict:
                 algorithms=["HS256"],
                 audience="authenticated",
                 options=decode_opts,
+                leeway=60,
             )
         if alg in ("RS256", "ES256"):
             global _jwks_client
@@ -61,6 +63,7 @@ def verify_token(token: str) -> dict:
                 algorithms=[alg],
                 audience="authenticated",
                 options=decode_opts,
+                leeway=60,
             )
     except jwt.ExpiredSignatureError:
         raise HTTPException(

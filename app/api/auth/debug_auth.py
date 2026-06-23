@@ -8,7 +8,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.api.auth import verify_token
+from app.api.auth.jwt import verify_token
 from app.services.usuario_service import UsuarioService
 from sqlalchemy.orm import Session
 

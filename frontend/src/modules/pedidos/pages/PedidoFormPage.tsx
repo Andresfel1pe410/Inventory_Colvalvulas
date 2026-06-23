@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
 import { ClienteSearchSelect, ProductoSearchSelect } from '@/shared/components'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { usePedidoCreate } from '../hooks/usePedidos'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
@@ -17,6 +18,7 @@ interface LineaDetalle {
 
 export function PedidoFormPage() {
   const navigate = useNavigate()
+  const sectionPath = useSectionPath()
   const user = useAuthStore((s) => s.user)
   const listasDisponibles =
     user?.listas_precio && user.listas_precio.length > 0
@@ -95,7 +97,7 @@ export function PedidoFormPage() {
         }),
       }
       await createMutation.mutateAsync(payload)
-      navigate('/pedidos')
+      navigate(sectionPath('/pedidos'))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear pedido')
     }
@@ -327,7 +329,7 @@ export function PedidoFormPage() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/pedidos')}
+            onClick={() => navigate(sectionPath('/pedidos'))}
             className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
           >
             Cancelar

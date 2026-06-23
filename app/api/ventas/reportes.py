@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.auth import get_current_user
+from app.api.auth.jwt import get_current_user
 from app.core.database import get_db
 from app.models import Pedido, Usuario, Cliente, DetallePedido, Producto
 from app.repositories.usuario_repository import UsuarioRepository
@@ -221,74 +221,73 @@ def top_clientes_productos_acumulado(
     """
     _require_admin(db, current_user)
 
-    try:
-        meses = sorted({int(x.strip()) for x in months.split(",") if x.strip()})
-    except ValueError:
-        raise HTTPException(400, "Parámetro 'months' inválido")
-    if not meses:
-        return {"year": year, "months": [], "top_clientes": [], "top_productos": []}
+    month_list = [int(m.strip()) for m in months.split(",") if m.strip()]
+    if not month_list:
+        raise HTTPException(400, "Debe indicar al menos un mes válido")
 
-    # Filtrar por año y meses seleccionados
-    q_base = db.query(Pedido).filter(
-        Pedido.estado == "enviado",
-        Pedido.fecha_envio.isnot(None),
-        func.extract("year", Pedido.fecha_envio) == year,
-        func.extract("month", Pedido.fecha_envio).in_(meses),
-    )
+    start = datetime(year, min(month_list), 1, 0, 0, 0, tzinfo=timezone.utc)
+    end = datetime(year, max(month_list), 31, 23, 59, 59, tzinfo=timezone.utc)
 
-    top_clientes_rows = (
+    clientes_q = (
         db.query(
             Pedido.cliente_id,
-            func.sum(Pedido.total).label("total"),
             Cliente.razon_social,
+            func.sum(Pedido.total).label("total"),
         )
         .join(Cliente, Cliente.id == Pedido.cliente_id)
-        .filter(q_base.whereclause)
+        .filter(
+            Pedido.estado == "enviado",
+            Pedido.fecha_envio.isnot(None),
+            Pedido.fecha_envio >= start,
+            Pedido.fecha_envio <= end,
+        )
         .group_by(Pedido.cliente_id, Cliente.razon_social)
         .order_by(func.sum(Pedido.total).desc())
     )
-    if limit and limit > 0:
-        top_clientes_rows = top_clientes_rows.limit(limit)
-    top_clientes_rows = top_clientes_rows.all()
-    top_clientes = [
-        {
-            "cliente_id": int(cid),
-            "nombre": raz or f"Cliente #{cid}",
-            "total": float(total or 0),
-        }
-        for cid, total, raz in top_clientes_rows
-    ]
+    if limit > 0:
+        clientes_q = clientes_q.limit(limit)
+    top_clientes_rows = clientes_q.all()
 
-    top_productos_rows = (
+    productos_q = (
         db.query(
             DetallePedido.producto_id,
-            func.sum(DetallePedido.cantidad).label("cantidad"),
             Producto.referencia,
             Producto.material,
+            func.sum(DetallePedido.cantidad).label("cantidad"),
         )
         .join(Pedido, DetallePedido.pedido_id == Pedido.id)
         .join(Producto, Producto.id == DetallePedido.producto_id)
-        .filter(q_base.whereclause)
+        .filter(
+            Pedido.estado == "enviado",
+            Pedido.fecha_envio.isnot(None),
+            Pedido.fecha_envio >= start,
+            Pedido.fecha_envio <= end,
+        )
         .group_by(DetallePedido.producto_id, Producto.referencia, Producto.material)
         .order_by(func.sum(DetallePedido.cantidad).desc())
     )
-    if limit and limit > 0:
-        top_productos_rows = top_productos_rows.limit(limit)
-    top_productos_rows = top_productos_rows.all()
-    top_productos = [
-        {
-            "producto_id": int(pid),
-            "referencia": ref or f"Producto #{pid}",
-            "material": mat or "",
-            "cantidad": int(cant or 0),
-        }
-        for pid, cant, ref, mat in top_productos_rows
-    ]
+    if limit > 0:
+        productos_q = productos_q.limit(limit)
+    top_productos_rows = productos_q.all()
 
     return {
         "year": year,
-        "months": meses,
-        "top_clientes": top_clientes,
-        "top_productos": top_productos,
+        "months": month_list,
+        "top_clientes": [
+            {
+                "cliente_id": int(cid),
+                "nombre": raz or f"Cliente #{cid}",
+                "total_mes": float(total or 0),
+            }
+            for cid, raz, total in top_clientes_rows
+        ],
+        "top_productos": [
+            {
+                "producto_id": int(pid),
+                "referencia": ref or f"Producto #{pid}",
+                "material": mat or "",
+                "cantidad": int(cant or 0),
+            }
+            for pid, ref, mat, cant in top_productos_rows
+        ],
     }
-

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.auth import get_current_user
+from app.api.auth.jwt import get_current_user
 from app.core.database import get_db
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
@@ -19,7 +19,7 @@ class MeResponse(BaseModel):
     listas_precio: list[str] | None  # Solo para vendedor; None = admin (todas)
 
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 @router.get("/me", response_model=MeResponse)

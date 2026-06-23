@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useIsFetching } from '@tanstack/react-query'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { logout as authLogout } from '@/modules/auth/services/auth.service'
+import { getSectionFromPath, type AppSection, useSectionPath } from '../routing/sectionPath'
 
 const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
 
@@ -14,16 +15,25 @@ interface NavItem {
   icon: React.ReactNode
 }
 
-const navItems: NavItem[] = [
+const ventasNavItems: NavItem[] = [
   { to: '/clientes', label: 'Clientes', roles: ['admin'], icon: <ClientsIcon /> },
   { to: '/productos', label: 'Productos', vendedor: true, icon: <ProductsIcon /> },
   { to: '/inventario', label: 'Inventario', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
-  { to: '/inventario-proceso', label: 'Inventario de Proceso', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
   { to: '/pedidos', label: 'Pedidos', vendedor: true, icon: <OrdersIcon /> },
   { to: '/control-pedidos', label: 'Control Pedidos', vendedor: true, icon: <ControlIcon /> },
   { to: '/graficas', label: 'Reportes', roles: ['admin'], icon: <ChartIcon /> },
   { to: '/remisiones', label: 'Remisiones', roles: ['admin'], icon: <RemisionIcon /> },
   { to: '/usuarios', label: 'Usuarios', roles: ['admin'], icon: <UsersIcon /> },
+]
+
+const legacyNavItems: NavItem[] = [
+  ...ventasNavItems.slice(0, 3),
+  { to: '/inventario-proceso', label: 'Inventario de Proceso', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
+  ...ventasNavItems.slice(3),
+]
+
+const procesoNavItems: NavItem[] = [
+  { to: '/inventario-proceso', label: 'Inventario de Proceso', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
 ]
 
 function ClientsIcon() {
@@ -99,12 +109,19 @@ const MenuIcon = () => (
   </svg>
 )
 
-export function Sidebar() {
+interface SidebarProps {
+  section?: AppSection
+}
+
+export function Sidebar({ section = getSectionFromPath(window.location.pathname) }: SidebarProps) {
   const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
   const location = useLocation()
   const isFetching = useIsFetching() > 0
+  const sectionPath = useSectionPath()
+
+  const navItems = section === 'proceso' ? procesoNavItems : section === 'ventas' ? ventasNavItems : legacyNavItems
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -193,13 +210,14 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {itemsToShow.map((item) => {
           const blocked = 'blocked' in item && item.blocked
-          const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + '/')
+          const targetPath = sectionPath(item.to)
+          const isActive = location.pathname === targetPath || location.pathname.startsWith(targetPath + '/')
           const navDisabled = !blocked && isFetching
 
           if (blocked) {
             return (
               <div
-                key={item.to}
+                key={targetPath}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-red-600/80"
                 title="Sin acceso"
               >
@@ -212,7 +230,7 @@ export function Sidebar() {
           if (navDisabled) {
             return (
               <div
-                key={item.to}
+                key={targetPath}
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
                   collapsed ? 'justify-center' : ''
                 } ${
@@ -230,8 +248,8 @@ export function Sidebar() {
 
           return (
             <NavLink
-              key={item.to}
-              to={item.to}
+              key={targetPath}
+              to={targetPath}
               title={collapsed ? item.label : undefined}
               className={({ isActive: active }) =>
                 `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${

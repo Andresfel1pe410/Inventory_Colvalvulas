@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, Pagination, PageLoading } from '@/shared/components'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { useRemisionesList } from '../hooks/useRemisiones'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import type { Remision } from '../types/remision.types'
 
 export function RemisionesListPage() {
+  const sectionPath = useSectionPath()
   const [page, setPage] = useState(1)
   const limit = 20
 
@@ -42,7 +44,7 @@ export function RemisionesListPage() {
       render: (r) =>
         r.pedido_id ? (
           <Link
-            to={`/pedidos/${r.pedido_id}`}
+            to={sectionPath(`/pedidos/${r.pedido_id}`)}
             className="rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
           >
             Ver pedido

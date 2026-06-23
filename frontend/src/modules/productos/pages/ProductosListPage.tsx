@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { DataTable, Column, ConfirmDialog, PageLoading } from '@/shared/components'
 import { formatPesos } from '@/shared/utils/format'
+import { useSectionPath } from '@/app/routing/sectionPath'
 import { useProductosList, useProductoDelete } from '../hooks/useProductos'
 import { LISTAS_PRECIOS, LISTA_LABELS } from '../types/producto.types'
 import type { Producto } from '../types/producto.types'
@@ -39,6 +40,7 @@ function buildListaColumns(listas: readonly string[]): Column<Producto>[] {
 }
 
 export function ProductosListPage() {
+  const sectionPath = useSectionPath()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.roles?.includes('admin')
   const listasVendedor =
@@ -104,7 +106,7 @@ export function ProductosListPage() {
           </select>
           {isAdmin && (
             <Link
-              to="/productos/nuevo"
+              to={sectionPath('/productos/nuevo')}
               className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
             >
               Nuevo producto
@@ -128,7 +130,7 @@ export function ProductosListPage() {
                       render: (p: Producto) => (
                         <div className="flex gap-2">
                           <Link
-                            to={`/productos/${p.id}/editar`}
+                            to={sectionPath(`/productos/${p.id}/editar`)}
                             className="text-primary-600 hover:underline"
                           >
                             Editar

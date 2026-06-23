@@ -1,5 +1,5 @@
-import { AppRoutes } from './routes/routes'
+import { RootApp } from '@/apps/root/RootApp'
 
 export default function App() {
-  return <AppRoutes />
+  return <RootApp />
 }

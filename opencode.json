@@ -1,0 +1,29 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Local",
+      "options": {
+        "baseURL": "http://localhost:11434/v1"
+      },
+      "models": {
+        "qwen3-coder:14b-64k": {
+          "name": "Qwen3 Coder 14B 64k"
+        }
+      }
+    }
+  },
+
+  "model": "ollama/qwen3-coder:14b-64k",
+  "small_model": "ollama/qwen3-coder:14b-64k",
+
+  "tools": {
+    "write": true,
+    "edit": true,
+    "bash": true
+  },
+
+  "shell": "pwsh"
+}

@@ -12,19 +12,10 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
 from app.core.exceptions import AppException
-from app.api.routers import (
-    auth_router,
-    clientes,
-    productos,
-    inventario,
-    inventario_proceso,
-    pedidos,
-    remisiones,
-    usuarios,
-    roles,
-    debug_auth,
-    reportes,
-)
+from app.api.auth.auth_router import router as auth_router
+from app.api.auth.debug_auth import router as debug_auth
+from app.api.ventas import clientes, productos, inventario, pedidos, remisiones, usuarios, roles, reportes
+from app.api.proceso import inventario_proceso
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -75,22 +66,39 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
-app.include_router(auth_router.router, prefix=settings.API_V1_PREFIX)
-app.include_router(clientes.router, prefix=settings.API_V1_PREFIX)
-app.include_router(productos.router, prefix=settings.API_V1_PREFIX)
-app.include_router(inventario.router, prefix=settings.API_V1_PREFIX)
-app.include_router(inventario_proceso.router, prefix=settings.API_V1_PREFIX)
-app.include_router(pedidos.router, prefix=settings.API_V1_PREFIX)
-app.include_router(remisiones.router, prefix=settings.API_V1_PREFIX)
-app.include_router(usuarios.router, prefix=settings.API_V1_PREFIX)
-app.include_router(roles.router, prefix=settings.API_V1_PREFIX)
-app.include_router(debug_auth.router, prefix=settings.API_V1_PREFIX)
-app.include_router(reportes.router, prefix=settings.API_V1_PREFIX)
+ventas_prefix = f"{settings.API_V1_PREFIX}/ventas"
+proceso_prefix = f"{settings.API_V1_PREFIX}/proceso"
+auth_prefix = f"{settings.API_V1_PREFIX}/auth"
+
+app.include_router(auth_router, prefix=auth_prefix)
+app.include_router(debug_auth, prefix=auth_prefix)
+app.include_router(debug_auth, prefix=settings.API_V1_PREFIX)
+
+for api_prefix in (settings.API_V1_PREFIX, ventas_prefix):
+    app.include_router(clientes, prefix=api_prefix)
+    app.include_router(productos, prefix=api_prefix)
+    app.include_router(inventario, prefix=api_prefix)
+    app.include_router(pedidos, prefix=api_prefix)
+    app.include_router(remisiones, prefix=api_prefix)
+    app.include_router(usuarios, prefix=api_prefix)
+    app.include_router(roles, prefix=api_prefix)
+    app.include_router(reportes, prefix=api_prefix)
+
+for api_prefix in (settings.API_V1_PREFIX, proceso_prefix):
+    app.include_router(inventario_proceso, prefix=api_prefix)
 
 
 @app.get("/")
 def root():
-    return {"message": "ERP Inventario API", "docs": "/docs"}
+    return {
+        "message": "ERP Inventario API",
+        "docs": "/docs",
+        "apis": {
+            "auth": auth_prefix,
+            "ventas": ventas_prefix,
+            "proceso": proceso_prefix,
+        },
+    }
 
 
 @app.get("/health")
