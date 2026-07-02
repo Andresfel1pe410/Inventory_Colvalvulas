@@ -12,6 +12,23 @@ export interface VentasVendedoresResponse {
   avg_dias_envio: number | null
 }
 
+export interface VendedorPedidosMesResponse {
+  year: number
+  month: number
+  usuario_id: number
+  vendedor: string
+  total_vendido: number
+  cantidad_pedidos: number
+  pedidos: {
+    pedido_id: number
+    numero_pedido: string
+    cliente: string
+    total: number
+    fecha_envio: string | null
+    observaciones?: string | null
+  }[]
+}
+
 export interface TopClientesProductosAcumuladoResponse {
   year: number
   months: number[]
@@ -23,6 +40,13 @@ export const reportesService = {
   ventasVendedores: (params?: { year?: number; month?: number }) =>
     api
       .get<VentasVendedoresResponse>('/reportes/ventas-vendedores', { params })
+      .then((r) => r.data),
+
+  ventasVendedorPedidos: (params: { year?: number; month?: number; usuarioId: number }) =>
+    api
+      .get<VendedorPedidosMesResponse>(`/reportes/ventas-vendedores/${params.usuarioId}/pedidos`, {
+        params: { year: params.year, month: params.month },
+      })
       .then((r) => r.data),
 
   topClientesProductosAcumulado: (params: { year: number; months: number[] }) =>

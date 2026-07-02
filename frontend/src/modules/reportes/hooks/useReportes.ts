@@ -9,3 +9,16 @@ export function useVentasVendedores(params?: { year?: number; month?: number }) 
   })
 }
 
+export function useVentasVendedorPedidos(params: { year?: number; month?: number; usuarioId: number | null }) {
+  return useQuery({
+    queryKey: ['reportes', 'ventas-vendedor-pedidos', params] as const,
+    queryFn: () =>
+      reportesService.ventasVendedorPedidos({
+        year: params.year,
+        month: params.month,
+        usuarioId: params.usuarioId as number,
+      }),
+    enabled: params.usuarioId != null && params.usuarioId > 0,
+  })
+}
+

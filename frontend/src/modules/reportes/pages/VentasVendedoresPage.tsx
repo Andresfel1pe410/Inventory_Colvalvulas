@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageLoading } from '@/shared/components'
 import { useVentasVendedores } from '../hooks/useReportes'
+import { useVentasVendedorPedidos } from '../hooks/useReportes'
 import { useTopClientesProductosAcumulado } from '../hooks/useTopAcumulado'
 import { reportesService } from '../services/reportes.service'
 
@@ -48,6 +49,12 @@ function colorForIndex(i: number): string {
 
 type Serie = { key: string; label: string; values: number[]; color: string }
 
+type VendorSummary = {
+  usuario_id: number
+  nombre: string
+  total_mes: number
+}
+
 export function VentasVendedoresPage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -55,6 +62,8 @@ export function VentasVendedoresPage() {
   const [acumYear, setAcumYear] = useState(now.getFullYear())
   const [acumMonths, setAcumMonths] = useState<number[]>([now.getMonth() + 1])
   const [isPrinting, setIsPrinting] = useState(false)
+  const [activeVendorId, setActiveVendorId] = useState<number | null>(null)
+  const [pinnedVendorId, setPinnedVendorId] = useState<number | null>(null)
 
   const { data, isLoading, error, refetch, isFetching } = useVentasVendedores({ year, month })
   const {
@@ -75,6 +84,23 @@ export function VentasVendedoresPage() {
     }))
   }, [data])
 
+  const activeVendor = useMemo(() => {
+    if (!data || activeVendorId == null) return null
+    return data.vendedores.find((v) => v.usuario_id === activeVendorId) || null
+  }, [data, activeVendorId])
+
+  const detailsVendorId = pinnedVendorId ?? activeVendorId
+  const { data: vendorPedidos, isFetching: fetchingVendorPedidos } = useVentasVendedorPedidos({
+    year,
+    month,
+    usuarioId: detailsVendorId,
+  })
+
+  useEffect(() => {
+    setActiveVendorId(null)
+    setPinnedVendorId(null)
+  }, [year, month])
+
   const colorByKey = useMemo(() => {
     const map: Record<string, string> = {}
     series.forEach((s) => {
@@ -82,6 +108,26 @@ export function VentasVendedoresPage() {
     })
     return map
   }, [series])
+
+  const openVendor = (vendor: VendorSummary) => {
+    setActiveVendorId(vendor.usuario_id)
+  }
+
+  const togglePinnedVendor = (vendor: VendorSummary) => {
+    setPinnedVendorId((current) => {
+      if (current === vendor.usuario_id) {
+        setActiveVendorId(null)
+        return null
+      }
+      setActiveVendorId(vendor.usuario_id)
+      return vendor.usuario_id
+    })
+  }
+
+  const closeVendor = () => {
+    setPinnedVendorId(null)
+    setActiveVendorId(null)
+  }
 
   const maxY = useMemo(() => {
     if (!series.length) return 0
@@ -348,26 +394,131 @@ export function VentasVendedoresPage() {
   
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold text-slate-900">Resumen por vendedor</h3>
-            <p className="mt-1 text-xs text-slate-500">Total vendido en el mes</p>
-            <div className="mt-3 space-y-2">
-              {data.vendedores.length === 0 ? (
-                <p className="text-sm text-slate-600">Sin ventas en el mes.</p>
-              ) : (
-                data.vendedores.map((v) => (
-                  <div key={v.usuario_id} className="rounded-md border border-slate-200 px-3 py-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: colorByKey[String(v.usuario_id)] || '#94a3b8' }}
-                        title="Color en la gráfica"
-                      />
-                      <span className="truncate">{v.nombre}</span>
+            <p className="mt-1 text-xs text-slate-500">Pasa el mouse o haz clic para ver sus pedidos enviados del mes.</p>
+            <div className="relative mt-3">
+              <div className="space-y-2 md:pr-[392px]">
+                {data.vendedores.length === 0 ? (
+                  <p className="text-sm text-slate-600">Sin ventas en el mes.</p>
+                ) : (
+                  data.vendedores.map((v) => {
+                    const isActive = (activeVendorId ?? pinnedVendorId) === v.usuario_id
+                    return (
+                      <button
+                        key={v.usuario_id}
+                        type="button"
+                        onMouseEnter={() => openVendor(v)}
+                        onMouseLeave={() => {
+                          if (pinnedVendorId !== v.usuario_id) {
+                            setActiveVendorId(null)
+                          }
+                        }}
+                        onFocus={() => openVendor(v)}
+                        onClick={() => togglePinnedVendor(v)}
+                        className={`w-full rounded-xl border px-3 py-2 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
+                          isActive ? 'border-primary-300 bg-primary-50 shadow-sm' : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-900">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: colorByKey[String(v.usuario_id)] || '#94a3b8' }}
+                              title="Color en la gráfica"
+                            />
+                            <span className="truncate">{v.nombre}</span>
+                          </div>
+                          <div className="whitespace-nowrap text-sm font-semibold text-slate-900">
+                            {formatCOP(v.total_mes)}
+                          </div>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                          <span>{v.usuario_id === pinnedVendorId ? 'Fijado' : 'Ver pedidos del mes'}</span>
+                          <span>Haz clic para fijar</span>
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+
+              {activeVendor && (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-800 p-4 text-white shadow-2xl md:absolute md:right-0 md:top-0 md:mt-0 md:w-[372px]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Pedidos enviados</p>
+                      <h4 className="mt-1 text-base font-semibold">{activeVendor.nombre}</h4>
+                      <p className="text-sm text-slate-300">
+                        {vendorPedidos?.cantidad_pedidos ?? 0} pedidos en {monthLabel(year, month)}
+                      </p>
                     </div>
-                    <div className="text-xs text-slate-600">
-                      {formatCOP(v.total_mes)}
+                    <button
+                      type="button"
+                      onClick={closeVendor}
+                      className="rounded-full border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-xl bg-white/10 px-3 py-2">
+                      <div className="text-[11px] uppercase text-slate-300">Total vendido</div>
+                      <div className="mt-1 font-semibold">
+                        {fetchingVendorPedidos ? '...' : formatCOP(vendorPedidos?.total_vendido || 0)}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-white/10 px-3 py-2">
+                      <div className="text-[11px] uppercase text-slate-300">Pedidos</div>
+                      <div className="mt-1 font-semibold">{vendorPedidos?.cantidad_pedidos ?? 0}</div>
                     </div>
                   </div>
-                ))
+
+                  <div className="mt-4 max-h-[340px] overflow-auto pr-1">
+                    {fetchingVendorPedidos ? (
+                      <div className="rounded-xl bg-white/5 px-3 py-4 text-sm text-slate-300">
+                        Cargando pedidos...
+                      </div>
+                    ) : !vendorPedidos || vendorPedidos.pedidos.length === 0 ? (
+                      <div className="rounded-xl bg-white/5 px-3 py-4 text-sm text-slate-300">
+                        No hay pedidos enviados para este vendedor en el mes.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {vendorPedidos.pedidos.map((pedido) => (
+                          <div key={pedido.pedido_id} className="rounded-xl border border-white/10 bg-white/8 px-3 py-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <div className="text-sm font-semibold">{pedido.numero_pedido}</div>
+                                <div className="text-xs text-slate-300">{pedido.cliente}</div>
+                              </div>
+                              <div className="text-right text-sm font-semibold">
+                                {formatCOP(pedido.total)}
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-300">
+                              <span>
+                                {pedido.fecha_envio
+                                  ? new Date(pedido.fecha_envio).toLocaleDateString('es-CO', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    })
+                                  : 'Sin fecha'}
+                              </span>
+                              {pedido.observaciones ? (
+                                <span className="truncate max-w-[180px]" title={pedido.observaciones}>
+                                  {pedido.observaciones}
+                                </span>
+                              ) : (
+                                <span>Sin observaciones</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             <div className="mt-4 border-t border-slate-200 pt-3">

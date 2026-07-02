@@ -208,6 +208,73 @@ def ventas_por_vendedor_mes(
     }
 
 
+@router.get("/ventas-vendedores/{usuario_id}/pedidos")
+def ventas_vendedor_pedidos_mes(
+    usuario_id: int,
+    year: int | None = Query(None, ge=2000, le=2100),
+    month: int | None = Query(None, ge=1, le=12),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Pedidos enviados de un vendedor en el mes indicado."""
+    _require_admin(db, current_user)
+
+    now = datetime.now(timezone.utc)
+    y = year or now.year
+    m = month or now.month
+
+    _, days_in_month = calendar.monthrange(y, m)
+    start = datetime(y, m, 1, 0, 0, 0, tzinfo=timezone.utc)
+    end = datetime(y, m, days_in_month, 23, 59, 59, tzinfo=timezone.utc)
+
+    vendedor = db.query(Usuario.id, Usuario.nombre, Usuario.apellido, Usuario.email).filter(Usuario.id == usuario_id).first()
+    if not vendedor:
+        raise HTTPException(404, "Vendedor no encontrado")
+
+    pedidos_rows = (
+        db.query(
+            Pedido.id,
+            Pedido.numero_pedido,
+            Pedido.total,
+            Pedido.fecha_envio,
+            Pedido.observaciones,
+            Cliente.razon_social.label("cliente_nombre"),
+        )
+        .join(Cliente, Cliente.id == Pedido.cliente_id)
+        .filter(
+            Pedido.estado == "enviado",
+            Pedido.usuario_id == usuario_id,
+            Pedido.fecha_envio.isnot(None),
+            Pedido.fecha_envio >= start,
+            Pedido.fecha_envio <= end,
+        )
+        .order_by(Pedido.fecha_envio.desc(), Pedido.id.desc())
+        .all()
+    )
+
+    vendedor_nombre = f"{vendedor.nombre} {vendedor.apellido}".strip() or vendedor.email
+
+    return {
+        "year": y,
+        "month": m,
+        "usuario_id": int(vendedor.id),
+        "vendedor": vendedor_nombre,
+        "pedidos": [
+            {
+                "pedido_id": int(pid),
+                "numero_pedido": numero,
+                "cliente": cliente_nombre,
+                "total": float(total or 0),
+                "fecha_envio": fecha.isoformat() if fecha else None,
+                "observaciones": observaciones,
+            }
+            for pid, numero, total, fecha, observaciones, cliente_nombre in pedidos_rows
+        ],
+        "total_vendido": float(sum(float(total or 0) for _, _, total, _, _, _ in pedidos_rows)),
+        "cantidad_pedidos": len(pedidos_rows),
+    }
+
+
 @router.get("/top-clientes-productos")
 def top_clientes_productos_acumulado(
     year: int = Query(..., ge=2000, le=2100),

@@ -41,6 +41,8 @@ export const queryKeys = {
     all: ['reportes'] as const,
     ventasVendedores: (params?: { year?: number; month?: number }) =>
       ['reportes', 'ventas-vendedores', params] as const,
+    ventasVendedorPedidos: (params?: { year?: number; month?: number; usuarioId?: number | null }) =>
+      ['reportes', 'ventas-vendedor-pedidos', params] as const,
     topAcumulado: (params: { year: number; months: number[] }) =>
       ['reportes', 'top-acumulado', params] as const,
   },
