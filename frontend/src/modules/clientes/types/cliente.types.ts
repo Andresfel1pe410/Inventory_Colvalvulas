@@ -1,3 +1,5 @@
+export type EstadoCliente = 'enviar' | 'enviar_parcial' | 'no_enviar' | 'solo_contado'
+
 export interface Cliente {
   id: number
   razon_social: string
@@ -15,6 +17,7 @@ export interface Cliente {
   responsabilidad_fiscal?: string
   detalles_tributarios?: string
   vendedor?: string
+  estado_cliente: EstadoCliente
   created_at: string
   updated_at: string
 }
@@ -35,6 +38,7 @@ export interface ClienteCreate {
   responsabilidad_fiscal?: string
   detalles_tributarios?: string
   vendedor?: string
+  estado_cliente?: EstadoCliente
 }
 
 export interface ClienteUpdate {
@@ -53,6 +57,7 @@ export interface ClienteUpdate {
   responsabilidad_fiscal?: string
   detalles_tributarios?: string
   vendedor?: string
+  estado_cliente?: EstadoCliente
 }
 
 export const TIPOS_DOCUMENTO = ['NIT', 'CC'] as const

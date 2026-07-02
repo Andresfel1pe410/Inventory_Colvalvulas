@@ -2,79 +2,27 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   DataTable,
-  Column,
   ConfirmDialog,
   CopyableCell,
   PageLoading,
 } from '@/shared/components'
 import { useSectionPath } from '@/app/routing/sectionPath'
-import { useClientesList, useClienteDelete } from '../hooks/useClientes'
-import type { Cliente } from '../types/cliente.types'
+import { useClientesList, useClienteDelete, useClienteUpdate } from '../hooks/useClientes'
+import type { Cliente, EstadoCliente } from '../types/cliente.types'
 
-const columns: Column<Cliente>[] = [
-  {
-    key: 'tipo_documento',
-    header: 'Tipo Doc.',
-    width: '80px',
-    render: (c) => <CopyableCell value={c.tipo_documento} truncate={false} />,
-  },
-  {
-    key: 'numero_identificacion',
-    header: 'Nº Documento',
-    width: '120px',
-    render: (c) => (
-      <CopyableCell value={c.numero_identificacion} maxWidth="100px" truncate />
-    ),
-  },
-  {
-    key: 'razon_social',
-    header: 'Razón Social',
-    width: '280px',
-    render: (c) => (
-      <CopyableCell value={c.razon_social} maxWidth="260px" truncate />
-    ),
-  },
-  {
-    key: 'departamento',
-    header: 'Departamento',
-    width: '140px',
-    render: (c) => (
-      <CopyableCell value={c.departamento || ''} maxWidth="120px" truncate />
-    ),
-  },
-  {
-    key: 'ciudad',
-    header: 'Ciudad',
-    width: '140px',
-    render: (c) => (
-      <CopyableCell value={c.ciudad || ''} maxWidth="120px" truncate />
-    ),
-  },
-  {
-    key: 'email',
-    header: 'Correo',
-    width: '200px',
-    render: (c) => (
-      <CopyableCell value={c.email || ''} maxWidth="180px" truncate />
-    ),
-  },
-  {
-    key: 'telefono',
-    header: 'Teléfono',
-    width: '110px',
-    render: (c) => (
-      <CopyableCell value={c.telefono || ''} maxWidth="90px" truncate />
-    ),
-  },
-  {
-    key: 'vendedor',
-    header: 'Vendedor',
-    width: '80px',
-    render: (c) => (
-      <CopyableCell value={c.vendedor || ''} truncate={false} />
-    ),
-  },
+const ESTADOS_CLIENTE: { value: EstadoCliente; label: string }[] = [
+  { value: 'enviar', label: 'Enviar' },
+  { value: 'enviar_parcial', label: 'Enviar Parcial' },
+  { value: 'no_enviar', label: 'No enviar' },
+  { value: 'solo_contado', label: 'Solo De Contado' },
 ]
+
+const COLOR_ESTADO: Record<EstadoCliente, string> = {
+  enviar: 'bg-green-100 text-green-800 border-green-300',
+  enviar_parcial: 'bg-amber-100 text-amber-800 border-amber-300',
+  no_enviar: 'bg-red-100 text-red-800 border-red-300',
+  solo_contado: 'bg-slate-100 text-slate-800 border-slate-300',
+}
 
 export function ClientesListPage() {
   const sectionPath = useSectionPath()
@@ -92,6 +40,18 @@ export function ClientesListPage() {
     limit: 10000,
   })
   const deleteMutation = useClienteDelete()
+  const updateMutation = useClienteUpdate()
+
+  const handleEstadoChange = async (cliente: Cliente, estado_cliente: EstadoCliente) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: cliente.id,
+        data: { estado_cliente },
+      })
+    } catch {
+      // Error manejado por interceptor
+    }
+  }
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -129,7 +89,87 @@ export function ClientesListPage() {
         <>
           <DataTable
             columns={[
-              ...columns,
+              {
+                key: 'tipo_documento',
+                header: 'Tipo Doc.',
+                width: '80px',
+                render: (c) => <CopyableCell value={c.tipo_documento} truncate={false} />,
+              },
+              {
+                key: 'numero_identificacion',
+                header: 'Nº Documento',
+                width: '120px',
+                render: (c) => (
+                  <CopyableCell value={c.numero_identificacion} maxWidth="100px" truncate />
+                ),
+              },
+              {
+                key: 'razon_social',
+                header: 'Razón Social',
+                width: '280px',
+                render: (c) => (
+                  <CopyableCell value={c.razon_social} maxWidth="260px" truncate />
+                ),
+              },
+              {
+                key: 'estado_cliente',
+                header: 'Estado Cliente',
+                width: '180px',
+                render: (c) => (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={c.estado_cliente}
+                      onChange={(e) => handleEstadoChange(c, e.target.value as EstadoCliente)}
+                      disabled={updateMutation.isPending}
+                      className={`rounded-md border px-2 py-1 text-sm ${COLOR_ESTADO[c.estado_cliente]}`}
+                    >
+                      {ESTADOS_CLIENTE.map((estado) => (
+                        <option key={estado.value} value={estado.value}>
+                          {estado.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ),
+              },
+              {
+                key: 'departamento',
+                header: 'Departamento',
+                width: '140px',
+                render: (c) => (
+                  <CopyableCell value={c.departamento || ''} maxWidth="120px" truncate />
+                ),
+              },
+              {
+                key: 'ciudad',
+                header: 'Ciudad',
+                width: '140px',
+                render: (c) => (
+                  <CopyableCell value={c.ciudad || ''} maxWidth="120px" truncate />
+                ),
+              },
+              {
+                key: 'email',
+                header: 'Correo',
+                width: '200px',
+                render: (c) => (
+                  <CopyableCell value={c.email || ''} maxWidth="180px" truncate />
+                ),
+              },
+              {
+                key: 'telefono',
+                header: 'Teléfono',
+                width: '110px',
+                render: (c) => (
+                  <CopyableCell value={c.telefono || ''} maxWidth="90px" truncate />
+                ),
+              },
+              {
+                key: 'vendedor',
+                header: 'Vendedor',
+                width: '80px',
+                render: (c) => <CopyableCell value={c.vendedor || ''} truncate={false} />,
+              },
               {
                 key: 'actions',
                 header: 'Acciones',

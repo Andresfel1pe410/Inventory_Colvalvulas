@@ -7,7 +7,7 @@ export interface DetallePedido {
   subtotal: number
 }
 
-export type IntencionEnvio = 'enviar' | 'enviar_parcial' | 'no_enviar'
+export type IntencionEnvio = 'enviar' | 'enviar_parcial' | 'no_enviar' | 'solo_contado'
 
 export interface Pedido {
   id: number

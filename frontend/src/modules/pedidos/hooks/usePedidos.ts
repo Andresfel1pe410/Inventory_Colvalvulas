@@ -145,7 +145,7 @@ export function usePedidoUpdateIntencionEnvio() {
       intencion_envio,
     }: {
       id: number
-      intencion_envio: 'enviar' | 'enviar_parcial' | 'no_enviar' | null
+      intencion_envio: 'enviar' | 'enviar_parcial' | 'no_enviar' | 'solo_contado' | null
     }) => pedidoService.updateIntencionEnvio(id, intencion_envio),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: queryKeys.pedidos.all })

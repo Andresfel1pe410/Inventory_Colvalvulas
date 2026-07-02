@@ -47,6 +47,9 @@ class Usuario(UsuarioBase):
 
 
 # ============= CLIENTE =============
+ESTADOS_CLIENTE = ("enviar", "enviar_parcial", "no_enviar", "solo_contado")
+
+
 class ClienteBase(BaseModel):
     razon_social: str
     tipo_documento: str  # NIT, CC
@@ -63,6 +66,7 @@ class ClienteBase(BaseModel):
     responsabilidad_fiscal: Optional[str] = None
     detalles_tributarios: Optional[str] = None
     vendedor: Optional[str] = None
+    estado_cliente: str = Field(default="enviar", pattern="^(enviar|enviar_parcial|no_enviar|solo_contado)$")
 
 
 class ClienteCreate(ClienteBase):
@@ -85,6 +89,9 @@ class ClienteUpdate(BaseModel):
     responsabilidad_fiscal: Optional[str] = None
     detalles_tributarios: Optional[str] = None
     vendedor: Optional[str] = None
+    estado_cliente: Optional[str] = Field(
+        None, pattern="^(enviar|enviar_parcial|no_enviar|solo_contado)$"
+    )
 
 
 class Cliente(ClienteBase):
@@ -300,7 +307,7 @@ class PedidoIntencionUpdate(BaseModel):
     """Actualización de intención de envío."""
     intencion_envio: Optional[str] = Field(
         None,
-        pattern="^(enviar|enviar_parcial|no_enviar)$",
+        pattern="^(enviar|enviar_parcial|no_enviar|solo_contado)$",
     )
 
 
@@ -322,7 +329,7 @@ class Pedido(PedidoBase):
     numero_factura: Optional[str] = None
     numero_guia: Optional[str] = None
     resumen_envio: Optional[str] = None
-    intencion_envio: Optional[str] = None  # enviar, enviar_parcial, no_enviar
+    intencion_envio: Optional[str] = None  # enviar, enviar_parcial, no_enviar, solo_contado
     lista_precios: Optional[str] = None
     descuento: Decimal = 0
     impreso: bool = False

@@ -55,7 +55,10 @@ export const pedidoService = {
   desmarcarEnviado: (id: number) =>
     api.post<PedidoConDetalles>(`/pedidos/${id}/desmarcar-enviado`).then((r) => r.data),
 
-  updateIntencionEnvio: (id: number, intencion_envio: 'enviar' | 'enviar_parcial' | 'no_enviar' | null) =>
+  updateIntencionEnvio: (
+    id: number,
+    intencion_envio: 'enviar' | 'enviar_parcial' | 'no_enviar' | 'solo_contado' | null,
+  ) =>
     api.patch<PedidoConDetalles>(`/pedidos/${id}/intencion-envio`, { intencion_envio }).then((r) => r.data),
 
   update: (id: number, data: PedidoUpdateFull) =>

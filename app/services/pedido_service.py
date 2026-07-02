@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from app.core.exceptions import NotFoundError, ValidationError, ForbiddenError
 from app.models import Pedido, DetallePedido, Producto
+from app.repositories.cliente_repository import ClienteRepository
 from app.repositories.pedido_repository import PedidoRepository
 from app.repositories.producto_repository import ProductoRepository
 from app.repositories.usuario_repository import UsuarioRepository
@@ -12,6 +13,7 @@ from app.schemas import PedidoCreate, PedidoUpdateFull, DetallePedidoCreate
 ESTADOS_VALIDOS = ("en_espera", "en_proceso", "enviado", "cancelado")
 TRANSPORTADORAS = ("YP", "A.N.", "E.Express", "Interrapidisimo")
 LISTAS_PRECIOS = ("lista_1", "lista_2", "lista_3", "lista_plus", "lista_plus_costa")
+ESTADOS_CLIENTE = ("enviar", "enviar_parcial", "no_enviar", "solo_contado")
 
 
 def _precio_desde_lista(producto_repo, producto_id: int, lista: str) -> Decimal:
@@ -31,6 +33,20 @@ class PedidoService:
         self.db = db
         self.repo = PedidoRepository(db)
         self.producto_repo = ProductoRepository(db)
+        self.cliente_repo = ClienteRepository(db)
+
+    def _estado_cliente(self, cliente_id: int) -> str:
+        cliente = self.cliente_repo.get(cliente_id)
+        if not cliente:
+            raise NotFoundError("Cliente no encontrado")
+        estado = getattr(cliente, "estado_cliente", None) or "enviar"
+        return estado if estado in ESTADOS_CLIENTE else "enviar"
+
+    def _aplicar_estado_cliente(self, pedido: Pedido | None) -> Pedido | None:
+        if pedido and getattr(pedido, "cliente", None) is not None:
+            estado = getattr(pedido.cliente, "estado_cliente", None) or "enviar"
+            pedido.intencion_envio = estado if estado in ESTADOS_CLIENTE else "enviar"
+        return pedido
 
     def listar(
         self,
@@ -40,13 +56,17 @@ class PedidoService:
         usuario_id: int | None = None,
         es_vendedor: bool = False,
     ) -> list[Pedido]:
+        pedidos: list[Pedido]
         if es_vendedor and usuario_id:
             if estados:
-                return self.repo.get_by_estados_for_usuario(usuario_id, estados, skip, limit)
-            return self.repo.get_all_for_usuario(usuario_id, skip, limit)
-        if estados:
-            return self.repo.get_by_estados(estados, skip, limit)
-        return self.repo.get_all(skip, limit)
+                pedidos = self.repo.get_by_estados_for_usuario(usuario_id, estados, skip, limit)
+            else:
+                pedidos = self.repo.get_all_for_usuario(usuario_id, skip, limit)
+        elif estados:
+            pedidos = self.repo.get_by_estados(estados, skip, limit)
+        else:
+            pedidos = self.repo.get_all(skip, limit)
+        return [p for p in (self._aplicar_estado_cliente(p) for p in pedidos) if p is not None]
 
     def obtener(self, id: int, usuario_id: int | None = None, es_vendedor: bool = False) -> Pedido:
         p = self.repo.get_with_detalles(id)
@@ -54,7 +74,7 @@ class PedidoService:
             raise NotFoundError("Pedido no encontrado")
         if es_vendedor and usuario_id and p.usuario_id != usuario_id:
             raise ForbiddenError("No tiene acceso a este pedido")
-        return p
+        return self._aplicar_estado_cliente(p) or p
 
     def obtener_bulk(
         self, ids: list[int], usuario_id: int | None = None, es_vendedor: bool = False
@@ -64,13 +84,14 @@ class PedidoService:
             return []
         pedidos = self.repo.get_with_detalles_bulk(ids)
         if es_vendedor and usuario_id:
-            return [p for p in pedidos if p.usuario_id == usuario_id]
-        return pedidos
+            pedidos = [p for p in pedidos if p.usuario_id == usuario_id]
+        return [p for p in (self._aplicar_estado_cliente(p) for p in pedidos) if p is not None]
 
     def crear(self, data: PedidoCreate, usuario_id: int) -> Pedido:
         lista = data.lista_precios or "lista_1"
         if lista not in LISTAS_PRECIOS:
             raise ValidationError(f"Lista inválida. Válidas: {LISTAS_PRECIOS}")
+        estado_cliente = self._estado_cliente(data.cliente_id)
         numero = self.repo.generar_numero()
         vendedor_id = data.vendedor_id or usuario_id
         pedido = Pedido(
@@ -81,6 +102,7 @@ class PedidoService:
             observaciones=data.observaciones,
             lista_precios=lista,
             descuento=data.descuento or 0,
+            intencion_envio=estado_cliente,
             subtotal=0,
             total=0,
         )
@@ -133,10 +155,12 @@ class PedidoService:
         if lista not in LISTAS_PRECIOS:
             raise ValidationError(f"Lista inválida. Válidas: {LISTAS_PRECIOS}")
 
+        estado_cliente = self._estado_cliente(data.cliente_id)
         pedido.cliente_id = data.cliente_id
         pedido.observaciones = data.observaciones
         pedido.lista_precios = lista
         pedido.descuento = data.descuento or 0
+        pedido.intencion_envio = estado_cliente
 
         # Eliminar detalles existentes
         for det in list(pedido.detalles):
@@ -206,13 +230,19 @@ class PedidoService:
         usuario_id: int | None = None,
         es_vendedor: bool = False,
     ) -> Pedido:
-        """Actualiza la intención de envío del pedido (enviar, enviar_parcial, no_enviar)."""
+        """Actualiza el estado del cliente asociado al pedido."""
         pedido = self.obtener(pedido_id, usuario_id=usuario_id, es_vendedor=es_vendedor)
-        if intencion_envio and intencion_envio not in ("enviar", "enviar_parcial", "no_enviar"):
-            raise ValidationError("Intención inválida. Válidas: enviar, enviar_parcial, no_enviar")
-        pedido.intencion_envio = intencion_envio
+        if intencion_envio and intencion_envio not in ESTADOS_CLIENTE:
+            raise ValidationError(
+                "Estado inválido. Válidos: enviar, enviar_parcial, no_enviar, solo_contado"
+            )
+        estado = intencion_envio or "enviar"
+        cliente = self.cliente_repo.get(pedido.cliente_id)
+        if not cliente:
+            raise NotFoundError("Cliente no encontrado")
+        cliente.estado_cliente = estado
         self.db.commit()
-        return self.repo.get_with_detalles(pedido_id)
+        return self.obtener(pedido_id, usuario_id=usuario_id, es_vendedor=es_vendedor)
 
     def cambiar_estado(
         self,

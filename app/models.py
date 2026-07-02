@@ -77,6 +77,7 @@ class Cliente(Base):
     responsabilidad_fiscal = Column(String(100))
     detalles_tributarios = Column(Text)
     vendedor = Column(String(10))
+    estado_cliente = Column(String(20), default="enviar", nullable=False)  # enviar, enviar_parcial, no_enviar, solo_contado
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -157,7 +158,7 @@ class Pedido(Base):
     numero_factura = Column(String(100))
     numero_guia = Column(String(100))
     resumen_envio = Column(Text)  # Anotación del checklist al marcar enviado
-    intencion_envio = Column(String(20))  # enviar, enviar_parcial, no_enviar
+    intencion_envio = Column(String(20))  # enviar, enviar_parcial, no_enviar, solo_contado
     lista_precios = Column(String(20), default="lista_1")  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
     descuento = Column(Numeric(5, 2), default=0)  # Porcentaje 0-100
     impreso = Column(Boolean, default=False)

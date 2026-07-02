@@ -9,7 +9,14 @@ import {
 } from '@/shared/constants/colombia'
 import { VENDEDORES } from '@/shared/constants/vendedores'
 import { TIPOS_DOCUMENTO } from '../types/cliente.types'
-import type { ClienteCreate } from '../types/cliente.types'
+import type { ClienteCreate, EstadoCliente } from '../types/cliente.types'
+
+const ESTADOS_CLIENTE: { value: EstadoCliente; label: string }[] = [
+  { value: 'enviar', label: 'Enviar' },
+  { value: 'enviar_parcial', label: 'Enviar Parcial' },
+  { value: 'no_enviar', label: 'No enviar' },
+  { value: 'solo_contado', label: 'Solo De Contado' },
+]
 
 export function ClienteFormPage() {
   const { id } = useParams()
@@ -33,6 +40,7 @@ export function ClienteFormPage() {
     responsabilidad_fiscal: '',
     detalles_tributarios: '',
     vendedor: '',
+    estado_cliente: 'enviar',
   })
   const [error, setError] = useState('')
 
@@ -58,6 +66,7 @@ export function ClienteFormPage() {
         responsabilidad_fiscal: cliente.responsabilidad_fiscal || '',
         detalles_tributarios: cliente.detalles_tributarios || '',
         vendedor: cliente.vendedor || '',
+        estado_cliente: cliente.estado_cliente || 'enviar',
       })
     }
   }, [cliente])
@@ -83,6 +92,7 @@ export function ClienteFormPage() {
       responsabilidad_fiscal: form.responsabilidad_fiscal || undefined,
       detalles_tributarios: form.detalles_tributarios || undefined,
       vendedor: form.vendedor || undefined,
+      estado_cliente: form.estado_cliente || undefined,
     }
     try {
       if (isEdit && id) {
@@ -172,6 +182,21 @@ export function ClienteFormPage() {
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Estado Cliente</label>
+          <select
+            value={form.estado_cliente}
+            onChange={(e) => setForm((f) => ({ ...f, estado_cliente: e.target.value as EstadoCliente }))}
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+          >
+            {ESTADOS_CLIENTE.map((estado) => (
+              <option key={estado.value} value={estado.value}>
+                {estado.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

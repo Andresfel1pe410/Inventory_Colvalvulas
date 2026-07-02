@@ -14,6 +14,7 @@ const OPCIONES_INTENCION: { value: IntencionEnvio | ''; label: string }[] = [
   { value: 'enviar', label: 'Enviar' },
   { value: 'enviar_parcial', label: 'Enviar Parcial' },
   { value: 'no_enviar', label: 'No enviar' },
+  { value: 'solo_contado', label: 'Solo De Contado' },
 ]
 
 function diasSinEnviar(createdAt: string, estado: string): number | null {
@@ -33,6 +34,7 @@ function colorIntencion(intencion: IntencionEnvio | null | undefined): string {
   if (!intencion) return 'bg-slate-100 border-slate-300 text-slate-700'
   if (intencion === 'enviar') return 'bg-green-100 border-green-400 text-green-800'
   if (intencion === 'enviar_parcial') return 'bg-amber-100 border-amber-400 text-amber-800'
+  if (intencion === 'solo_contado') return 'bg-slate-200 border-slate-400 text-slate-800'
   return 'bg-red-100 border-red-400 text-red-800'
 }
 
@@ -40,6 +42,7 @@ function labelIntencion(intencion: IntencionEnvio | null | undefined): string {
   if (!intencion) return 'Sin definir'
   if (intencion === 'enviar') return 'Enviar'
   if (intencion === 'enviar_parcial') return 'Enviar Parcial'
+  if (intencion === 'solo_contado') return 'Solo De Contado'
   return 'No enviar'
 }
 
@@ -277,7 +280,7 @@ export function PedidoDetailPage() {
             })()}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium uppercase text-slate-500">
-                Intención de envío
+                Estado Cliente
               </label>
               {pedido.estado !== 'enviado' && pedido.estado !== 'cancelado' && isAdmin ? (
                 <select
