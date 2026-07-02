@@ -8,6 +8,7 @@ import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
 import { useAuthStore } from '@/modules/auth'
+import { useUsuariosList } from '@/modules/usuarios/hooks/useUsuarios'
 
 interface LineaDetalle {
   producto_id: number
@@ -20,6 +21,7 @@ export function PedidoEditPage() {
   const navigate = useNavigate()
   const sectionPath = useSectionPath()
   const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.roles?.includes('admin')
   const listasDisponibles =
     user?.listas_precio && user.listas_precio.length > 0
       ? user.listas_precio
@@ -27,12 +29,14 @@ export function PedidoEditPage() {
 
   const { data: pedido, isLoading: loadingPedido } = usePedido(id ? Number(id) : null)
   const { data: productos = [] } = useProductosList({ limit: 500 })
+  const { data: usuarios = [] } = useUsuariosList({ limit: 200 })
   const updateMutation = usePedidoUpdate()
 
   const [clienteId, setClienteId] = useState<number | ''>('')
   const [observaciones, setObservaciones] = useState('')
   const [listaPrecios, setListaPrecios] = useState<string>('lista_1')
   const [descuento, setDescuento] = useState<number | ''>(0)
+  const [vendedorId, setVendedorId] = useState<number | ''>('')
   const [detalles, setDetalles] = useState<LineaDetalle[]>([])
   const [error, setError] = useState('')
   const [noEditable, setNoEditable] = useState(false)
@@ -45,6 +49,7 @@ export function PedidoEditPage() {
     }
     setClienteId(pedido.cliente_id)
     setObservaciones(pedido.observaciones || '')
+    setVendedorId(pedido.usuario_id || '')
     const pedLista = pedido.lista_precios || 'lista_1'
     setListaPrecios(
       listasDisponibles.includes(pedLista) ? pedLista : listasDisponibles[0] || 'lista_1'
@@ -57,7 +62,7 @@ export function PedidoEditPage() {
         cantidad: d.cantidad,
       }))
     )
-  }, [pedido, productos])
+  }, [pedido, productos, listasDisponibles])
 
   useEffect(() => {
     if (!loadingPedido && !pedido && id) {
@@ -116,6 +121,7 @@ export function PedidoEditPage() {
         observaciones: observaciones || undefined,
         lista_precios: listaPrecios,
         descuento: typeof descuento === 'number' ? descuento : (parseFloat(String(descuento)) || 0),
+        vendedor_id: isAdmin && vendedorId !== '' ? Number(vendedorId) : undefined,
         detalles: detalles.map((d) => {
           const prod = productos.find((p) => p.id === d.producto_id)
           const cant =
@@ -190,6 +196,28 @@ export function PedidoEditPage() {
                 ))}
               </select>
             </div>
+            {isAdmin && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Vendedor</label>
+                <select
+                  value={vendedorId === '' ? '' : vendedorId}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setVendedorId(v === '' ? '' : Number(v))
+                  }}
+                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Sin vendedor</option>
+                  {usuarios
+                    .filter((u) => u.roles?.includes('vendedor'))
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nombre && u.apellido ? `${u.nombre} ${u.apellido}` : u.nombre || u.email}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700">Descuento (%)</label>
               <input

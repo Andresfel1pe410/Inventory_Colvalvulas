@@ -8,6 +8,7 @@ interface InventarioProcesoTableProps {
   isRefreshing: boolean
   onRefresh: () => void
   onMovimientoCreated: () => void
+  onOpenReporte: () => void
 }
 
 export function InventarioProcesoTable({
@@ -15,6 +16,7 @@ export function InventarioProcesoTable({
   isRefreshing,
   onRefresh,
   onMovimientoCreated,
+  onOpenReporte,
 }: InventarioProcesoTableProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [tipoModal, setTipoModal] = useState<'entrada' | 'salida'>('entrada')
@@ -93,6 +95,13 @@ export function InventarioProcesoTable({
             className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
           >
             Salida
+          </button>
+          <button
+            type="button"
+            onClick={onOpenReporte}
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Reporte
           </button>
         </div>
       </div>

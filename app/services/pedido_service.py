@@ -160,6 +160,8 @@ class PedidoService:
         pedido.observaciones = data.observaciones
         pedido.lista_precios = lista
         pedido.descuento = data.descuento or 0
+        if data.vendedor_id is not None:
+            pedido.usuario_id = data.vendedor_id
         pedido.intencion_envio = estado_cliente
 
         # Eliminar detalles existentes

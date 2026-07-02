@@ -17,6 +17,11 @@ from app.repositories.inventario_proceso_repository import InventarioProcesoRepo
 router = APIRouter(prefix="/inventario-proceso", tags=["inventario-proceso"])
 
 
+def _formatear_usuario(usuario: Usuario) -> str:
+    nombres = " ".join(part for part in [usuario.nombre, usuario.apellido] if part)
+    return nombres.strip() or usuario.email
+
+
 def _require_admin_or_almacen(db: Session, usuario: Usuario) -> None:
     """Requiere que el usuario sea admin o almacen."""
     roles = UsuarioRepository(db).get_roles(usuario.id)
@@ -48,6 +53,7 @@ def registrar_movimiento(
         tipo=data.tipo,
         cantidad=data.cantidad,
         usuario_realizo=data.usuario_realizo,
+        registrada_por=_formatear_usuario(current_user),
     )
 
 

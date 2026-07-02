@@ -1,6 +1,7 @@
 """Repositorio de Inventario de Proceso."""
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from app.core.exceptions import ValidationError
 from app.models import InventarioProceso, MovimientoInventarioProceso
 
 
@@ -43,6 +44,7 @@ class InventarioProcesoRepository:
         tipo: str,  # 'entrada' o 'salida'
         cantidad: int,
         usuario_realizo: str,
+        registrada_por: str,
     ) -> MovimientoInventarioProceso:
         """Registra un movimiento de entrada o salida."""
         inv = self.db.query(InventarioProceso).filter_by(id=inventario_proceso_id).one()
@@ -53,6 +55,8 @@ class InventarioProcesoRepository:
             cantidad_nueva = cantidad_anterior + cantidad
         else: # salida
             cantidad_nueva = cantidad_anterior - cantidad
+        if cantidad_nueva < 0:
+            raise ValidationError("La cantidad actual no puede quedar en negativo")
         
         inv.cantidad = cantidad_nueva
         self.db.flush()
@@ -62,6 +66,7 @@ class InventarioProcesoRepository:
             tipo=tipo,
             cantidad=cantidad,
             usuario_realizo=usuario_realizo,
+            registrada_por=registrada_por,
             cantidad_anterior=cantidad_anterior,
             cantidad_nueva=cantidad_nueva,
         )

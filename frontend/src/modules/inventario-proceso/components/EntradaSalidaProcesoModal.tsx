@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 import type { InventarioProceso } from '../types/inventario-proceso.types'
 import { useInventarioProcesoRegistrarMovimiento } from '../hooks/useInventarioProceso'
+
+const USUARIOS_HARDCODEADOS = [
+  'Alex',
+  'Daniel',
+  'Misael',
+  'Jose',
+  'Neifer',
+  'Mauricio',
+  'Andres Nieto',
+]
 
 interface EntradaSalidaProcesoModalProps {
   open: boolean
@@ -10,16 +21,6 @@ interface EntradaSalidaProcesoModalProps {
   items: InventarioProceso[]
   item: InventarioProceso | null
 }
-
-const USUARIOS_HARDCODEADOS = [
-  'Alex',
-  'Daniel',
-  'Misael',
-  'Jose',
-  'Neifer',
-  'Mauricio',
-  'Andres Nieto'
-]
 
 export function EntradaSalidaProcesoModal({
   open,
@@ -32,10 +33,11 @@ export function EntradaSalidaProcesoModal({
   const [referencia, setReferencia] = useState('')
   const [material, setMaterial] = useState('')
   const [cantidad, setCantidad] = useState('')
-  const [usuario, setUsuario] = useState('')
+  const [usuarioRealizo, setUsuarioRealizo] = useState('')
   const [error, setError] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
+  const currentUser = useAuthStore((state) => state.user)
 
   const registrarMutation = useInventarioProcesoRegistrarMovimiento()
 
@@ -50,7 +52,7 @@ export function EntradaSalidaProcesoModal({
       setReferencia(item?.referencia || '')
       setMaterial(item?.material || '')
       setCantidad('')
-      setUsuario('')
+      setUsuarioRealizo('')
       setError('')
       setBusqueda(item?.referencia || '')
       setMostrarSugerencias(false)
@@ -90,7 +92,7 @@ export function EntradaSalidaProcesoModal({
       setError('La cantidad debe ser mayor a cero')
       return
     }
-    if (!usuario.trim()) {
+    if (!usuarioRealizo.trim()) {
       setError('Debe seleccionar quién realiza la operación')
       return
     }
@@ -101,7 +103,7 @@ export function EntradaSalidaProcesoModal({
         material,
         tipo,
         cantidad: Number(cantidad),
-        usuario_realizo: usuario,
+        usuario_realizo: usuarioRealizo,
       })
       onCreated()
     } catch (err) {
@@ -113,6 +115,10 @@ export function EntradaSalidaProcesoModal({
 
   const title = isNew ? 'Nueva Entrada de Proceso' : tipo === 'entrada' ? 'Entrada de Inventario' : 'Salida de Inventario'
   const buttonText = registrarMutation.isPending ? 'Registrando...' : tipo === 'entrada' ? 'Registrar Entrada' : 'Registrar Salida'
+  const registradaPorDisplay =
+    [currentUser?.nombre, currentUser?.apellido].filter(Boolean).join(' ').trim() ||
+    currentUser?.email ||
+    'Usuario activo'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -194,9 +200,9 @@ export function EntradaSalidaProcesoModal({
           <div>
             <label className="block text-sm font-medium text-slate-700">Realizado por *</label>
             <select
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 focus:border-primary-600 focus:outline-none"
+              value={usuarioRealizo}
+              onChange={(e) => setUsuarioRealizo(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-primary-600 focus:outline-none"
               disabled={registrarMutation.isPending}
             >
               <option value="">Selecciona una persona</option>
@@ -206,6 +212,16 @@ export function EntradaSalidaProcesoModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Registrada por</label>
+            <input
+              type="text"
+              value={registradaPorDisplay}
+              readOnly
+              className="mt-1 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+            />
           </div>
 
           {error && <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}

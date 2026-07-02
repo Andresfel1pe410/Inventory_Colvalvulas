@@ -149,7 +149,7 @@ class Producto(ProductoBase):
 # ============= INVENTARIO =============
 class InventarioBase(BaseModel):
     producto_id: int
-    stock_actual: int = 0  # Puede ser negativo = faltante para pedidos
+    stock_actual: int = Field(default=0, ge=0)
     stock_minimo: int = 0
     ubicacion: Optional[str] = None
 
@@ -159,7 +159,7 @@ class InventarioCreate(InventarioBase):
 
 
 class InventarioUpdate(BaseModel):
-    stock_actual: Optional[int] = None  # Permite negativo
+    stock_actual: Optional[int] = Field(None, ge=0)
     stock_minimo: Optional[int] = Field(None, ge=0)
     ubicacion: Optional[str] = None
 
@@ -241,7 +241,7 @@ class MovimientoEntradaDetalle(BaseModel):
 class CorregirMovimientoRequest(BaseModel):
     """Datos para corregir un movimiento de entrada."""
     nuevo_producto_id: int = Field(gt=0)
-    nueva_cantidad: int = Field(description="Cantidad (puede ser negativa)")
+    nueva_cantidad: int = Field(ge=0, description="Cantidad no negativa")
 
 
 # ============= PEDIDO =============
@@ -286,6 +286,7 @@ class PedidoUpdateFull(BaseModel):
     observaciones: Optional[str] = None
     lista_precios: str = "lista_1"  # lista_1, lista_2, lista_3, lista_plus, lista_plus_costa
     descuento: Decimal = Field(default=0, ge=0, le=100)
+    vendedor_id: Optional[int] = None
     detalles: list[DetallePedidoCreate]
 
 
@@ -377,7 +378,7 @@ class Remision(BaseModel):
 class InventarioProcesoBase(BaseModel):
     referencia: str
     material: str
-    cantidad: int = 0
+    cantidad: int = Field(default=0, ge=0)
 
 
 class InventarioProceso(InventarioProcesoBase):
@@ -402,6 +403,7 @@ class MovimientoInventarioProcesoCreate(MovimientoInventarioProcesoBase):
 class MovimientoInventarioProceso(MovimientoInventarioProcesoBase):
     id: int
     inventario_proceso_id: int
+    registrada_por: str
     cantidad_anterior: int
     cantidad_nueva: int
     created_at: datetime

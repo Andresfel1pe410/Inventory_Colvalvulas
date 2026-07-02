@@ -237,6 +237,7 @@ class MovimientoInventarioProceso(Base):
     tipo = Column(String(20), nullable=False)  # entrada, salida
     cantidad = Column(Integer, nullable=False)
     usuario_realizo = Column(String(100), nullable=False)
+    registrada_por = Column(String(150), nullable=False)
     cantidad_anterior = Column(Integer, nullable=False)
     cantidad_nueva = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)

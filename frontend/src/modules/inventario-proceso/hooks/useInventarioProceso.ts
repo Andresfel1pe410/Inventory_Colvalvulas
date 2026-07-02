@@ -27,6 +27,7 @@ export function useInventarioProcesoRegistrarMovimiento() {
 
 export function useInventarioProcesoMovimientos(params?: {
   inventario_proceso_id?: number
+  enabled?: boolean
 }) {
   return useQuery({
     queryKey: [queryKeys.inventario.proceso, 'movimientos', params],
@@ -36,6 +37,10 @@ export function useInventarioProcesoMovimientos(params?: {
         skip: 0,
         limit: 1000,
       }),
-    enabled: !!params?.inventario_proceso_id,
+    enabled:
+      params?.enabled ??
+      (params?.inventario_proceso_id === undefined ||
+        params?.inventario_proceso_id === null ||
+        params?.inventario_proceso_id > 0),
   })
 }

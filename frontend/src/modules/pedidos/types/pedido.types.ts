@@ -58,5 +58,6 @@ export interface PedidoUpdateFull {
   observaciones?: string
   lista_precios?: string
   descuento?: number
+  vendedor_id?: number
   detalles: DetallePedidoCreate[]
 }

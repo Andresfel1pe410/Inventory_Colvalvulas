@@ -36,6 +36,8 @@ class InventarioService:
             stock_nuevo = stock_anterior + cantidad  # cantidad puede ser negativa
         else:
             stock_nuevo = stock_anterior - cantidad
+        if stock_nuevo < 0:
+            raise ValidationError("El stock actual no puede quedar en negativo")
 
         mov = MovimientoInventario(
             producto_id=producto_id,
@@ -59,6 +61,8 @@ class InventarioService:
         inv = self.repo.get_by_producto(producto_id)
         if not inv:
             raise NotFoundError("Inventario del producto no encontrado")
+        if nuevo_stock < 0:
+            raise ValidationError("El stock actual no puede ser negativo")
         inv.stock_actual = nuevo_stock
         self.db.commit()
         self.db.refresh(inv)

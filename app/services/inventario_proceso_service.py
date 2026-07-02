@@ -17,6 +17,7 @@ class InventarioProcesoService:
         tipo: str,
         cantidad: int,
         usuario_realizo: str,
+        registrada_por: str,
         commit: bool = True,
     ):
         """Registra un movimiento de entrada o salida en inventario de proceso."""
@@ -33,12 +34,20 @@ class InventarioProcesoService:
         
         # Obtener o crear el item de inventario de proceso
         inv_proceso = self.repo.get_or_create(referencia.strip(), material.strip())
+
+        cantidad_actual = inv_proceso.cantidad
+        cantidad_nueva = cantidad_actual + cantidad if tipo == "entrada" else cantidad_actual - cantidad
+        if cantidad_nueva < 0:
+            raise ValidationError("La cantidad actual no puede quedar en negativo")
+        if not registrada_por or not registrada_por.strip():
+            raise ValidationError("Debe especificarse el usuario que registra el movimiento")
         
         movimiento = self.repo.registrar_movimiento(
             inventario_proceso_id=inv_proceso.id,
             tipo=tipo,
             cantidad=cantidad,
             usuario_realizo=usuario_realizo.strip(),
+            registrada_por=registrada_por.strip(),
         )
         
         if commit:

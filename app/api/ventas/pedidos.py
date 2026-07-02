@@ -103,6 +103,8 @@ def actualizar(
     current_user: Usuario = Depends(get_current_user),
 ):
     es_vend = _es_vendedor_solo(db, current_user)
+    if data.vendedor_id is not None:
+        _require_admin(db, current_user)
     return PedidoService(db).actualizar(
         id, data, current_user.id,
         usuario_id_check=current_user.id if es_vend else None,

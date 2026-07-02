@@ -18,6 +18,7 @@ export interface MovimientoInventarioProcesoCreate {
 export interface MovimientoInventarioProceso extends MovimientoInventarioProcesoCreate {
   id: number
   inventario_proceso_id: number
+  registrada_por: string
   cantidad_anterior: number
   cantidad_nueva: number
   created_at: string
