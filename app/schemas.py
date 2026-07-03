@@ -238,6 +238,28 @@ class MovimientoEntradaDetalle(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MovimientoInventarioReporteDetalle(BaseModel):
+    """Movimiento unificado de inventario con contexto de pedido/remisión."""
+    id: int
+    producto_id: int
+    producto_referencia: str = ""
+    producto_material: str = ""
+    tipo: str
+    cantidad: int
+    stock_anterior: int
+    stock_nuevo: int
+    referencia_tipo: Optional[str] = None
+    referencia_id: Optional[int] = None
+    pedido_id: Optional[int] = None
+    numero_pedido: Optional[str] = None
+    cliente_razon_social: Optional[str] = None
+    numero_remision: Optional[str] = None
+    motivo: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CorregirMovimientoRequest(BaseModel):
     """Datos para corregir un movimiento de entrada."""
     nuevo_producto_id: int = Field(gt=0)

@@ -4,7 +4,7 @@ import { useInventarioList } from '../hooks/useInventario'
 import { usePedidosList, usePedidosDetailsBulk } from '@/modules/pedidos/hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import { EntradaInventarioModal } from '../components/EntradaInventarioModal'
-import { ReporteEntradasModal } from '../components/ReporteEntradasModal'
+import { ReporteMovimientosModal } from '../components/ReporteMovimientosModal'
 import type { InventarioResumenConProducto } from '../types/inventario.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 import type { Producto } from '@/modules/productos/types/producto.types'
@@ -739,7 +739,7 @@ export function InventarioPage() {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Reporte de entradas
+            Reporte
           </button>
           <button
             type="button"
@@ -755,7 +755,7 @@ export function InventarioPage() {
         onClose={() => setModalEntradaOpen(false)}
         onCreated={handleEntradaCreated}
       />
-      <ReporteEntradasModal
+      <ReporteMovimientosModal
         open={modalReporteOpen}
         onClose={() => setModalReporteOpen(false)}
       />

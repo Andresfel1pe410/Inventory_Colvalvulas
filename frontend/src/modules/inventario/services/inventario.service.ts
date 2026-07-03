@@ -22,6 +22,25 @@ export interface MovimientoEntradaDetalle {
   created_at: string
 }
 
+export interface MovimientoInventarioReporteDetalle {
+  id: number
+  producto_id: number
+  producto_referencia: string
+  producto_material: string
+  tipo: 'entrada' | 'salida' | 'ajuste'
+  cantidad: number
+  stock_anterior: number
+  stock_nuevo: number
+  referencia_tipo?: string | null
+  referencia_id?: number | null
+  pedido_id?: number | null
+  numero_pedido?: string | null
+  cliente_razon_social?: string | null
+  numero_remision?: string | null
+  motivo?: string | null
+  created_at: string
+}
+
 export const inventarioService = {
   list: (params?: { skip?: number; limit?: number; pedido_ids?: string }) =>
     api.get<InventarioResumenConProducto[]>('/inventario', { params }).then((r) => r.data),
@@ -49,6 +68,18 @@ export const inventarioService = {
   }) =>
     api
       .get<MovimientoEntradaDetalle[]>('/inventario/movimientos/entradas/detalle', {
+        params,
+      })
+      .then((r) => r.data),
+
+  listarReporteMovimientos: (params: {
+    fecha_inicio: string
+    fecha_fin: string
+    skip?: number
+    limit?: number
+  }) =>
+    api
+      .get<MovimientoInventarioReporteDetalle[]>('/inventario/movimientos/reporte', {
         params,
       })
       .then((r) => r.data),

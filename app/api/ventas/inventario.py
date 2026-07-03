@@ -20,6 +20,7 @@ from app.schemas import (
     MovimientoInventario,
     MovimientoInventarioCreate,
     MovimientoInventarioReporte,
+    MovimientoInventarioReporteDetalle,
 )
 from app.services.inventario_service import InventarioService
 
@@ -102,6 +103,26 @@ def listar_entradas_detalle(
     if dt_inicio > dt_fin:
         raise HTTPException(400, "La fecha de inicio debe ser menor o igual a la fecha fin")
     return MovimientoInventarioRepository(db).get_entradas_detalle(dt_inicio, dt_fin, skip, limit)
+
+
+@router.get("/movimientos/reporte", response_model=list[MovimientoInventarioReporteDetalle])
+def listar_reporte_movimientos(
+    fecha_inicio: str = Query(..., description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: str = Query(..., description="Fecha fin (YYYY-MM-DD)"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(5000, ge=1, le=10000),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _require_admin_or_almacen(db, current_user)
+    try:
+        dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+        dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(400, "Formato de fecha inválido. Use YYYY-MM-DD")
+    if dt_inicio > dt_fin:
+        raise HTTPException(400, "La fecha de inicio debe ser menor o igual a la fecha fin")
+    return MovimientoInventarioRepository(db).get_reporte_movimientos(dt_inicio, dt_fin, skip, limit)
 
 
 @router.patch("/movimientos/{movimiento_id}/corregir", response_model=MovimientoInventario)
