@@ -269,9 +269,16 @@ export function ReporteEntradasModal({ open, onClose }: ReporteEntradasModalProp
             <div className="mt-4">
               <label className="block text-sm font-medium text-slate-700">Nueva cantidad</label>
               <input
-                type="number"
+                type="text"
+                inputMode="text"
+                pattern="-?[0-9]*"
                 value={editCantidadVal}
-                onChange={(e) => setEditCantidadVal(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === '' || value === '-' || /^-?\d*$/.test(value)) {
+                    setEditCantidadVal(value)
+                  }
+                }}
                 placeholder="Puede ser negativo"
                 className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
               />

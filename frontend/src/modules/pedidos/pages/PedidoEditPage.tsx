@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
 import { ClienteSearchSelect, ProductoSearchSelect, PageLoading } from '@/shared/components'
@@ -22,10 +22,14 @@ export function PedidoEditPage() {
   const sectionPath = useSectionPath()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.roles?.includes('admin')
-  const listasDisponibles =
-    user?.listas_precio && user.listas_precio.length > 0
-      ? user.listas_precio
-      : [...LISTAS_PRECIOS]
+  const listasDisponibles = useMemo(
+    () =>
+      user?.listas_precio && user.listas_precio.length > 0
+        ? user.listas_precio
+        : [...LISTAS_PRECIOS],
+    [user?.listas_precio],
+  )
+  const pedidoInicializadoRef = useRef<number | null>(null)
 
   const { data: pedido, isLoading: loadingPedido } = usePedido(id ? Number(id) : null)
   const { data: productos = [] } = useProductosList({ limit: 500 })
@@ -43,10 +47,13 @@ export function PedidoEditPage() {
 
   useEffect(() => {
     if (!pedido || !productos.length) return
+    if (pedidoInicializadoRef.current === pedido.id) return
+    pedidoInicializadoRef.current = pedido.id
     if (pedido.estado === 'enviado' || pedido.estado === 'cancelado') {
       setNoEditable(true)
       return
     }
+    setNoEditable(false)
     setClienteId(pedido.cliente_id)
     setObservaciones(pedido.observaciones || '')
     setVendedorId(pedido.usuario_id || '')
@@ -293,11 +300,12 @@ export function PedidoEditPage() {
                     <span className="text-sm text-slate-600">{material}</span>
                     <span className="text-sm text-slate-600">{codigo}</span>
                     <input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={d.cantidad === '' ? '' : d.cantidad}
                       onChange={(e) => {
-                        const v = e.target.value
+                        const v = e.target.value.replace(/\D/g, '')
                         updateLinea(idx, 'cantidad', v === '' ? '' : (parseInt(v, 10) || 0))
                       }}
                       className="w-20 rounded border border-slate-300 px-2 py-1 text-sm"

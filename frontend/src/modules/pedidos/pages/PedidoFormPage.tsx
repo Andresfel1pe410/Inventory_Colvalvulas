@@ -237,11 +237,12 @@ export function PedidoFormPage() {
                     <span className="text-sm text-slate-600">{material}</span>
                     <span className="text-sm text-slate-600">{codigo}</span>
                     <input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={d.cantidad === '' ? '' : d.cantidad}
                       onChange={(e) => {
-                        const v = e.target.value
+                        const v = e.target.value.replace(/\D/g, '')
                         updateLinea(idx, 'cantidad', v === '' ? '' : (parseInt(v, 10) || 0))
                       }}
                       className="w-20 rounded border border-slate-300 px-2 py-1 text-sm"

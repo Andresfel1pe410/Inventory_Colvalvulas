@@ -184,11 +184,15 @@ export function EntradaSalidaProcesoModal({
           <div>
             <label className="block text-sm font-medium text-slate-700">Cantidad *</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={cantidad}
-              onChange={(e) => setCantidad(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '')
+                setCantidad(value)
+              }}
               placeholder="Ej: 10"
-              min="1"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-primary-600 focus:outline-none"
               disabled={registrarMutation.isPending}
             />

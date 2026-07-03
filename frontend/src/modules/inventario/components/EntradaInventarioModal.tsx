@@ -108,9 +108,16 @@ export function EntradaInventarioModal({ open, onClose, onCreated }: EntradaInve
           <div>
             <label className="block text-sm font-medium text-slate-700">Cantidad</label>
             <input
-              type="number"
+              type="text"
+              inputMode="text"
+              pattern="-?[0-9]*"
               value={cantidad}
-              onChange={(e) => setCantidad(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value
+                if (value === '' || value === '-' || /^-?\d*$/.test(value)) {
+                  setCantidad(value)
+                }
+              }}
               required
               placeholder="Ej: 50 o -10 para corrección"
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
