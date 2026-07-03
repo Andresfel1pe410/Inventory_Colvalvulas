@@ -18,6 +18,24 @@ def _require_admin(db: Session, usuario: Usuario) -> None:
         raise HTTPException(403, "Solo administradores pueden realizar esta acción")
 
 
+def _check_actualizar_permission(
+    db: Session, usuario: Usuario, data: ClienteUpdate, cliente_actual
+) -> None:
+    roles = UsuarioRepository(db).get_roles(usuario.id)
+    is_admin = "admin" in roles
+    is_auditor = "auditor_contable" in roles
+    if not is_admin and not is_auditor:
+        raise HTTPException(403, "Solo administradores pueden realizar esta acción")
+
+    attrs = data.model_dump(exclude_unset=True)
+    cambios = {k for k, v in attrs.items() if getattr(cliente_actual, k) != v}
+
+    if not is_admin and (cambios - {"estado_cliente"}):
+        raise HTTPException(403, "Auditor Contable solo puede modificar Estado Cliente")
+    if not is_auditor and "estado_cliente" in cambios:
+        raise HTTPException(403, "Solo Auditor Contable puede modificar Estado Cliente")
+
+
 @router.get("", response_model=list[Cliente])
 def listar(
     skip: int = Query(0, ge=0),
@@ -56,8 +74,10 @@ def actualizar(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _require_admin(db, current_user)
-    return ClienteService(db).actualizar(id, data)
+    service = ClienteService(db)
+    cliente_actual = service.obtener(id)
+    _check_actualizar_permission(db, current_user, data, cliente_actual)
+    return service.actualizar(id, data)
 
 
 @router.delete("/{id}", status_code=204)

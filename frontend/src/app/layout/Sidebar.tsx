@@ -16,7 +16,7 @@ interface NavItem {
 }
 
 const ventasNavItems: NavItem[] = [
-  { to: '/clientes', label: 'Clientes', roles: ['admin'], icon: <ClientsIcon /> },
+  { to: '/clientes', label: 'Clientes', roles: ['admin', 'auditor_contable'], icon: <ClientsIcon /> },
   { to: '/productos', label: 'Productos', vendedor: true, icon: <ProductsIcon /> },
   { to: '/inventario', label: 'Inventario', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
   { to: '/pedidos', label: 'Pedidos', vendedor: true, icon: <OrdersIcon /> },
@@ -142,6 +142,7 @@ export function Sidebar({ section = getSectionFromPath(window.location.pathname)
   const isAdmin = user?.roles?.includes('admin')
   const isVendedor = user?.roles?.includes('vendedor') && !isAdmin
   const isAlmacen = user?.roles?.includes('almacen') && !isAdmin
+  const isAuditorContable = user?.roles?.includes('auditor_contable') && !isAdmin
 
   const handleLogout = async () => {
     await authLogout()
@@ -165,7 +166,12 @@ export function Sidebar({ section = getSectionFromPath(window.location.pathname)
     if (isAlmacen) {
       return item.roles?.includes('almacen') || false
     }
-    
+
+    // Si el usuario es auditor contable
+    if (isAuditorContable) {
+      return item.roles?.includes('auditor_contable') || false
+    }
+
     // Otros roles: solo items sin restricción y que no requieren roles específicos
     return !item.roles && !item.vendedor
   }

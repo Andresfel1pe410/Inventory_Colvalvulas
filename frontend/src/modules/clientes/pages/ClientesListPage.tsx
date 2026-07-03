@@ -7,6 +7,7 @@ import {
   PageLoading,
 } from '@/shared/components'
 import { useSectionPath } from '@/app/routing/sectionPath'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 import { useClientesList, useClienteDelete, useClienteUpdate } from '../hooks/useClientes'
 import type { Cliente, EstadoCliente } from '../types/cliente.types'
 
@@ -26,6 +27,8 @@ const COLOR_ESTADO: Record<EstadoCliente, string> = {
 
 export function ClientesListPage() {
   const sectionPath = useSectionPath()
+  const isAdmin = useAuthStore((s) => s.user?.roles?.includes('admin')) ?? false
+  const isAuditorContable = useAuthStore((s) => s.user?.roles?.includes('auditor_contable')) ?? false
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
@@ -75,12 +78,14 @@ export function ClientesListPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-64"
           />
-          <Link
-            to={sectionPath('/clientes/nuevo')}
-            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-          >
-            Nuevo cliente
-          </Link>
+          {isAdmin && (
+            <Link
+              to={sectionPath('/clientes/nuevo')}
+              className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            >
+              Nuevo cliente
+            </Link>
+          )}
         </div>
       </div>
       {isLoading ? (
@@ -120,7 +125,7 @@ export function ClientesListPage() {
                     <select
                       value={c.estado_cliente}
                       onChange={(e) => handleEstadoChange(c, e.target.value as EstadoCliente)}
-                      disabled={updateMutation.isPending}
+                      disabled={updateMutation.isPending || !isAuditorContable}
                       className={`rounded-md border px-2 py-1 text-sm ${COLOR_ESTADO[c.estado_cliente]}`}
                     >
                       {ESTADOS_CLIENTE.map((estado) => (
@@ -182,18 +187,22 @@ export function ClientesListPage() {
                     >
                       Detalles
                     </Link>
-                    <Link
-                      to={sectionPath(`/clientes/${c.id}/editar`)}
-                      className="text-primary-600 hover:underline"
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      onClick={() => setDeleteId(c.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Eliminar
-                    </button>
+                    {isAdmin && (
+                      <Link
+                        to={sectionPath(`/clientes/${c.id}/editar`)}
+                        className="text-primary-600 hover:underline"
+                      >
+                        Editar
+                      </Link>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => setDeleteId(c.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    )}
                   </div>
                 ),
               },

@@ -97,3 +97,6 @@ secrets/
 credentials/
 *.credentials
 .aider*
+
+# ---------- Claude Code ----------
+CLAUDE.md

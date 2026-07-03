@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useCliente, useClienteCreate, useClienteUpdate } from '../hooks/useClientes'
 import { PageLoading } from '@/shared/components'
 import { useSectionPath } from '@/app/routing/sectionPath'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 import {
   DEPARTAMENTOS_COLOMBIA,
   MUNICIPIOS_POR_DEPARTAMENTO,
@@ -23,6 +24,13 @@ export function ClienteFormPage() {
   const navigate = useNavigate()
   const sectionPath = useSectionPath()
   const isEdit = Boolean(id)
+
+  const roles = useAuthStore((s) => s.user?.roles) ?? []
+  const isAdmin = roles.includes('admin')
+  const isAuditorContable = roles.includes('auditor_contable')
+  // Auditor Contable solo puede modificar Estado Cliente; el resto de campos queda bloqueado para él.
+  const canEditOtros = isAdmin
+  const canEditEstadoCliente = isAuditorContable
 
   const [form, setForm] = useState<ClienteCreate>({
     razon_social: '',
@@ -150,7 +158,8 @@ export function ClienteFormPage() {
             value={form.razon_social}
             onChange={(e) => setForm((f) => ({ ...f, razon_social: e.target.value }))}
             required
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+            disabled={!canEditOtros}
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
           />
         </div>
 
@@ -161,7 +170,8 @@ export function ClienteFormPage() {
               value={form.tipo_documento}
               onChange={(e) => setForm((f) => ({ ...f, tipo_documento: e.target.value }))}
               required
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             >
               {TIPOS_DOCUMENTO.map((t) => (
                 <option key={t} value={t}>
@@ -179,7 +189,8 @@ export function ClienteFormPage() {
               value={form.numero_identificacion}
               onChange={(e) => setForm((f) => ({ ...f, numero_identificacion: e.target.value }))}
               required
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
         </div>
@@ -189,7 +200,8 @@ export function ClienteFormPage() {
           <select
             value={form.estado_cliente}
             onChange={(e) => setForm((f) => ({ ...f, estado_cliente: e.target.value as EstadoCliente }))}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+            disabled={!canEditEstadoCliente}
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
           >
             {ESTADOS_CLIENTE.map((estado) => (
               <option key={estado.value} value={estado.value}>
@@ -207,7 +219,8 @@ export function ClienteFormPage() {
               value={form.dv}
               onChange={(e) => setForm((f) => ({ ...f, dv: e.target.value }))}
               maxLength={5}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
           <div>
@@ -217,7 +230,8 @@ export function ClienteFormPage() {
               value={form.regimen}
               onChange={(e) => setForm((f) => ({ ...f, regimen: e.target.value }))}
               placeholder="Ej: Común, Simplificado"
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
         </div>
@@ -229,7 +243,8 @@ export function ClienteFormPage() {
               type="text"
               value={form.pais}
               onChange={(e) => setForm((f) => ({ ...f, pais: e.target.value }))}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
           <div>
@@ -238,7 +253,8 @@ export function ClienteFormPage() {
               type="text"
               value={form.codigo_postal}
               onChange={(e) => setForm((f) => ({ ...f, codigo_postal: e.target.value }))}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
         </div>
@@ -249,7 +265,8 @@ export function ClienteFormPage() {
             <select
               value={form.departamento}
               onChange={(e) => handleDepartamentoChange(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             >
               <option value="">Seleccione...</option>
               {DEPARTAMENTOS_COLOMBIA.map((d) => (
@@ -264,8 +281,8 @@ export function ClienteFormPage() {
             <select
               value={form.ciudad}
               onChange={(e) => setForm((f) => ({ ...f, ciudad: e.target.value }))}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
-              disabled={!form.departamento}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
+              disabled={!canEditOtros || !form.departamento}
             >
               <option value="">Seleccione...</option>
               {municipiosDisponibles.map((m) => (
@@ -283,7 +300,8 @@ export function ClienteFormPage() {
             type="text"
             value={form.direccion}
             onChange={(e) => setForm((f) => ({ ...f, direccion: e.target.value }))}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+            disabled={!canEditOtros}
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
           />
         </div>
 
@@ -294,7 +312,8 @@ export function ClienteFormPage() {
               type="text"
               value={form.telefono}
               onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
           <div>
@@ -303,7 +322,8 @@ export function ClienteFormPage() {
               type="email"
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
         </div>
@@ -320,7 +340,8 @@ export function ClienteFormPage() {
                 setForm((f) => ({ ...f, responsabilidad_fiscal: e.target.value }))
               }
               placeholder="Ej: Gran contribuyente, Autorretenedor"
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
           <div>
@@ -328,7 +349,8 @@ export function ClienteFormPage() {
             <select
               value={form.vendedor}
               onChange={(e) => setForm((f) => ({ ...f, vendedor: e.target.value }))}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+              disabled={!canEditOtros}
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
             >
               <option value="">Ninguno</option>
               {VENDEDORES.map((v) => (
@@ -346,7 +368,8 @@ export function ClienteFormPage() {
             value={form.detalles_tributarios}
             onChange={(e) => setForm((f) => ({ ...f, detalles_tributarios: e.target.value }))}
             rows={3}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2"
+            disabled={!canEditOtros}
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
           />
         </div>
 

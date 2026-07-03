@@ -15,13 +15,22 @@ import { buildSectionPath } from '@/app/routing/sectionPath'
 function VentasDefaultRedirect() {
   const isAdmin = useAuthStore((s) => s.user?.roles?.includes('admin'))
   const isAlmacen = useAuthStore((s) => s.user?.roles?.includes('almacen'))
+  const isAuditorContable = useAuthStore((s) => s.user?.roles?.includes('auditor_contable'))
   const ventasPath = (path: string) => buildSectionPath('/ventas', path)
 
   if (isAlmacen) {
     return <Navigate to={ventasPath('/inventario')} replace />
   }
 
-  return <Navigate to={isAdmin ? ventasPath('/clientes') : ventasPath('/pedidos')} replace />
+  if (isAdmin) {
+    return <Navigate to={ventasPath('/clientes')} replace />
+  }
+
+  if (isAuditorContable) {
+    return <Navigate to={ventasPath('/clientes')} replace />
+  }
+
+  return <Navigate to={ventasPath('/pedidos')} replace />
 }
 
 export function VentasRoutes() {
@@ -35,10 +44,10 @@ export function VentasRoutes() {
       }
     >
       <Route index element={<VentasDefaultRedirect />} />
-      <Route path="clientes" element={<RoleGuard requireAdmin><ClientesListPage /></RoleGuard>} />
+      <Route path="clientes" element={<RoleGuard allowedRoles={['admin', 'auditor_contable']}><ClientesListPage /></RoleGuard>} />
       <Route path="clientes/nuevo" element={<RoleGuard requireAdmin><ClienteFormPage /></RoleGuard>} />
-      <Route path="clientes/:id/editar" element={<RoleGuard requireAdmin><ClienteFormPage /></RoleGuard>} />
-      <Route path="clientes/:id" element={<RoleGuard requireAdmin><ClienteDetailPage /></RoleGuard>} />
+      <Route path="clientes/:id/editar" element={<RoleGuard allowedRoles={['admin', 'auditor_contable']}><ClienteFormPage /></RoleGuard>} />
+      <Route path="clientes/:id" element={<RoleGuard allowedRoles={['admin', 'auditor_contable']}><ClienteDetailPage /></RoleGuard>} />
       <Route path="productos" element={<ProductosListPage />} />
       <Route path="productos/nuevo" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
       <Route path="productos/:id/editar" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
