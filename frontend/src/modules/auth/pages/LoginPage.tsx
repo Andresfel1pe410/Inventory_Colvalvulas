@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { login } from '../services/auth.service'
 import { AUTH_API_BASE } from '@/shared/config'
@@ -19,8 +19,6 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const setAuth = useAuthStore((s) => s.setAuth)
-  const location = useLocation()
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,7 +54,7 @@ export function LoginPage() {
         // Si falla el debug, continuar igual (puede ser CORS o red)
       }
 
-      navigate(from, { replace: true })
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión')
     } finally {
