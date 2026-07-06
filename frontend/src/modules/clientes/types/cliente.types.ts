@@ -61,3 +61,10 @@ export interface ClienteUpdate {
 }
 
 export const TIPOS_DOCUMENTO = ['NIT', 'CC'] as const
+
+export const ESTADO_CLIENTE_LABELS: Record<EstadoCliente, string> = {
+  enviar: 'Enviar',
+  enviar_parcial: 'Enviar Parcial',
+  no_enviar: 'No enviar',
+  solo_contado: 'Solo De Contado',
+}

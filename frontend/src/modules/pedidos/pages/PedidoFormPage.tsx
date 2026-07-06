@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
 import { ClienteSearchSelect, ProductoSearchSelect } from '@/shared/components'
 import { useSectionPath } from '@/app/routing/sectionPath'
+import { ClienteEstadoAlert } from '../components/ClienteEstadoAlert'
 import { usePedidoCreate } from '../hooks/usePedidos'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
@@ -122,6 +123,9 @@ export function PedidoFormPage() {
                 placeholder="Buscar por nombre o NIT..."
                 required
               />
+              <div className="mt-2">
+                <ClienteEstadoAlert clienteId={clienteId} />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">Vendedor</label>

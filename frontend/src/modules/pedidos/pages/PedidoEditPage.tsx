@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { formatPesos } from '@/shared/utils/format'
 import { ClienteSearchSelect, ProductoSearchSelect, PageLoading } from '@/shared/components'
 import { useSectionPath } from '@/app/routing/sectionPath'
+import { ClienteEstadoAlert } from '../components/ClienteEstadoAlert'
 import { usePedido, usePedidoUpdate } from '../hooks/usePedidos'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
 import { getPrecioByLista, getCodigoByLista, tieneLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
@@ -188,6 +189,9 @@ export function PedidoEditPage() {
                 required
                 disabled={noEditable}
               />
+              <div className="mt-2">
+                <ClienteEstadoAlert clienteId={clienteId} />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">Lista de precios</label>
