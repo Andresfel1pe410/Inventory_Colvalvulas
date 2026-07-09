@@ -22,6 +22,7 @@ class PedidoRepository(BaseRepository[Pedido]):
         """Lista pedidos ordenados: en_proceso, en_espera, enviado, cancelado."""
         return (
             self.db.query(Pedido)
+            .options(joinedload(Pedido.cliente))
             .order_by(ORDEN_ESTADO, Pedido.id.desc())
             .offset(skip)
             .limit(limit)
@@ -62,6 +63,7 @@ class PedidoRepository(BaseRepository[Pedido]):
         """Lista pedidos filtrados por estados, ordenados igual que get_all."""
         return (
             self.db.query(Pedido)
+            .options(joinedload(Pedido.cliente))
             .filter(Pedido.estado.in_(estados))
             .order_by(ORDEN_ESTADO, Pedido.id.desc())
             .offset(skip)
@@ -73,6 +75,7 @@ class PedidoRepository(BaseRepository[Pedido]):
         """Lista solo pedidos creados por el usuario."""
         return (
             self.db.query(Pedido)
+            .options(joinedload(Pedido.cliente))
             .filter(Pedido.usuario_id == usuario_id)
             .order_by(ORDEN_ESTADO, Pedido.id.desc())
             .offset(skip)
@@ -86,6 +89,7 @@ class PedidoRepository(BaseRepository[Pedido]):
         """Lista pedidos del usuario filtrados por estados."""
         return (
             self.db.query(Pedido)
+            .options(joinedload(Pedido.cliente))
             .filter(Pedido.usuario_id == usuario_id, Pedido.estado.in_(estados))
             .order_by(ORDEN_ESTADO, Pedido.id.desc())
             .offset(skip)

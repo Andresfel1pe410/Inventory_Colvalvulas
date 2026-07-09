@@ -306,10 +306,11 @@ class PedidoService:
         pedido.numero_factura = numero_factura or None
         pedido.numero_guia = numero_guia or None
         pedido.resumen_envio = resumen_envio or None
-        self.db.commit()
-        self.db.refresh(pedido)
 
-        # Generar remisión y movimientos de inventario (con cantidades del checklist)
+        # Generar remisión y movimientos de inventario (con cantidades del checklist).
+        # No se confirma el estado del pedido hasta que esto tenga éxito: si falla
+        # (p.ej. stock insuficiente), el pedido no debe quedar marcado como enviado
+        # sin una remisión asociada.
         from app.services.remision_service import RemisionService
         RemisionService(self.db).generar_desde_pedido(
             pedido_id, usuario_id, detalles_envio=detalles_envio

@@ -1,5 +1,5 @@
 from app.core.exceptions import NotFoundError, ValidationError
-from app.models import Inventario, MovimientoInventario
+from app.models import Inventario, MovimientoInventario, Producto
 from app.repositories.inventario_repository import InventarioRepository
 from app.repositories.movimiento_inventario_repository import MovimientoInventarioRepository
 
@@ -37,7 +37,12 @@ class InventarioService:
         else:
             stock_nuevo = stock_anterior - cantidad
         if stock_nuevo < 0:
-            raise ValidationError("El stock actual no puede quedar en negativo")
+            producto = self.db.query(Producto).filter(Producto.id == producto_id).first()
+            nombre = producto.referencia if producto else f"#{producto_id}"
+            raise ValidationError(
+                f'Stock insuficiente para "{nombre}": disponible {stock_anterior}, '
+                f"se requieren {cantidad}."
+            )
 
         mov = MovimientoInventario(
             producto_id=producto_id,

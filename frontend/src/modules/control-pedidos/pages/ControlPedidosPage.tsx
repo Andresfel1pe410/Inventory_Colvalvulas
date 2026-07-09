@@ -5,7 +5,7 @@ import { useSectionPath } from '@/app/routing/sectionPath'
 import { usePedidosList, usePedido, usePedidoCambiarEstado, usePedidoDesmarcarEnviado, usePedidoMarcarEnviado } from '@/modules/pedidos/hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
 import { useProductosList } from '@/modules/productos/hooks/useProductos'
-import { DataTable, Column } from '@/shared/components'
+import { DataTable, Column, AlertDialog } from '@/shared/components'
 import type { Pedido, PedidoConDetalles, IntencionEnvio } from '@/modules/pedidos/types/pedido.types'
 import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
 
@@ -47,6 +47,7 @@ export function ControlPedidosPage() {
     Record<number, { estado: 'completo' | 'parcial' | 'no_enviado'; cantidad: number }>
   >({})
   const [error, setError] = useState('')
+  const [alertEnvioError, setAlertEnvioError] = useState('')
 
   const { data: pedidos = [], isLoading } = usePedidosList({ limit: 500 })
   const { data: clientesData = [] } = useClientesList({ limit: 500 })
@@ -132,7 +133,9 @@ export function ControlPedidosPage() {
       setChecklistEnvio({})
       setDetailId(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al marcar enviado')
+      const msg = err instanceof Error ? err.message : 'Error al marcar enviado'
+      setError(msg)
+      setAlertEnvioError(msg)
     }
   }
 
@@ -623,6 +626,13 @@ export function ControlPedidosPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={Boolean(alertEnvioError)}
+        title="No se pudo marcar como enviado"
+        message={alertEnvioError}
+        onClose={() => setAlertEnvioError('')}
+      />
     </div>
   )
 }
