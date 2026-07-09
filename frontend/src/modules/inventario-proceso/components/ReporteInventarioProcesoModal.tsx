@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { DataTable } from '@/shared/components'
+import { formatFechaHora } from '@/shared/utils/format'
 import { useInventarioProcesoMovimientos } from '../hooks/useInventarioProceso'
 import type { MovimientoInventarioProceso } from '../types/inventario-proceso.types'
 
@@ -35,14 +36,7 @@ export function ReporteInventarioProcesoModal({ open, onClose }: ReporteInventar
       key: 'created_at',
       header: 'Fecha',
       width: '170px',
-      render: (m: MovimientoInventarioProceso) =>
-        new Date(m.created_at).toLocaleString('es-CO', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+      render: (m: MovimientoInventarioProceso) => formatFechaHora(m.created_at),
     },
     {
       key: 'tipo',
@@ -55,7 +49,6 @@ export function ReporteInventarioProcesoModal({ open, onClose }: ReporteInventar
       ),
     },
     { key: 'referencia', header: 'Referencia', render: (m: MovimientoInventarioProceso) => m.referencia },
-    { key: 'material', header: 'Material', render: (m: MovimientoInventarioProceso) => m.material },
     {
       key: 'cantidad',
       header: 'Cantidad',

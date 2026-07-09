@@ -425,6 +425,8 @@ class MovimientoInventarioProcesoCreate(MovimientoInventarioProcesoBase):
 class MovimientoInventarioProceso(MovimientoInventarioProcesoBase):
     id: int
     inventario_proceso_id: int
+    referencia: str
+    material: str
     registrada_por: str
     cantidad_anterior: int
     cantidad_nueva: int

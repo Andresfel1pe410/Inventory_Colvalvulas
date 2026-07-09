@@ -1,5 +1,5 @@
 """Repositorio de Inventario de Proceso."""
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from app.core.exceptions import ValidationError
 from app.models import InventarioProceso, MovimientoInventarioProceso
@@ -76,10 +76,13 @@ class InventarioProcesoRepository:
         return movimiento
     
     def get_movimientos(self, inventario_proceso_id: int | None = None, skip: int = 0, limit: int = 100):
-        """Obtiene movimientos de inventario de proceso."""
-        query = self.db.query(MovimientoInventarioProceso)
-        
+        """Obtiene movimientos de inventario de proceso, con el ítem asociado precargado
+        (referencia/material se leen de ahí vía las propiedades del modelo)."""
+        query = self.db.query(MovimientoInventarioProceso).options(
+            joinedload(MovimientoInventarioProceso.inventario_proceso)
+        )
+
         if inventario_proceso_id is not None:
             query = query.filter(MovimientoInventarioProceso.inventario_proceso_id == inventario_proceso_id)
-        
+
         return query.order_by(desc(MovimientoInventarioProceso.created_at)).offset(skip).limit(limit).all()

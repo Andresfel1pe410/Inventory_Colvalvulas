@@ -243,3 +243,11 @@ class MovimientoInventarioProceso(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     
     inventario_proceso = relationship("InventarioProceso")
+
+    @property
+    def referencia(self) -> str:
+        return self.inventario_proceso.referencia
+
+    @property
+    def material(self) -> str:
+        return self.inventario_proceso.material
