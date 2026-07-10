@@ -16,6 +16,7 @@ from app.api.auth.auth_router import router as auth_router
 from app.api.auth.debug_auth import router as debug_auth
 from app.api.ventas import clientes, productos, inventario, pedidos, remisiones, usuarios, roles, reportes
 from app.api.proceso import inventario_proceso
+from app.api.rrhh import empleados, asistencia, device
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 ventas_prefix = f"{settings.API_V1_PREFIX}/ventas"
 proceso_prefix = f"{settings.API_V1_PREFIX}/proceso"
+rrhh_prefix = f"{settings.API_V1_PREFIX}/rrhh"
 auth_prefix = f"{settings.API_V1_PREFIX}/auth"
 
 app.include_router(auth_router, prefix=auth_prefix)
@@ -87,6 +89,13 @@ for api_prefix in (settings.API_V1_PREFIX, ventas_prefix):
 for api_prefix in (settings.API_V1_PREFIX, proceso_prefix):
     app.include_router(inventario_proceso, prefix=api_prefix)
 
+for api_prefix in (settings.API_V1_PREFIX, rrhh_prefix):
+    app.include_router(empleados, prefix=api_prefix)
+    app.include_router(asistencia, prefix=api_prefix)
+
+# Rutas del dispositivo (ESP32): públicas, un solo mount bajo el prefijo versionado.
+app.include_router(device, prefix=settings.API_V1_PREFIX)
+
 
 @app.get("/")
 def root():
@@ -97,6 +106,7 @@ def root():
             "auth": auth_prefix,
             "ventas": ventas_prefix,
             "proceso": proceso_prefix,
+            "rrhh": rrhh_prefix,
         },
     }
 

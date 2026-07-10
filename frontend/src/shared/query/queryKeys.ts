@@ -46,4 +46,20 @@ export const queryKeys = {
     topAcumulado: (params: { year: number; months: number[] }) =>
       ['reportes', 'top-acumulado', params] as const,
   },
+  empleados: {
+    all: ['empleados'] as const,
+    list: (params?: { search?: string; limit?: number }) =>
+      ['empleados', 'list', params] as const,
+    detail: (id: number) => ['empleados', id] as const,
+  },
+  asistencia: {
+    all: ['asistencia'] as const,
+    hoy: ['asistencia', 'hoy'] as const,
+    reporte: (params?: {
+      empleadoId?: number | null
+      fechaInicio?: string
+      fechaFin?: string
+      tipoEvento?: string
+    }) => ['asistencia', 'reporte', params] as const,
+  },
 }

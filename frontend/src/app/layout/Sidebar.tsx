@@ -36,6 +36,11 @@ const procesoNavItems: NavItem[] = [
   { to: '/inventario-proceso', label: 'Inventario de Proceso', roles: ['admin', 'almacen'], icon: <InventoryIcon /> },
 ]
 
+const rrhhNavItems: NavItem[] = [
+  { to: '/empleados', label: 'Empleados', roles: ['admin'], icon: <UsersIcon /> },
+  { to: '/reporte', label: 'Reporte', roles: ['admin'], icon: <ChartIcon /> },
+]
+
 function ClientsIcon() {
   return (
     <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +126,14 @@ export function Sidebar({ section = getSectionFromPath(window.location.pathname)
   const isFetching = useIsFetching() > 0
   const sectionPath = useSectionPath()
 
-  const navItems = section === 'proceso' ? procesoNavItems : section === 'ventas' ? ventasNavItems : legacyNavItems
+  const navItems =
+    section === 'proceso'
+      ? procesoNavItems
+      : section === 'ventas'
+        ? ventasNavItems
+        : section === 'rrhh'
+          ? rrhhNavItems
+          : legacyNavItems
 
   const [collapsed, setCollapsed] = useState(() => {
     try {

@@ -9,17 +9,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.auth.jwt import get_current_user
+from app.api.deps import require_admin
 from app.core.database import get_db
 from app.models import Pedido, Usuario, Cliente, DetallePedido, Producto
-from app.repositories.usuario_repository import UsuarioRepository
 
 router = APIRouter(prefix="/reportes", tags=["reportes"])
-
-
-def _require_admin(db: Session, usuario: Usuario) -> None:
-    roles = UsuarioRepository(db).get_roles(usuario.id)
-    if "admin" not in roles:
-        raise HTTPException(403, "Solo administradores pueden acceder")
 
 
 @router.get("/ventas-vendedores")
@@ -28,6 +22,7 @@ def ventas_por_vendedor_mes(
     month: int | None = Query(None, ge=1, le=12),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
     """
     Ventas por vendedor (líneas) y total (línea) en el mes indicado.
@@ -36,8 +31,6 @@ def ventas_por_vendedor_mes(
     Eje X: días del mes (1..N)
     Eje Y: total en pesos (COP)
     """
-    _require_admin(db, current_user)
-
     now = datetime.now(timezone.utc)
     y = year or now.year
     m = month or now.month
@@ -215,10 +208,9 @@ def ventas_vendedor_pedidos_mes(
     month: int | None = Query(None, ge=1, le=12),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
     """Pedidos enviados de un vendedor en el mes indicado."""
-    _require_admin(db, current_user)
-
     now = datetime.now(timezone.utc)
     y = year or now.year
     m = month or now.month
@@ -282,12 +274,11 @@ def top_clientes_productos_acumulado(
     limit: int = Query(15, ge=0, le=5000, description="0 = sin límite (reporte completo)"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
     """
     Top clientes y productos acumulado sobre los meses seleccionados (solo pedidos enviados).
     """
-    _require_admin(db, current_user)
-
     month_list = [int(m.strip()) for m in months.split(",") if m.strip()]
     if not month_list:
         raise HTTPException(400, "Debe indicar al menos un mes válido")

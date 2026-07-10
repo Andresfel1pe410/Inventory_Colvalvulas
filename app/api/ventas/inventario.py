@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.auth.jwt import get_current_user
+from app.api.deps import require_roles
 from app.core.database import get_db
 from app.models import Usuario
 from app.repositories.inventario_repository import InventarioRepository
 from app.repositories.movimiento_inventario_repository import MovimientoInventarioRepository
-from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas import (
     CorregirMovimientoRequest,
     Inventario,
@@ -28,12 +28,6 @@ router = APIRouter(prefix="/inventario", tags=["inventario"])
 logger = logging.getLogger(__name__)
 
 
-def _require_admin_or_almacen(db: Session, usuario: Usuario) -> None:
-    roles = UsuarioRepository(db).get_roles(usuario.id)
-    if "admin" not in roles and "almacen" not in roles:
-        raise HTTPException(403, "Solo administradores y almacenes pueden acceder al inventario")
-
-
 @router.get("", response_model=list[InventarioResumenConProducto])
 def listar(
     skip: int = Query(0, ge=0),
@@ -41,8 +35,8 @@ def listar(
     pedido_ids: str | None = Query(None, description="IDs de pedidos separados por coma. Si no se envía, usa todos en espera/proceso."),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     ids = None
     if pedido_ids:
         try:
@@ -57,8 +51,8 @@ def obtener_por_producto(
     producto_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     inv = InventarioRepository(db).get_by_producto(producto_id)
     if not inv:
         raise HTTPException(404, "Inventario no encontrado")
@@ -73,8 +67,8 @@ def listar_entradas(
     limit: int = Query(5000, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     try:
         dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
         dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
@@ -93,8 +87,8 @@ def listar_entradas_detalle(
     limit: int = Query(5000, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     try:
         dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
         dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
@@ -113,8 +107,8 @@ def listar_reporte_movimientos(
     limit: int = Query(5000, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     try:
         dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
         dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
@@ -131,8 +125,8 @@ def corregir_movimiento(
     data: CorregirMovimientoRequest,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     _, nuevo_mov = InventarioService(db).corregir_movimiento(
         movimiento_id=movimiento_id,
         nuevo_producto_id=data.nuevo_producto_id,
@@ -147,8 +141,8 @@ def registrar_movimiento(
     data: MovimientoInventarioCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     return InventarioService(db).registrar_movimiento(
         producto_id=data.producto_id,
         tipo=data.tipo,

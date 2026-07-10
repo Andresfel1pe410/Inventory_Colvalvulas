@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 
 export function ModuleSelectPage() {
   const navigate = useNavigate()
+  const isAdmin = useAuthStore((s) => s.user?.roles?.includes('admin'))
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.92),_rgba(15,23,42,1))] px-4 py-10 text-white">
@@ -21,7 +23,7 @@ export function ModuleSelectPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <button
             type="button"
             onClick={() => navigate('/ventas')}
@@ -53,6 +55,24 @@ export function ModuleSelectPage() {
               <span className="ml-2 transition group-hover:translate-x-1">→</span>
             </span>
           </button>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => navigate('/rrhh')}
+              className="group rounded-2xl border border-amber-400/20 bg-amber-400/10 p-6 text-left transition hover:-translate-y-1 hover:border-amber-300/40 hover:bg-amber-400/15"
+            >
+              <p className="text-sm uppercase tracking-[0.25em] text-amber-200/80">API RRHH</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Recursos Humanos</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Empleados y control de asistencia biométrico.
+              </p>
+              <span className="mt-6 inline-flex items-center text-sm font-medium text-amber-200">
+                Entrar a Recursos Humanos
+                <span className="ml-2 transition group-hover:translate-x-1">→</span>
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>

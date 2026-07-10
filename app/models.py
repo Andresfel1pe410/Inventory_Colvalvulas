@@ -216,6 +216,35 @@ class DetalleRemision(Base):
     remision = relationship("Remision", back_populates="detalles")
 
 
+class Empleado(Base):
+    __tablename__ = "empleado"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    nombre = Column(String(200), nullable=False)
+    documento = Column(String(30), nullable=False, unique=True)
+    cargo = Column(String(100))
+    telefono = Column(String(50))
+    activo = Column(Boolean, default=True, nullable=False)
+    fingerprint_id = Column(Integer, unique=True)
+    solo_entrada_salida = Column(Boolean, default=False, nullable=False)  # gerente, jefe de almacén: solo ENTRY/EXIT
+    fecha_creacion = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    eventos = relationship("EventoAsistencia", back_populates="empleado", cascade="all, delete-orphan")
+
+
+class EventoAsistencia(Base):
+    __tablename__ = "evento_asistencia"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    empleado_id = Column(BigInteger, ForeignKey("empleado.id", ondelete="CASCADE"), nullable=False)
+    tipo_evento = Column(String(20), nullable=False)  # ENTRY, BREAKFAST_START, BREAKFAST_END, LUNCH_START, LUNCH_END, EXIT
+    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    device_id = Column(Integer)
+
+    empleado = relationship("Empleado", back_populates="eventos")
+
+
 class InventarioProceso(Base):
     __tablename__ = "inventario_proceso"
     

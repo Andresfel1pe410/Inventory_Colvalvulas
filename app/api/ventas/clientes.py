@@ -4,18 +4,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.auth.jwt import get_current_user
+from app.api.deps import require_admin
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas import Cliente, ClienteCreate, ClienteUpdate
 from app.services.cliente_service import ClienteService
 
 router = APIRouter(prefix="/clientes", tags=["clientes"])
-
-
-def _require_admin(db: Session, usuario: Usuario) -> None:
-    roles = UsuarioRepository(db).get_roles(usuario.id)
-    if "admin" not in roles:
-        raise HTTPException(403, "Solo administradores pueden realizar esta acción")
 
 
 def _check_actualizar_permission(
@@ -62,8 +57,8 @@ def crear(
     data: ClienteCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
-    _require_admin(db, current_user)
     return ClienteService(db).crear(data)
 
 
@@ -85,6 +80,6 @@ def eliminar(
     id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
-    _require_admin(db, current_user)
     ClienteService(db).eliminar(id)

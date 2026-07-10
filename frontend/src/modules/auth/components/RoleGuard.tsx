@@ -21,7 +21,9 @@ export function RoleGuard({ children, requireAdmin, allowedRoles }: RoleGuardPro
     ? '/proceso/inventario-proceso'
     : section === 'ventas'
       ? '/ventas/pedidos'
-      : '/pedidos'
+      : section === 'rrhh'
+        ? '/'
+        : '/pedidos'
   
   if (requireAdmin && !isAdmin) {
     return <Navigate to={fallbackPath} replace />

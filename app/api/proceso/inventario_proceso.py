@@ -1,11 +1,11 @@
 """Router de inventario de proceso."""
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.auth.jwt import get_current_user
+from app.api.deps import require_roles
 from app.models import Usuario
-from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas import (
     InventarioProceso,
     MovimientoInventarioProcesoCreate,
@@ -22,21 +22,14 @@ def _formatear_usuario(usuario: Usuario) -> str:
     return nombres.strip() or usuario.email
 
 
-def _require_admin_or_almacen(db: Session, usuario: Usuario) -> None:
-    """Requiere que el usuario sea admin o almacen."""
-    roles = UsuarioRepository(db).get_roles(usuario.id)
-    if "admin" not in roles and "almacen" not in roles:
-        raise HTTPException(403, "Solo administradores y almacenes pueden acceder al inventario de proceso")
-
-
 @router.get("", response_model=list[InventarioProceso])
 def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     return InventarioProcesoRepository(db).get_all(skip, limit)
 
 
@@ -45,8 +38,8 @@ def registrar_movimiento(
     data: MovimientoInventarioProcesoCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     return InventarioProcesoService(db).registrar_movimiento(
         referencia=data.referencia,
         material=data.material,
@@ -64,6 +57,6 @@ def listar_movimientos(
     limit: int = Query(100, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_roles("admin", "almacen")),
 ):
-    _require_admin_or_almacen(db, current_user)
     return InventarioProcesoRepository(db).get_movimientos(inventario_proceso_id, skip, limit)

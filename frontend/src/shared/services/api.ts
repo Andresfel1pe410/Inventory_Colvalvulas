@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 import { useAuthStore } from '@/modules/auth/store/authStore'
-import { VENTAS_API_BASE, PROCESO_API_BASE } from '@/shared/config'
+import { VENTAS_API_BASE, PROCESO_API_BASE, RRHH_API_BASE } from '@/shared/config'
 
 const createApiClient = (baseURL: string) => axios.create({
   baseURL,
@@ -36,6 +36,8 @@ const attachAuthInterceptors = (client: ReturnType<typeof createApiClient>) => {
 
 export const api = createApiClient(VENTAS_API_BASE)
 export const procesoApi = createApiClient(PROCESO_API_BASE)
+export const rrhhApi = createApiClient(RRHH_API_BASE)
 
 attachAuthInterceptors(api)
 attachAuthInterceptors(procesoApi)
+attachAuthInterceptors(rrhhApi)

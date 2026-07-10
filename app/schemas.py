@@ -433,3 +433,112 @@ class MovimientoInventarioProceso(MovimientoInventarioProcesoBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ============= RRHH: EMPLEADOS =============
+TIPOS_EVENTO_ASISTENCIA = (
+    "ENTRY",
+    "BREAKFAST_START",
+    "BREAKFAST_END",
+    "LUNCH_START",
+    "LUNCH_END",
+    "EXIT",
+)
+_PATTERN_TIPO_EVENTO = "^(ENTRY|BREAKFAST_START|BREAKFAST_END|LUNCH_START|LUNCH_END|EXIT)$"
+
+
+class EmpleadoBase(BaseModel):
+    nombre: str
+    documento: str
+    cargo: Optional[str] = None
+    telefono: Optional[str] = None
+    activo: bool = True
+    fingerprint_id: Optional[int] = None
+    solo_entrada_salida: bool = False
+
+
+class EmpleadoCreate(EmpleadoBase):
+    pass
+
+
+class EmpleadoUpdate(BaseModel):
+    nombre: Optional[str] = None
+    documento: Optional[str] = None
+    cargo: Optional[str] = None
+    telefono: Optional[str] = None
+    activo: Optional[bool] = None
+    fingerprint_id: Optional[int] = None
+    solo_entrada_salida: Optional[bool] = None
+
+
+class Empleado(EmpleadoBase):
+    id: int
+    fecha_creacion: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============= RRHH: ASISTENCIA =============
+class EventoAsistenciaCreate(BaseModel):
+    empleado_id: int
+    tipo_evento: str = Field(..., pattern=_PATTERN_TIPO_EVENTO)
+    device_id: Optional[int] = None
+
+
+class EventoAsistencia(BaseModel):
+    id: int
+    empleado_id: int
+    tipo_evento: str
+    timestamp: datetime
+    device_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EventoAsistenciaReporte(BaseModel):
+    """Fila de reporte, con datos del empleado ya unidos (evita otra consulta en frontend)."""
+    id: int
+    empleado_id: int
+    empleado_nombre: str
+    cargo: Optional[str] = None
+    tipo_evento: str
+    timestamp: datetime
+    device_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmpleadoEstadoHoy(BaseModel):
+    """Estado derivado de un empleado para el día actual (dashboard)."""
+    empleado_id: int
+    nombre: str
+    cargo: Optional[str] = None
+    estado: str  # presente | ausente | en_desayuno | en_almuerzo | salida
+    ultimo_evento: Optional[str] = None
+    ultima_hora: Optional[datetime] = None
+    entrada_tardia: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============= RRHH: CONTRATO DISPOSITIVO (ESP32) =============
+# Nombres de campo en inglés a propósito: son el contrato fijo que hablará con el
+# firmware del ESP32, no se traducen aunque el resto del proyecto use español.
+# El dispositivo ya no manda "event": el backend calcula automáticamente cuál es
+# el siguiente evento del empleado (ver AsistenciaService._siguiente_evento).
+class DeviceEventRequest(BaseModel):
+    device_id: int
+    fingerprint_id: int
+
+
+class DeviceEventResponse(BaseModel):
+    success: bool
+    employee_name: Optional[str] = None
+    message: str
+    event_type: Optional[str] = None
+
+
+class DeviceEmployeeSync(BaseModel):
+    fingerprint_id: int
+    name: str

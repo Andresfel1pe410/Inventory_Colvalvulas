@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.auth.jwt import get_current_user
+from app.api.deps import require_admin
 from app.models import Usuario
 from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas import (
@@ -27,12 +28,6 @@ router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 def _es_vendedor_solo(db: Session, usuario: Usuario) -> bool:
     roles = UsuarioRepository(db).get_roles(usuario.id)
     return "vendedor" in roles and "admin" not in roles
-
-
-def _require_admin(db: Session, usuario: Usuario) -> None:
-    roles = UsuarioRepository(db).get_roles(usuario.id)
-    if "admin" not in roles:
-        raise HTTPException(403, "Solo administradores pueden realizar esta acción")
 
 
 @router.get("/bulk", response_model=list[PedidoConDetalles])
@@ -104,7 +99,7 @@ def actualizar(
 ):
     es_vend = _es_vendedor_solo(db, current_user)
     if data.vendedor_id is not None:
-        _require_admin(db, current_user)
+        require_admin(db, current_user)
     return PedidoService(db).actualizar(
         id, data, current_user.id,
         usuario_id_check=current_user.id if es_vend else None,
@@ -196,8 +191,8 @@ def desmarcar_enviado(
     id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
-    _require_admin(db, current_user)
     es_vend = _es_vendedor_solo(db, current_user)
     return PedidoService(db).desmarcar_enviado(
         id,

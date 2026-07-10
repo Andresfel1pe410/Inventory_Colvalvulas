@@ -12,11 +12,14 @@ import { ControlPedidosPage } from '@/modules/control-pedidos'
 import { RemisionesListPage } from '@/modules/remisiones'
 import { UsuariosListPage } from '@/modules/usuarios'
 import { VentasVendedoresPage } from '@/modules/reportes'
+import { EmpleadosListPage, EmpleadoFormPage } from '@/modules/empleados'
+import { ReporteAsistenciaPage } from '@/modules/asistencia'
 import { buildSectionPath } from '@/app/routing/sectionPath'
 
 export function RootApp() {
   const isAdmin = useAuthStore((s) => s.user?.roles?.includes('admin'))
   const isAlmacen = useAuthStore((s) => s.user?.roles?.includes('almacen'))
+  const isAuditorContable = useAuthStore((s) => s.user?.roles?.includes('auditor_contable'))
   const ventasPath = (path: string) => buildSectionPath('/ventas', path)
 
   return (
@@ -38,11 +41,11 @@ export function RootApp() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to={isAlmacen ? ventasPath('/inventario') : isAdmin ? ventasPath('/clientes') : ventasPath('/pedidos')} replace />} />
-        <Route path="clientes" element={<RoleGuard requireAdmin><ClientesListPage /></RoleGuard>} />
+        <Route index element={<Navigate to={isAlmacen ? ventasPath('/inventario') : (isAdmin || isAuditorContable) ? ventasPath('/clientes') : ventasPath('/pedidos')} replace />} />
+        <Route path="clientes" element={<RoleGuard allowedRoles={['admin', 'auditor_contable']}><ClientesListPage /></RoleGuard>} />
         <Route path="clientes/nuevo" element={<RoleGuard requireAdmin><ClienteFormPage /></RoleGuard>} />
-        <Route path="clientes/:id/editar" element={<RoleGuard requireAdmin><ClienteFormPage /></RoleGuard>} />
-        <Route path="clientes/:id" element={<RoleGuard requireAdmin><ClienteDetailPage /></RoleGuard>} />
+        <Route path="clientes/:id/editar" element={<RoleGuard allowedRoles={['admin', 'auditor_contable']}><ClienteFormPage /></RoleGuard>} />
+        <Route path="clientes/:id" element={<RoleGuard allowedRoles={['admin', 'auditor_contable']}><ClienteDetailPage /></RoleGuard>} />
         <Route path="productos" element={<ProductosListPage />} />
         <Route path="productos/nuevo" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
         <Route path="productos/:id/editar" element={<RoleGuard requireAdmin><ProductoFormPage /></RoleGuard>} />
@@ -66,6 +69,20 @@ export function RootApp() {
       >
         <Route index element={<Navigate to="inventario-proceso" replace />} />
         <Route path="inventario-proceso" element={<RoleGuard allowedRoles={['admin', 'almacen']}><InventarioProcesoPage /></RoleGuard>} />
+      </Route>
+      <Route
+        path="/rrhh"
+        element={
+          <ProtectedRoute>
+            <MainLayout basePath="/rrhh" section="rrhh" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="empleados" replace />} />
+        <Route path="empleados" element={<RoleGuard requireAdmin><EmpleadosListPage /></RoleGuard>} />
+        <Route path="empleados/nuevo" element={<RoleGuard requireAdmin><EmpleadoFormPage /></RoleGuard>} />
+        <Route path="empleados/:id/editar" element={<RoleGuard requireAdmin><EmpleadoFormPage /></RoleGuard>} />
+        <Route path="reporte" element={<RoleGuard requireAdmin><ReporteAsistenciaPage /></RoleGuard>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

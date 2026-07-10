@@ -1,0 +1,4 @@
+# Dependencias solo para desarrollo/pruebas (no se instalan en el deploy de Railway)
+-r requirements.txt
+pytest>=8.0.0
+pytest-cov>=5.0.0
