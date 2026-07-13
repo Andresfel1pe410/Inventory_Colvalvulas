@@ -5,7 +5,7 @@ import { useEmpleadosList } from '@/modules/empleados/hooks/useEmpleados'
 import { useAsistenciaHoy, useAsistenciaReporte } from '../hooks/useAsistencia'
 import { BarChart } from '../components/BarChart'
 import { exportarCsv, exportarExcel } from '../utils/export'
-import type { EventoAsistenciaReporte, TipoEvento } from '../types/asistencia.types'
+import type { EmpleadoEstadoHoy, EventoAsistenciaReporte, TipoEvento } from '../types/asistencia.types'
 
 const LABEL_EVENTO: Record<TipoEvento, string> = {
   ENTRY: 'Entrada',
@@ -30,6 +30,13 @@ function fechaCorta(iso: string): string {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+function horaCorta(iso: string | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 const LIMIT = 20
 
 export function ReporteAsistenciaPage() {
@@ -49,14 +56,14 @@ export function ReporteAsistenciaPage() {
   })
 
   const tarjetas = useMemo(() => {
-    const count = (estado: string) => hoy.filter((e) => e.estado === estado).length
+    const porEstado = (estado: string) => hoy.filter((e) => e.estado === estado)
     return {
-      presentes: count('presente'),
-      ausentes: count('ausente'),
-      enDesayuno: count('en_desayuno'),
-      enAlmuerzo: count('en_almuerzo'),
-      salidas: count('salida'),
-      entradasTardias: hoy.filter((e) => e.entrada_tardia).length,
+      presentes: porEstado('presente'),
+      ausentes: porEstado('ausente'),
+      enDesayuno: porEstado('en_desayuno'),
+      enAlmuerzo: porEstado('en_almuerzo'),
+      salidas: porEstado('salida'),
+      entradasTardias: hoy.filter((e) => e.entrada_tardia),
     }
   }, [hoy])
 
@@ -115,12 +122,12 @@ export function ReporteAsistenciaPage() {
         <PageLoading />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          <Tarjeta label="Presentes" value={tarjetas.presentes} color="text-green-700" />
-          <Tarjeta label="Ausentes" value={tarjetas.ausentes} color="text-slate-700" />
-          <Tarjeta label="En desayuno" value={tarjetas.enDesayuno} color="text-amber-700" />
-          <Tarjeta label="En almuerzo" value={tarjetas.enAlmuerzo} color="text-amber-700" />
-          <Tarjeta label="Salidas" value={tarjetas.salidas} color="text-slate-700" />
-          <Tarjeta label="Entradas tardías" value={tarjetas.entradasTardias} color="text-red-700" />
+          <Tarjeta label="Presentes" empleados={tarjetas.presentes} color="text-green-700" />
+          <Tarjeta label="Ausentes" empleados={tarjetas.ausentes} color="text-slate-700" />
+          <Tarjeta label="En desayuno" empleados={tarjetas.enDesayuno} color="text-amber-700" />
+          <Tarjeta label="En almuerzo" empleados={tarjetas.enAlmuerzo} color="text-amber-700" />
+          <Tarjeta label="Salidas" empleados={tarjetas.salidas} color="text-slate-700" />
+          <Tarjeta label="Entradas tardías" empleados={tarjetas.entradasTardias} color="text-red-700" mostrarHora />
         </div>
       )}
 
@@ -255,11 +262,46 @@ export function ReporteAsistenciaPage() {
   )
 }
 
-function Tarjeta({ label, value, color }: { label: string; value: number; color: string }) {
+function Tarjeta({
+  label,
+  empleados,
+  color,
+  mostrarHora,
+}: {
+  label: string
+  empleados: EmpleadoEstadoHoy[]
+  color: string
+  mostrarHora?: boolean
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const tieneDetalle = empleados.length > 0
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div
+      className="relative rounded-lg border border-slate-200 bg-white p-4"
+      tabIndex={tieneDetalle ? 0 : undefined}
+      onMouseEnter={() => setAbierto(true)}
+      onMouseLeave={() => setAbierto(false)}
+      onFocus={() => setAbierto(true)}
+      onBlur={() => setAbierto(false)}
+    >
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${color}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-semibold ${color}`}>{empleados.length}</p>
+
+      {abierto && tieneDetalle && (
+        <div className="absolute left-0 top-full z-10 mt-1 w-60 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+          <ul className="max-h-52 space-y-1 overflow-y-auto text-sm text-slate-700">
+            {empleados.map((e) => (
+              <li key={e.empleado_id} className="flex items-center justify-between gap-2">
+                <span>{e.nombre}</span>
+                {mostrarHora && e.ultima_hora && (
+                  <span className="shrink-0 text-xs text-slate-400">{horaCorta(e.ultima_hora)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

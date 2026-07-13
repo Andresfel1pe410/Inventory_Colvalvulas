@@ -18,5 +18,9 @@
 #define PIN_TOUCH_IRQ  22
 
 // ---------- Sensor de huella AS608 (UART2, no usa el puerto USB/Serial) ----------
-#define PIN_HUELLA_RX  16  // al TX del AS608
-#define PIN_HUELLA_TX  17  // al RX del AS608
+// GPIO16/17 se evitan a propósito: en los ESP32 WROVER (con PSRAM) están
+// reservados para la memoria externa y no sirven como GPIO normal aunque los
+// cables estén perfectos. 25/26 son pines libres en prácticamente cualquier
+// variante de ESP32.
+#define PIN_HUELLA_RX  25  // al TX del AS608
+#define PIN_HUELLA_TX  26  // al RX del AS608

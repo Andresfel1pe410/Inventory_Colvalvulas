@@ -25,7 +25,7 @@ static unsigned long ultimaSync = 0;
 static unsigned long ultimoIntentoWifi = 0;
 
 static String pinIngresado = "";
-static int slotElegido = 1;
+static String slotTexto = "";
 
 #define TIMEOUT_INACTIVIDAD_MENU_MS 20000UL
 
@@ -154,10 +154,10 @@ void loop() {
           ultimaActividad = millis();
           if (confirmado) {
             if (pinIngresado == String(PIN_ADMIN)) {
-              slotElegido = siguienteSlotSugerido();
-              if (slotElegido < 1) slotElegido = 1;
+              int sugerido = siguienteSlotSugerido();
+              slotTexto = String(sugerido >= 1 ? sugerido : 1);
               cambiarEstado(ESTADO_SLOT);
-              mostrarElegirSlot(slotElegido);
+              mostrarTecladoSlot(slotTexto);
             } else {
               mostrarEstadoEnrolar("PIN incorrecto");
               delay(1200);
@@ -165,7 +165,7 @@ void loop() {
               mostrarInicio();
             }
           } else {
-            mostrarTecladoPin(pinIngresado);
+            actualizarMascaraPin(pinIngresado);
           }
         }
       }
@@ -177,15 +177,22 @@ void loop() {
       if (leerToque(tx, ty) && millis() - ultimoToqueProcesado > 250) {
         ultimoToqueProcesado = millis();
         bool confirmado, cancelado;
-        if (tocoElegirSlot(tx, ty, slotElegido, confirmado, cancelado)) {
+        if (tocoTecladoSlot(tx, ty, slotTexto, confirmado, cancelado)) {
           ultimaActividad = millis();
           if (cancelado) {
             cambiarEstado(ESTADO_INICIO);
             mostrarInicio();
           } else if (confirmado) {
-            bool ok = enrolarHuella(slotElegido, mostrarEstadoEnrolar);
+            int slot = slotTexto.toInt();
+            if (slotTexto.length() == 0 || slot < 1) {
+              mostrarEstadoEnrolar("Numero de slot invalido");
+              delay(1200);
+              mostrarTecladoSlot(slotTexto);
+              break;
+            }
+            bool ok = enrolarHuella(slot, mostrarEstadoEnrolar);
             if (ok) {
-              mostrarSlotGuardado(slotElegido);
+              mostrarSlotGuardado(slot);
               delay(4000);
             } else {
               delay(2000);
@@ -194,7 +201,7 @@ void loop() {
             mostrarInicio();
             sincronizarEmpleados();
           } else {
-            mostrarElegirSlot(slotElegido);
+            actualizarValorSlot(slotTexto);
           }
         }
       }

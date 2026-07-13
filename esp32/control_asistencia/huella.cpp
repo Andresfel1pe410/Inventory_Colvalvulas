@@ -6,16 +6,31 @@ static HardwareSerial serialHuella(2);  // UART2
 static Adafruit_Fingerprint finger(&serialHuella);
 static bool sensorOk = false;
 
+// 57600 es el baudrate de fábrica más común en los AS608, pero algunos
+// clones vienen en otro valor — se prueban varios para no depender de
+// adivinar cuál trae el tuyo.
+static const uint32_t BAUDIOS_A_PROBAR[] = {57600, 9600, 19200, 38400, 115200};
+
 void iniciarSensorHuella() {
-  serialHuella.begin(57600, SERIAL_8N1, PIN_HUELLA_RX, PIN_HUELLA_TX);
-  delay(50);
-  sensorOk = finger.verifyPassword();
-  if (sensorOk) {
-    Serial.println("Sensor AS608 detectado correctamente.");
-    finger.getTemplateCount();
-  } else {
-    Serial.println("No se pudo comunicar con el sensor AS608 (revisa cableado/pines).");
+  for (unsigned int i = 0; i < sizeof(BAUDIOS_A_PROBAR) / sizeof(BAUDIOS_A_PROBAR[0]); i++) {
+    uint32_t baud = BAUDIOS_A_PROBAR[i];
+    Serial.printf("Probando AS608 a %u baudios...\n", baud);
+    serialHuella.begin(baud, SERIAL_8N1, PIN_HUELLA_RX, PIN_HUELLA_TX);
+    delay(300);  // tiempo de arranque del sensor tras cambiar el baudrate
+
+    if (finger.verifyPassword()) {
+      sensorOk = true;
+      Serial.printf(">>> Sensor AS608 detectado a %u baudios.\n", baud);
+      finger.getTemplateCount();
+      return;
+    }
+    serialHuella.end();
+    delay(100);
   }
+
+  sensorOk = false;
+  Serial.println("No se pudo comunicar con el AS608 en ningún baudrate probado.");
+  Serial.println("Revisa: TX del sensor -> GPIO16, RX del sensor -> GPIO17 (cruzados, no derecho), VCC y GND.");
 }
 
 bool sensorHuellaOk() {

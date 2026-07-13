@@ -3,13 +3,13 @@
 #pragma once
 
 // ---------- WiFi de la empresa ----------
-#define WIFI_SSID     "NOMBRE_DE_TU_RED"      // <<< reemplaza
-#define WIFI_PASSWORD "CONTRASENA_DE_TU_RED"  // <<< reemplaza
+#define WIFI_SSID     "NoahNieto_2.4Ghz_ETB"      // <<< reemplaza
+#define WIFI_PASSWORD "Diana52728034"  // <<< reemplaza
 
 // ---------- Backend ----------
 // URL pública de Railway, SIN "/" al final. Ejemplo:
 // https://inventario-colvalvulas.up.railway.app
-#define BACKEND_URL "https://TU-BACKEND.up.railway.app"  // <<< reemplaza
+#define BACKEND_URL "https://inventorycolvalvulas-production.up.railway.app"  // <<< reemplaza
 
 // Identificador de este dispositivo físico. Con un solo sensor, déjalo en 1.
 // Si algún día agregas un segundo sensor en otra puerta, dale el número 2, etc.
@@ -33,7 +33,7 @@
 // toca las 4 esquinas de la pantalla y anota los valores "raw x=... y=..."
 // que se imprimen (ver leerToque() en pantallas.cpp) — de ahí sacas el
 // mínimo y máximo real de tu unidad.
-#define TOUCH_RAW_X_MIN 200
+#define TOUCH_RAW_X_MIN 180
 #define TOUCH_RAW_X_MAX 3800
-#define TOUCH_RAW_Y_MIN 200
+#define TOUCH_RAW_Y_MIN 240
 #define TOUCH_RAW_Y_MAX 3800

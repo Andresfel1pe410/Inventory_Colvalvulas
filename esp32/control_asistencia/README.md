@@ -86,9 +86,13 @@ Touch XPT2046 (suele compartir el mismo módulo que la TFT)
 AS608 (sensor de huella)
   VCC        ----------- 3.3V o 5V (revisa el datasheet de tu módulo)
   GND        ----------- GND
-  TX         ----------- GPIO 16 (RX2 del ESP32)
-  RX         ----------- GPIO 17 (TX2 del ESP32)
+  TX         ----------- GPIO 25
+  RX         ----------- GPIO 26
 ```
+
+**Nota sobre GPIO16/17:** si tu ESP32 es un módulo WROVER (con PSRAM), esos dos
+pines están reservados internamente para la memoria externa y no funcionan
+como GPIO normal — por eso el sensor se conecta en 25/26 en vez de 16/17.
 
 Verifica esto contra el silkscreen real de tus módulos antes de alimentar —
 esta es una asignación estándar, no viene de tu montaje.
