@@ -1,5 +1,5 @@
 """Pruebas de las 5 reglas de negocio de asistencia (AsistenciaService)."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -171,3 +171,17 @@ def test_horas_semana_cuenta_tramo_abierto_hasta_ahora(db_session):
     service = AsistenciaService(db_session)
     resultado = service.horas_semana_empleado(empleado.id)
     assert 1.9 < resultado["horas_trabajadas"] < 2.1
+
+
+def test_horas_semana_no_falla_con_timestamp_timezone_aware(db_session):
+    """En Postgres (producción) la columna timestamp es timezone-aware; en
+    SQLite (tests) normalmente llega naive. La primera marcada de la semana
+    (un único ENTRY sin cerrar) reproducía un TypeError al restar aware-naive."""
+    empleado = _crear_empleado(db_session, fingerprint_id=42)
+    inicio = datetime.now(timezone.utc) - timedelta(hours=1)
+    db_session.add(EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio))
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    resultado = service.horas_semana_empleado(empleado.id)
+    assert 0.9 < resultado["horas_trabajadas"] < 1.1

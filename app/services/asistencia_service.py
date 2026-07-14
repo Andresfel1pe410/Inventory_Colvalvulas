@@ -75,17 +75,25 @@ def _horas_trabajadas(eventos: list[EventoAsistencia], ahora_utc: datetime) -> f
     por timestamp: ENTRY/BREAKFAST_END/LUNCH_END abren un tramo de trabajo,
     BREAKFAST_START/LUNCH_START/EXIT lo cierran. Si el último tramo quedó
     abierto (el empleado sigue trabajando y no ha marcado salida), se cuenta
-    hasta `ahora_utc` para que el avance se vea en tiempo real."""
+    hasta `ahora_utc` para que el avance se vea en tiempo real.
+
+    Normaliza todo a UTC-aware antes de restar: en Postgres (producción) la
+    columna timestamp es timezone-aware, pero en SQLite (tests) llega naive.
+    Restar un datetime aware menos uno naive lanza TypeError — eso rompía la
+    primera marcada de la semana (el único evento, sin cerrar todavía, cae en
+    la rama final que resta contra "ahora")."""
+    ahora = _a_utc_aware(ahora_utc)
     total_segundos = 0.0
     inicio_tramo: datetime | None = None
     for ev in eventos:
+        ts = _a_utc_aware(ev.timestamp)
         if ev.tipo_evento in EVENTOS_INICIO_TRAMO:
-            inicio_tramo = ev.timestamp
+            inicio_tramo = ts
         elif ev.tipo_evento in EVENTOS_FIN_TRAMO and inicio_tramo is not None:
-            total_segundos += (ev.timestamp - inicio_tramo).total_seconds()
+            total_segundos += (ts - inicio_tramo).total_seconds()
             inicio_tramo = None
     if inicio_tramo is not None:
-        total_segundos += (ahora_utc - inicio_tramo).total_seconds()
+        total_segundos += (ahora - inicio_tramo).total_seconds()
     return max(total_segundos, 0.0) / 3600.0
 
 
