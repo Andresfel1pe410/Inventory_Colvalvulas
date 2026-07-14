@@ -132,7 +132,10 @@ void loop() {
         ResultadoEvento r = registrarEvento(id);
         String nombre = r.employeeName.length() > 0 ? r.employeeName : nombreCacheado(id);
         String mensaje = r.ok ? r.message : "Error de conexión con el servidor";
-        mostrarResultado(r.ok && r.success, nombre, mensaje, r.eventType);
+        mostrarResultado(r.ok && r.success, nombre, mensaje, r.eventType, r.horasSemana, r.horasObjetivo);
+        cambiarEstado(ESTADO_RESULTADO);
+      } else if (id == -2) {
+        mostrarResultado(false, "", "Huella no registrada. Intente de nuevo o contacte al administrador.", "");
         cambiarEstado(ESTADO_RESULTADO);
       }
       break;

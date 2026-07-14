@@ -8,7 +8,13 @@ from app.core.database import get_db
 from app.api.auth.jwt import get_current_user
 from app.api.deps import require_admin
 from app.models import Usuario
-from app.schemas import EventoAsistencia, EventoAsistenciaCreate, EventoAsistenciaReporte, EmpleadoEstadoHoy
+from app.schemas import (
+    EventoAsistencia,
+    EventoAsistenciaCreate,
+    EventoAsistenciaReporte,
+    EmpleadoEstadoHoy,
+    HorasSemanaEmpleado,
+)
 from app.services.asistencia_service import AsistenciaService
 
 router = APIRouter(prefix="/asistencia", tags=["asistencia"])
@@ -47,6 +53,17 @@ def hoy(
     _admin: Usuario = Depends(require_admin),
 ):
     return AsistenciaService(db).estado_hoy()
+
+
+@router.get("/horas-semana", response_model=list[HorasSemanaEmpleado])
+def horas_semana(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
+):
+    """Horas trabajadas de lunes a hoy (hora Colombia) de cada empleado activo,
+    contra la jornada legal semanal (42h)."""
+    return AsistenciaService(db).horas_semana_todos()
 
 
 @router.get("/reporte", response_model=list[EventoAsistenciaReporte])

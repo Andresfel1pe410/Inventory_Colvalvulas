@@ -18,7 +18,10 @@ bool tocoEsquinaEnrolar(int tx, int ty);
 
 // ---------- Resultado de una marcación ----------
 void mostrarProcesando();
-void mostrarResultado(bool success, const String &nombre, const String &mensaje, const String &eventType);
+// horasSemana/horasObjetivo son opcionales: si horasObjetivo <= 0 no se
+// muestra la línea de horas (caso de huella no reconocida, sin empleado).
+void mostrarResultado(bool success, const String &nombre, const String &mensaje, const String &eventType,
+                       float horasSemana = -1, float horasObjetivo = -1);
 
 // ---------- Sin conexión ----------
 void mostrarSinWifi();

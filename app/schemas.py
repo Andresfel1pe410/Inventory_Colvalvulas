@@ -522,6 +522,16 @@ class EmpleadoEstadoHoy(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class HorasSemanaEmpleado(BaseModel):
+    """Horas trabajadas de lunes a hoy (hora Colombia) contra la jornada
+    legal semanal (42h). Usado por el reporte de RRHH en la web."""
+    empleado_id: int
+    empleado_nombre: str
+    cargo: Optional[str] = None
+    horas_trabajadas: float
+    horas_objetivo: float
+
+
 # ============= RRHH: CONTRATO DISPOSITIVO (ESP32) =============
 # Nombres de campo en inglés a propósito: son el contrato fijo que hablará con el
 # firmware del ESP32, no se traducen aunque el resto del proyecto use español.
@@ -537,6 +547,10 @@ class DeviceEventResponse(BaseModel):
     employee_name: Optional[str] = None
     message: str
     event_type: Optional[str] = None
+    # Horas trabajadas de lunes a hoy vs. la jornada legal semanal (42h en
+    # Colombia), para que la pantalla del ESP32 muestre "llevas X/42 horas".
+    horas_semana: Optional[float] = None
+    horas_objetivo: Optional[float] = None
 
 
 class DeviceEmployeeSync(BaseModel):

@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react'
 import { DataTable, Pagination, PageLoading } from '@/shared/components'
 import { formatFechaHora } from '@/shared/utils/format'
 import { useEmpleadosList } from '@/modules/empleados/hooks/useEmpleados'
-import { useAsistenciaHoy, useAsistenciaReporte } from '../hooks/useAsistencia'
+import { useAsistenciaHoy, useAsistenciaReporte, useHorasSemana } from '../hooks/useAsistencia'
 import { BarChart } from '../components/BarChart'
 import { exportarCsv, exportarExcel } from '../utils/export'
-import type { EmpleadoEstadoHoy, EventoAsistenciaReporte, TipoEvento } from '../types/asistencia.types'
+import type { EmpleadoEstadoHoy, EventoAsistenciaReporte, HorasSemanaEmpleado, TipoEvento } from '../types/asistencia.types'
 
 const LABEL_EVENTO: Record<TipoEvento, string> = {
   ENTRY: 'Entrada',
@@ -48,6 +48,7 @@ export function ReporteAsistenciaPage() {
 
   const { data: empleados = [] } = useEmpleadosList({ limit: 1000 })
   const { data: hoy = [], isLoading: loadingHoy } = useAsistenciaHoy()
+  const { data: horasSemana = [], isLoading: loadingHoras } = useHorasSemana()
   const { data: eventos = [], isLoading: loadingReporte } = useAsistenciaReporte({
     empleado_id: empleadoId || undefined,
     fecha_inicio: fechaInicio || undefined,
@@ -130,6 +131,22 @@ export function ReporteAsistenciaPage() {
           <Tarjeta label="Entradas tardías" empleados={tarjetas.entradasTardias} color="text-red-700" mostrarHora />
         </div>
       )}
+
+      {/* Horas semanales (jornada legal: 42h, lunes a hoy) */}
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="mb-3 text-sm font-medium text-slate-900">Horas semanales (lunes a hoy)</h2>
+        {loadingHoras ? (
+          <PageLoading />
+        ) : horasSemana.length === 0 ? (
+          <p className="text-sm text-slate-500">Sin empleados activos</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {horasSemana.map((h) => (
+              <MedidorHoras key={h.empleado_id} horas={h} />
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
@@ -302,6 +319,32 @@ function Tarjeta({
           </ul>
         </div>
       )}
+    </div>
+  )
+}
+
+function MedidorHoras({ horas }: { horas: HorasSemanaEmpleado }) {
+  const porcentaje = Math.min(100, (horas.horas_trabajadas / horas.horas_objetivo) * 100)
+  const cumplida = horas.horas_trabajadas >= horas.horas_objetivo
+
+  return (
+    <div className="rounded-md border border-slate-200 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="truncate text-sm font-medium text-slate-900">{horas.empleado_nombre}</p>
+        <p className="shrink-0 text-sm text-slate-600">
+          <span className={`font-semibold ${cumplida ? 'text-green-700' : 'text-slate-900'}`}>
+            {horas.horas_trabajadas.toFixed(1)}
+          </span>
+          {' / '}
+          {horas.horas_objetivo.toFixed(0)} h
+        </p>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className={`h-full rounded-full ${cumplida ? 'bg-green-600' : 'bg-primary-600'}`}
+          style={{ width: `${porcentaje}%` }}
+        />
+      </div>
     </div>
   )
 }

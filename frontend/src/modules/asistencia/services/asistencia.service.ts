@@ -1,8 +1,15 @@
 import { rrhhApi } from '@/shared/services/api'
-import type { EmpleadoEstadoHoy, EventoAsistenciaReporte, ReporteFiltros } from '../types/asistencia.types'
+import type {
+  EmpleadoEstadoHoy,
+  EventoAsistenciaReporte,
+  HorasSemanaEmpleado,
+  ReporteFiltros,
+} from '../types/asistencia.types'
 
 export const asistenciaService = {
   hoy: () => rrhhApi.get<EmpleadoEstadoHoy[]>('/asistencia/hoy').then((r) => r.data),
+
+  horasSemana: () => rrhhApi.get<HorasSemanaEmpleado[]>('/asistencia/horas-semana').then((r) => r.data),
 
   reporte: (filtros?: ReporteFiltros) =>
     rrhhApi

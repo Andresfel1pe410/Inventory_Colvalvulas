@@ -28,6 +28,14 @@ export interface EmpleadoEstadoHoy {
   entrada_tardia: boolean
 }
 
+export interface HorasSemanaEmpleado {
+  empleado_id: number
+  empleado_nombre: string
+  cargo?: string
+  horas_trabajadas: number
+  horas_objetivo: number
+}
+
 export interface ReporteFiltros {
   empleado_id?: number
   fecha_inicio?: string

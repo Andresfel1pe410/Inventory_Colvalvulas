@@ -96,6 +96,8 @@ def test_registrar_evento_dispositivo_exitoso(db_session):
         "employee_name": "Juan Perez",
         "message": "Entrada registrada",
         "event_type": "ENTRY",
+        "horas_semana": 0.0,
+        "horas_objetivo": 42.0,
     }
 
 
@@ -131,3 +133,41 @@ def test_solo_entrada_salida_usa_secuencia_corta(db_session):
 
     r3 = service.registrar_evento_dispositivo(fingerprint_id=30, device_id=1)
     assert r3["success"] is False
+
+
+def test_horas_semana_suma_tramos_y_resta_descansos(db_session):
+    """8am a 5pm con 1h de almuerzo = 8h trabajadas, no 9h."""
+    empleado = _crear_empleado(db_session, fingerprint_id=40)
+    inicio_dia = datetime.utcnow().replace(hour=8, minute=0, second=0, microsecond=0)
+    db_session.add_all(
+        [
+            EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio_dia),
+            EventoAsistencia(
+                empleado_id=empleado.id, tipo_evento="LUNCH_START", timestamp=inicio_dia + timedelta(hours=4)
+            ),
+            EventoAsistencia(
+                empleado_id=empleado.id, tipo_evento="LUNCH_END", timestamp=inicio_dia + timedelta(hours=5)
+            ),
+            EventoAsistencia(
+                empleado_id=empleado.id, tipo_evento="EXIT", timestamp=inicio_dia + timedelta(hours=9)
+            ),
+        ]
+    )
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    resultado = service.horas_semana_empleado(empleado.id)
+    assert resultado["horas_trabajadas"] == 8.0
+    assert resultado["horas_objetivo"] == 42.0
+
+
+def test_horas_semana_cuenta_tramo_abierto_hasta_ahora(db_session):
+    """Si el empleado sigue trabajando (sin EXIT), las horas se cuentan hasta el momento actual."""
+    empleado = _crear_empleado(db_session, fingerprint_id=41)
+    inicio = datetime.utcnow() - timedelta(hours=2)
+    db_session.add(EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio))
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    resultado = service.horas_semana_empleado(empleado.id)
+    assert 1.9 < resultado["horas_trabajadas"] < 2.1

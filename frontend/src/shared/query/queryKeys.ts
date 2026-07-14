@@ -55,6 +55,7 @@ export const queryKeys = {
   asistencia: {
     all: ['asistencia'] as const,
     hoy: ['asistencia', 'hoy'] as const,
+    horasSemana: ['asistencia', 'horas-semana'] as const,
     reporte: (params?: {
       empleadoId?: number | null
       fechaInicio?: string

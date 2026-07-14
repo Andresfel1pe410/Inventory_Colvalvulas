@@ -41,13 +41,14 @@ int buscarHuella() {
   if (!sensorOk) return -1;
 
   uint8_t p = finger.getImage();
-  if (p != FINGERPRINT_OK) return -1;  // sin dedo puesto, o error de lectura
+  if (p == FINGERPRINT_NOFINGER) return -1;  // nadie ha puesto el dedo, nada que avisar
+  if (p != FINGERPRINT_OK) return -2;        // hubo dedo pero la imagen salió mala
 
   p = finger.image2Tz();
-  if (p != FINGERPRINT_OK) return -1;
+  if (p != FINGERPRINT_OK) return -2;  // dedo puesto, no se pudo procesar
 
   p = finger.fingerFastSearch();
-  if (p != FINGERPRINT_OK) return -1;  // no hubo coincidencia
+  if (p != FINGERPRINT_OK) return -2;  // dedo puesto, no hubo coincidencia registrada
 
   return finger.fingerID;
 }

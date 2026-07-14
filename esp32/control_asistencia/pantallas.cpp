@@ -1,6 +1,7 @@
 #include "pantallas.h"
 #include "pines.h"
 #include "config.h"
+#include "logo.h"
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
 #include <SPI.h>
@@ -99,21 +100,30 @@ static int dibujarTextoAjustado(const String &texto, int cx, int yInicial, int s
 }
 
 // ---------- Pantalla de inicio ----------
+// Esta pantalla (y solo esta) usa fondo blanco con texto/logo en negro —
+// el resto del dispositivo (PIN, resultado, etc.) sigue con fondo negro.
 void mostrarInicio() {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.fillScreen(TFT_WHITE);
+
+  // El arreglo LOGO_COLVALVULAS trae cada color en orden "lógico" (R<<11|G<<5|B),
+  // pero pushImage() por defecto espera los dos bytes de cada color al revés.
+  tft.setSwapBytes(true);
+  tft.pushImage((ANCHO - LOGO_ANCHO) / 2, 28, LOGO_ANCHO, LOGO_ALTO, LOGO_COLVALVULAS);
+  tft.setSwapBytes(false);
+
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(3);
   // "Control de Asistencia" no cabe en una sola línea en 240px de ancho.
-  tft.drawString("Control de", ANCHO / 2, 90);
-  tft.drawString("Asistencia", ANCHO / 2, 125);
+  tft.drawString("Control de", ANCHO / 2, 130);
+  tft.drawString("Asistencia", ANCHO / 2, 165);
   tft.setTextSize(2);
-  tft.drawString("Coloque su huella", ANCHO / 2, 180);
+  tft.drawString("Coloque su huella", ANCHO / 2, 220);
   tft.setTextDatum(TL_DATUM);
 
   // Esquina para entrar a enrolar (discreta, no es la acción del día a día)
   tft.setTextSize(1);
-  tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  tft.setTextColor(TFT_DARKGREY, TFT_WHITE);
   tft.drawString("Enrolar", ANCHO - 55, 8);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
 }
@@ -142,7 +152,8 @@ static const char *etiquetaEvento(const String &eventType) {
   return "";
 }
 
-void mostrarResultado(bool success, const String &nombre, const String &mensaje, const String &eventType) {
+void mostrarResultado(bool success, const String &nombre, const String &mensaje, const String &eventType,
+                       float horasSemana, float horasObjetivo) {
   tft.fillScreen(TFT_BLACK);
   uint16_t color = success ? TFT_GREEN : TFT_RED;
 
@@ -166,7 +177,14 @@ void mostrarResultado(bool success, const String &nombre, const String &mensaje,
   }
 
   tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  dibujarTextoAjustado(mensaje, ANCHO / 2, y, 1, 13);
+  int lineasMensaje = dibujarTextoAjustado(mensaje, ANCHO / 2, y, 1, 13);
+  y += lineasMensaje * 13 + 16;
+
+  if (horasObjetivo > 0) {
+    String textoHoras = "Llevas " + String(horasSemana, 1) + "/" + String(horasObjetivo, 0) + " horas esta semana";
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    dibujarTextoAjustado(textoHoras, ANCHO / 2, y, 1, 13);
+  }
 }
 
 void mostrarSinWifi() {

@@ -20,6 +20,13 @@ SECUENCIA_SIMPLIFICADA = ["ENTRY", "EXIT"]
 COLOMBIA_TZ = timezone(timedelta(hours=-5))
 HORA_LIMITE_ENTRADA = time(7, 0)
 
+# Jornada legal semanal en Colombia (Ley 2101 de 2021, reducción gradual a 42h).
+HORAS_OBJETIVO_SEMANAL = 42.0
+
+# Eventos que abren/cierran un tramo de trabajo, usados para sumar horas.
+EVENTOS_INICIO_TRAMO = {"ENTRY", "BREAKFAST_END", "LUNCH_END"}
+EVENTOS_FIN_TRAMO = {"BREAKFAST_START", "LUNCH_START", "EXIT"}
+
 ESTADO_POR_ULTIMO_EVENTO = {
     None: "ausente",
     "ENTRY": "presente",
@@ -50,6 +57,36 @@ def _rango_dia_colombia(dia: date) -> tuple[datetime, datetime]:
     inicio_local = datetime.combine(dia, time.min, tzinfo=COLOMBIA_TZ)
     fin_local = datetime.combine(dia, time.max, tzinfo=COLOMBIA_TZ)
     return inicio_local.astimezone(timezone.utc).replace(tzinfo=None), fin_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _rango_semana_actual() -> tuple[datetime, datetime]:
+    """Del lunes 00:00 (hora Colombia) de esta semana hasta este instante, en
+    UTC naive (mismo criterio que el resto del proyecto). El fin es "ahora",
+    no el fin del día, para que el tramo de hoy en curso cuente en tiempo real."""
+    hoy = _hoy_colombia()
+    lunes = hoy - timedelta(days=hoy.weekday())
+    dt_inicio, _ = _rango_dia_colombia(lunes)
+    dt_fin = datetime.now(timezone.utc).replace(tzinfo=None)
+    return dt_inicio, dt_fin
+
+
+def _horas_trabajadas(eventos: list[EventoAsistencia], ahora_utc: datetime) -> float:
+    """Suma las horas trabajadas a partir de una lista de eventos ya ordenada
+    por timestamp: ENTRY/BREAKFAST_END/LUNCH_END abren un tramo de trabajo,
+    BREAKFAST_START/LUNCH_START/EXIT lo cierran. Si el último tramo quedó
+    abierto (el empleado sigue trabajando y no ha marcado salida), se cuenta
+    hasta `ahora_utc` para que el avance se vea en tiempo real."""
+    total_segundos = 0.0
+    inicio_tramo: datetime | None = None
+    for ev in eventos:
+        if ev.tipo_evento in EVENTOS_INICIO_TRAMO:
+            inicio_tramo = ev.timestamp
+        elif ev.tipo_evento in EVENTOS_FIN_TRAMO and inicio_tramo is not None:
+            total_segundos += (ev.timestamp - inicio_tramo).total_seconds()
+            inicio_tramo = None
+    if inicio_tramo is not None:
+        total_segundos += (ahora_utc - inicio_tramo).total_seconds()
+    return max(total_segundos, 0.0) / 3600.0
 
 
 def _a_utc_aware(dt: datetime) -> datetime:
@@ -125,21 +162,27 @@ class AsistenciaService:
         siguiente = self._siguiente_evento(empleado, ultimo.tipo_evento if ultimo else None)
 
         if siguiente is None:
+            horas = self._horas_por_empleado_semana_actual().get(empleado.id, 0.0)
             return {
                 "success": False,
                 "employee_name": empleado.nombre,
                 "message": "Ya se registraron todos los eventos de hoy",
                 "event_type": None,
+                "horas_semana": horas,
+                "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
             }
 
         evento = self.repo.crear_evento(empleado.id, siguiente, device_id)
         self.db.commit()
         self.db.refresh(evento)
+        horas = self._horas_por_empleado_semana_actual().get(empleado.id, 0.0)
         return {
             "success": True,
             "employee_name": empleado.nombre,
             "message": MENSAJE_EVENTO.get(siguiente, "Evento registrado"),
             "event_type": siguiente,
+            "horas_semana": horas,
+            "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
         }
 
     def estado_hoy(self) -> list[dict]:
@@ -176,6 +219,49 @@ class AsistenciaService:
                 }
             )
         return resultado
+
+    def _horas_por_empleado_semana_actual(self) -> dict[int, float]:
+        dt_inicio, dt_fin = _rango_semana_actual()
+        eventos = self.repo.get_eventos_en_rango(dt_inicio, dt_fin)
+        eventos_por_empleado: dict[int, list[EventoAsistencia]] = {}
+        for ev in eventos:
+            eventos_por_empleado.setdefault(ev.empleado_id, []).append(ev)
+        return {
+            empleado_id: round(_horas_trabajadas(evs, dt_fin), 2)
+            for empleado_id, evs in eventos_por_empleado.items()
+        }
+
+    def horas_semana_empleado(self, empleado_id: int) -> dict:
+        """Horas trabajadas de lunes a hoy (hora Colombia) para un empleado.
+        Usada tanto por el reporte web como por la respuesta al dispositivo,
+        para que el ESP32 pueda mostrar "llevas X/42 horas" tras cada marca."""
+        empleado = self.emp_repo.get(empleado_id)
+        if not empleado:
+            raise NotFoundError("Empleado no encontrado")
+        horas = self._horas_por_empleado_semana_actual().get(empleado_id, 0.0)
+        return {
+            "empleado_id": empleado.id,
+            "empleado_nombre": empleado.nombre,
+            "cargo": empleado.cargo,
+            "horas_trabajadas": horas,
+            "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
+        }
+
+    def horas_semana_todos(self) -> list[dict]:
+        """Horas de lunes a hoy de todos los empleados activos, para el
+        reporte de RRHH en la aplicación web."""
+        empleados = [e for e in self.emp_repo.listar(limit=10000) if e.activo]
+        horas_por_empleado = self._horas_por_empleado_semana_actual()
+        return [
+            {
+                "empleado_id": e.id,
+                "empleado_nombre": e.nombre,
+                "cargo": e.cargo,
+                "horas_trabajadas": horas_por_empleado.get(e.id, 0.0),
+                "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
+            }
+            for e in empleados
+        ]
 
     def reporte(
         self,

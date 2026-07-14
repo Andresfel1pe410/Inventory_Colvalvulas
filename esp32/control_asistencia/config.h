@@ -3,8 +3,8 @@
 #pragma once
 
 // ---------- WiFi de la empresa ----------
-#define WIFI_SSID     "NoahNieto_2.4Ghz_ETB"      // <<< reemplaza
-#define WIFI_PASSWORD "Diana52728034"  // <<< reemplaza
+#define WIFI_SSID     "MariaSanchez"      // <<< reemplaza
+#define WIFI_PASSWORD "Felipe2002*"  // <<< reemplaza
 
 // ---------- Backend ----------
 // URL pública de Railway, SIN "/" al final. Ejemplo:

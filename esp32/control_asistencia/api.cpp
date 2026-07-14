@@ -59,6 +59,8 @@ ResultadoEvento registrarEvento(int fingerprintId) {
   ResultadoEvento r;
   r.ok = false;
   r.success = false;
+  r.horasSemana = -1;
+  r.horasObjetivo = -1;
 
   if (WiFi.status() != WL_CONNECTED) {
     r.message = "Sin conexión WiFi";
@@ -114,5 +116,7 @@ ResultadoEvento registrarEvento(int fingerprintId) {
   r.employeeName = String((const char*)(doc["employee_name"] | ""));
   r.message = String((const char*)(doc["message"] | ""));
   r.eventType = String((const char*)(doc["event_type"] | ""));
+  r.horasSemana = doc["horas_semana"] | -1.0;
+  r.horasObjetivo = doc["horas_objetivo"] | -1.0;
   return r;
 }

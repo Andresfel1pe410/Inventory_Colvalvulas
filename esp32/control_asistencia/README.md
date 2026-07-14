@@ -153,3 +153,8 @@ tocas, quedó bien calibrado.
   simple contra que cualquiera enrole huellas, no un mecanismo de seguridad
   fuerte. Si se pierde/roba el dispositivo, cambia el PIN y vuelve a subir
   el firmware.
+- El logo de la pantalla de inicio (`logo.h`) es un arreglo RGB565 generado
+  a partir de `frontend/public/logo-colvalvulas.png`, con el fondo blanco
+  convertido a negro para que se vea integrado en la pantalla oscura. Si
+  cambia el logo, hay que regenerar `logo.h` (ancho/alto y umbral de blanco
+  ajustables) a partir del PNG nuevo.

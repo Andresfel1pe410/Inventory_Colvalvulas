@@ -8,6 +8,8 @@ struct ResultadoEvento {
   String employeeName;  // nombre del empleado, si lo hubo
   String message;       // mensaje para mostrar en pantalla
   String eventType;     // ENTRY, LUNCH_START, etc. — puede venir vacío
+  float horasSemana;    // horas trabajadas de lunes a hoy. -1 si no vino en la respuesta.
+  float horasObjetivo;  // jornada legal semanal (42h). -1 si no vino en la respuesta.
 };
 
 // Registra el evento del fingerprint_id leído. Nunca bloquea más de unos

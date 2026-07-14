@@ -11,6 +11,14 @@ export function useAsistenciaHoy() {
   })
 }
 
+export function useHorasSemana() {
+  return useQuery({
+    queryKey: queryKeys.asistencia.horasSemana,
+    queryFn: () => asistenciaService.horasSemana(),
+    refetchInterval: 60_000,
+  })
+}
+
 export function useAsistenciaReporte(filtros: ReporteFiltros) {
   return useQuery({
     queryKey: queryKeys.asistencia.reporte({

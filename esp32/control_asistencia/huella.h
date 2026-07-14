@@ -5,8 +5,10 @@
 void iniciarSensorHuella();
 bool sensorHuellaOk();
 
-// Busca una huella puesta en el sensor. Devuelve el fingerprint_id (>=0) si
-// hubo coincidencia, o -1 si no hay dedo puesto todavía o no hubo match.
+// Busca una huella puesta en el sensor. Devuelve:
+//   >= 0  el fingerprint_id, hubo coincidencia
+//   -1    no hay dedo puesto (caso normal en cada vuelta del loop, no avisar)
+//   -2    hubo un dedo puesto pero no coincide con ninguna huella registrada
 // No bloquea: se puede (y debe) llamar en cada vuelta del loop().
 int buscarHuella();
 
