@@ -47,14 +47,36 @@ export function ReporteAsistenciaPage() {
   const [page, setPage] = useState(1)
 
   const { data: empleados = [] } = useEmpleadosList({ limit: 1000 })
-  const { data: hoy = [], isLoading: loadingHoy } = useAsistenciaHoy()
-  const { data: horasSemana = [], isLoading: loadingHoras } = useHorasSemana()
-  const { data: eventos = [], isLoading: loadingReporte } = useAsistenciaReporte({
+  const {
+    data: hoy = [],
+    isLoading: loadingHoy,
+    isFetching: fetchingHoy,
+    refetch: refetchHoy,
+  } = useAsistenciaHoy()
+  const {
+    data: horasSemana = [],
+    isLoading: loadingHoras,
+    isFetching: fetchingHoras,
+    refetch: refetchHoras,
+  } = useHorasSemana()
+  const {
+    data: eventos = [],
+    isLoading: loadingReporte,
+    isFetching: fetchingReporte,
+    refetch: refetchReporte,
+  } = useAsistenciaReporte({
     empleado_id: empleadoId || undefined,
     fecha_inicio: fechaInicio || undefined,
     fecha_fin: fechaFin || undefined,
     tipo_evento: tipoEvento || undefined,
   })
+
+  const recargando = fetchingHoy || fetchingHoras || fetchingReporte
+  const recargar = () => {
+    refetchHoy()
+    refetchHoras()
+    refetchReporte()
+  }
 
   const tarjetas = useMemo(() => {
     const porEstado = (estado: string) => hoy.filter((e) => e.estado === estado)
@@ -116,7 +138,17 @@ export function ReporteAsistenciaPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Reporte de asistencia</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Reporte de asistencia</h1>
+        <button
+          type="button"
+          onClick={recargar}
+          disabled={recargando}
+          className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {recargando ? 'Actualizando...' : 'Recargar'}
+        </button>
+      </div>
 
       {/* Dashboard */}
       {loadingHoy ? (

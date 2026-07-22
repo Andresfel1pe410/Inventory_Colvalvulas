@@ -23,6 +23,7 @@ static unsigned long ultimaActividad = 0;
 static unsigned long ultimoToqueProcesado = 0;
 static unsigned long ultimaSync = 0;
 static unsigned long ultimoIntentoWifi = 0;
+static unsigned long ultimoContactoOk = 0;  // millis() del último éxito hablando con el backend
 
 static String pinIngresado = "";
 static String slotTexto = "";
@@ -67,9 +68,11 @@ void setup() {
     delay(3000);
   }
 
+  ultimoContactoOk = millis();  // arranca el reloj del watchdog de conectividad desde ya
+
   conectarWifi();
-  if (WiFi.status() == WL_CONNECTED) {
-    sincronizarEmpleados();
+  if (WiFi.status() == WL_CONNECTED && sincronizarEmpleados()) {
+    ultimoContactoOk = millis();
   }
 
   cambiarEstado(ESTADO_INICIO);
@@ -93,13 +96,24 @@ void loop() {
   if (estado == ESTADO_SIN_WIFI) {
     cambiarEstado(ESTADO_INICIO);
     mostrarInicio();
-    sincronizarEmpleados();
+    if (sincronizarEmpleados()) ultimoContactoOk = millis();
   }
 
   // ---- Sincronización periódica de empleados ----
   if (millis() - ultimaSync > INTERVALO_SYNC_MS) {
     ultimaSync = millis();
-    sincronizarEmpleados();
+    if (sincronizarEmpleados()) ultimoContactoOk = millis();
+  }
+
+  // ---- Watchdog de conectividad ----
+  // Si llevamos demasiado tiempo sin lograr un contacto exitoso con el
+  // backend (ni marcando huellas ni sincronizando), algo quedó en mal
+  // estado (Wi-Fi, stack de red, o el backend estuvo caído) — se reinicia
+  // solo en vez de esperar a que alguien lo note y lo reinicie a mano.
+  if (millis() - ultimoContactoOk > TIEMPO_MAX_SIN_CONTACTO_MS) {
+    Serial.println("Sin contacto con el backend por mucho tiempo, reiniciando...");
+    delay(200);
+    ESP.restart();
   }
 
   // ---- Timeout de inactividad en menús de administrador ----
@@ -130,6 +144,7 @@ void loop() {
         mostrarProcesando();
 
         ResultadoEvento r = registrarEvento(id);
+        if (r.ok) ultimoContactoOk = millis();
         String nombre = r.employeeName.length() > 0 ? r.employeeName : nombreCacheado(id);
         String mensaje = r.ok ? r.message : "Error de conexión con el servidor";
         mostrarResultado(r.ok && r.success, nombre, mensaje, r.eventType, r.horasSemana, r.horasObjetivo);

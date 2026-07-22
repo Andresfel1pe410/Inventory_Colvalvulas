@@ -23,6 +23,14 @@
 #define TIEMPO_MOSTRAR_RESULTADO_MS 3000                // segundos que se ve la pantalla de resultado
 #define MAX_EMPLEADOS_CACHE 200                         // tamaño del caché en memoria de fingerprint_id -> nombre
 
+// Si el dispositivo pasa este tiempo sin lograr un contacto exitoso con el
+// backend (ni marcando huellas ni en la sincronización periódica), se
+// reinicia solo. Cada intento ya abre una conexión nueva (no hay nada que
+// "se quede pegado" del lado del ESP32), así que normalmente no hace falta
+// reiniciar a mano cuando el backend se cae — esto es solo una red de
+// seguridad por si el Wi-Fi o el stack de red quedan en mal estado.
+#define TIEMPO_MAX_SIN_CONTACTO_MS (10UL * 60UL * 1000UL)
+
 // Si más adelante quieres validar el certificado real de Railway en vez de
 // aceptar cualquier TLS (setInsecure(), usado hoy por simplicidad), aquí
 // iría el certificado raíz correspondiente.
