@@ -22,10 +22,14 @@ postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.c
 ```
 
 **Importante:** aunque uses el pooler de Supabase, el backend (`app/core/database.py`) mantiene su
-propio pool pequeño de conexiones (`pool_size=3, max_overflow=2`) en vez de `NullPool`. El proceso
+propio pool pequeño de conexiones (`pool_size=2, max_overflow=2`) en vez de `NullPool`. El proceso
 uvicorn es de larga duración, así que reutilizar conexiones ya autenticadas evita pagar el costo de
 TCP+TLS+auth en cada request — usar `NullPool` ahí fue justamente lo que agravaba el problema con
 varios usuarios a la vez.
+
+Con **4 workers** (sección 3), el total de conexiones que el backend puede abrir contra Supabase es
+`4 * (pool_size + max_overflow) = 16`. Si subes workers de nuevo, vuelve a multiplicar y compáralo
+contra el límite del pooler en tu plan de Supabase — ese es el techo real, no un número arbitrario.
 
 ## 2. Revisa N+1 antes de subir workers/recursos
 
@@ -36,10 +40,17 @@ Control Pedidos, que bajó de ~500 queries/carga a 1 con `joinedload`).
 
 ## 3. Workers en Railway
 
-`railway.json`/`nixpacks.toml` usan `--workers 2`. Como los endpoints son rutas síncronas (`def`, no
-`async def`), FastAPI las corre en un threadpool interno por worker, así que 1-2 workers ya manejan
-varios usuarios concurrentes sin bloquearse. Solo sube workers si confirmas que el cuello de botella
-es CPU y no queries lentas o N+1.
+`railway.json`/`nixpacks.toml` usan `--workers 4`. Como los endpoints son rutas síncronas (`def`, no
+`async def`), FastAPI las corre en un threadpool interno por worker — eso ya maneja varias requests
+concurrentes dentro de un mismo worker, pero el trabajo CPU-bound (serializar JSON, lógica de negocio)
+sigue compitiendo por el GIL de Python dentro de un mismo proceso. Con más usuarios simultáneos
+(ventas + RRHH), más procesos worker dan paralelismo real entre núcleos. Se bajó a 2 en un momento
+dado como parte de una limpieza de conexiones a la DB, pero el cuello de botella real de esa vez
+era N+1 y `NullPool` (ver abajo) — al volver a subir el tráfico, 2 workers se quedaron cortos y se
+subió de nuevo a 4.
+
+Si subes workers más allá de 4, recalcula el total de conexiones a la DB (sección 1) contra el
+límite del pooler de Supabase — eso sí puede convertirse en el cuello de botella real.
 
 ## 4. Mismo navegador, dos pestañas
 

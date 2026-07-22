@@ -13,10 +13,13 @@ settings = get_settings()
 # Pool reducido por worker: cada uno mantiene unas pocas conexiones ya
 # autenticadas en vez de abrir una nueva por cada request (el proceso uvicorn
 # es de larga duración, incluso detrás del pooler de Supabase en :6543).
+# Con 4 workers (ver railway.json/nixpacks.toml), el total de conexiones que
+# puede abrir el backend es 4 * (pool_size + max_overflow) = 16 — revisa esa
+# cuenta contra el límite del pooler de Supabase si vuelves a subir workers.
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    pool_size=3,
+    pool_size=2,
     max_overflow=2,
     pool_recycle=300,
     pool_timeout=15,

@@ -136,9 +136,14 @@ def test_solo_entrada_salida_usa_secuencia_corta(db_session):
 
 
 def test_horas_semana_suma_tramos_y_resta_descansos(db_session):
-    """8am a 5pm con 1h de almuerzo = 8h trabajadas, no 9h."""
+    """9h de jornada con 1h de almuerzo = 8h trabajadas, no 9h.
+
+    Los eventos se anclan relativo a "ahora" (no a una hora fija del reloj):
+    con una hora fija, el EXIT podía caer en el futuro según a qué hora del
+    día corriera la prueba, y `get_eventos_en_rango` lo excluye (timestamp >
+    "ahora"), dejando el tramo como si siguiera abierto — prueba intermitente."""
     empleado = _crear_empleado(db_session, fingerprint_id=40)
-    inicio_dia = datetime.utcnow().replace(hour=8, minute=0, second=0, microsecond=0)
+    inicio_dia = datetime.utcnow() - timedelta(hours=10)
     db_session.add_all(
         [
             EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio_dia),

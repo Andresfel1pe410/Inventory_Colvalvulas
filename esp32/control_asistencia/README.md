@@ -97,6 +97,15 @@ como GPIO normal — por eso el sensor se conecta en 25/26 en vez de 16/17.
 Verifica esto contra el silkscreen real de tus módulos antes de alimentar —
 esta es una asignación estándar, no viene de tu montaje.
 
+**Nota sobre GPIO2 (DC/RS) — arranque en frío:** GPIO2 es un pin de
+"strapping" que el ESP32 lee al arrancar para decidir el modo de boot. Si al
+conectar la corriente (sin apretar el botón de reset) la pantalla se queda
+en blanco y solo arranca tras resetear a mano, es porque la TFT deja esa
+línea en un estado que el ESP32 interpreta como arranque inválido en el
+instante justo del power-on. Se soluciona agregando una **resistencia de
+10kΩ entre GPIO2 y GND** (pull-down), cerca del pin del ESP32 — no requiere
+tocar el firmware ni el resto del cableado.
+
 ## 5. Editar `config.h`
 
 Reemplaza `WIFI_SSID`, `WIFI_PASSWORD`, `BACKEND_URL` y `PIN_ADMIN` por los
