@@ -1,39 +1,111 @@
-# ERP Inventario - Colvalvulas
+# Inventory ERP — Colombiana de Válvulas y Rejillas
 
-Sistema ERP enfocado en **inventario**, **pedidos** y **remisiones**.
+Full-stack ERP system for inventory, order, and delivery management,
+built and deployed for a Colombian industrial manufacturer.
 
-- **Backend:** Python + FastAPI
-- **Base de datos:** PostgreSQL (Supabase)
-- **Auth:** Supabase Auth (email + password, JWT)
+🔗 **Live app:** https://inventory-colvalvulas.vercel.app  
+*(Production system — login required)*
 
-## Estructura del proyecto
+---
 
+## Overview
+
+End-to-end freelance project (2022–2026) replacing a manual 
+spreadsheet-based process with a real-time inventory and order 
+management platform. The system handles the full operations cycle: 
+stock control → order creation → shipment → automatic delivery note 
+(remisión) generation.
+
+## Architecture
 ```
-Inventario_Colvalvulas/
+React + Vite (Vercel)
+↕ REST API
+FastAPI / Python (Railway)
+↕ ORM + connection pooling
+PostgreSQL (Supabase) + Row Level Security
+↕
+Supabase Auth (JWT)
+```
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, TypeScript |
+| Backend | Python, FastAPI, SQLAlchemy |
+| Database | PostgreSQL on Supabase (18 versioned migrations) |
+| Auth | Supabase Auth — email/password, JWT, role-based access |
+| Deployment | Railway (backend), Vercel (frontend) |
+| Hardware | ESP32 — attendance control module (integrated) |
+| Testing | pytest |
+| AI tooling | Cursor AI, Windsurf |
+
+## Key Features
+
+- **Real-time inventory control** — stock entries, exits, and 
+  adjustments with negative-stock protection
+- **Order management** — full order lifecycle with automatic 
+  subtotal/total calculation
+- **Shipment workflow** — marking an order as shipped automatically 
+  generates a delivery note (remisión) and updates stock
+- **Role-based access control** — admin vs. standard user permissions 
+  enforced at API and database level (RLS)
+- **ESP32 integration** — attendance control hardware module 
+  connected to the same backend
+- **Versioned schema** — 18 SQL migrations in order, fully 
+  reproducible database setup
+
+## Project Structure
+```
 ├── app/
-│   ├── main.py              # Punto de entrada FastAPI
-│   ├── models.py            # Modelos ORM
-│   ├── schemas.py           # Schemas Pydantic
-│   ├── core/                # Config, DB, logging, excepciones
-│   ├── api/
-│   │   ├── auth.py          # JWT verification, get_current_user
-│   │   └── routers/
-│   │       ├── productos.py
-│   │       ├── clientes.py
-│   │       ├── pedidos.py
-│   │       ├── inventario.py
-│   │       ├── remisiones.py
-│   │       ├── usuarios.py
-│   │       └── roles.py
-│   ├── repositories/        # Acceso a datos
-│   └── services/            # Lógica de negocio
-├── supabase/
-│   └── migrations/          # Migraciones SQL
-├── frontend/                # React + Vite
-├── .env.example
-├── requirements.txt
-└── README.md
+│ ├── main.py # FastAPI entry point
+│ ├── models.py # ORM models
+│ ├── schemas.py # Pydantic schemas
+│ ├── core/ # Config, DB, logging, exceptions
+│ ├── api/
+│ │ ├── auth.py # JWT verification
+│ │ └── routers/ # productos, clientes, pedidos,
+│ │ # inventario, remisiones, usuarios, roles
+│ ├── repositories/ # Data access layer
+│ └── services/ # Business logic layer
+├── frontend/ # React + Vite
+├── supabase/migrations/ # 18 versioned SQL migrations
+├── esp32/ # Attendance control firmware
+└── tests/ # pytest test suite
 ```
+
+## Security
+
+- RLS enabled on all tables
+- Authenticated users: read access
+- Admin only: insert/delete on master tables
+- Order creators: modify their own orders
+- `service_role_key` server-side only, never exposed to frontend
+
+## Local Setup
+
+```bash
+# Backend
+cp .env.example .env
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# API docs → http://localhost:8000/docs
+```
+
+## Main API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/productos` | List products |
+| POST | `/api/v1/pedidos` | Create order |
+| POST | `/api/v1/pedidos/{id}/marcar-enviado` | Ship order → auto-generates delivery note + stock exit |
+| GET | `/api/v1/inventario` | Live inventory |
+| POST | `/api/v1/inventario/movimientos` | Register movement (entry/exit/adjustment) |
+
+---
+
+Built by [Andrés Felipe Nieto Gutiérrez](https://linkedin.com/in/andresfnietog)
 
 ## Configuración
 
