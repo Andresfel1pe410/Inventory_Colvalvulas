@@ -109,12 +109,26 @@ Built by [Andrés Felipe Nieto Gutiérrez](https://linkedin.com/in/andresfnietog
 
 ## Screenshots
 
-### Attendance Dashboard — real-time data from ESP32
+### Real-time attendance dashboard — data from ESP32 hardware
 ![Attendance Dashboard](./screenshots/attendance_dashboard.png)
-> Live weekly hours per employee, tracked automatically via 
-> ESP32 hardware. Color coding: blue = in progress, 
+> Weekly hours per employee tracked automatically via ESP32 
+> microcontroller. Live KPIs: present, absent, on break, 
+> late arrivals. Color coding: blue = in progress, 
 > green = target reached.
 
+### Inventory module — live stock control
+![Inventory](./screenshots/inventory_module.png)
+> Real product catalog with current stock, pending orders 
+> demand, and available units. Supports entries, exits, 
+> adjustments, and negative-stock protection.
+
+### Sales reporting — cumulative daily sales by rep
+![Sales Report](./screenshots/sales_report.png)
+> Monthly sales chart per sales rep (shipped orders only), 
+> with average shipping time KPI. Filterable by year and month. 
+> July 2026 total: ~$91.8M COP.
+
+---
 ## Configuración
 
 ### 1. Supabase
