@@ -7,6 +7,7 @@ import { ClientesListPage, ClienteFormPage, ClienteDetailPage } from '@/modules/
 import { ProductosListPage, ProductoFormPage } from '@/modules/productos'
 import { InventarioPage } from '@/modules/inventario'
 import { InventarioProcesoPage } from '@/modules/inventario-proceso'
+import { PlaneacionListPage, DependenciaDetailPage } from '@/modules/planeacion'
 import { PedidosListPage, PedidoFormPage, PedidoDetailPage, PedidoEditPage } from '@/modules/pedidos'
 import { ControlPedidosPage } from '@/modules/control-pedidos'
 import { RemisionesListPage } from '@/modules/remisiones'
@@ -69,6 +70,8 @@ export function RootApp() {
       >
         <Route index element={<Navigate to="inventario-proceso" replace />} />
         <Route path="inventario-proceso" element={<RoleGuard allowedRoles={['admin', 'almacen']}><InventarioProcesoPage /></RoleGuard>} />
+        <Route path="planeacion" element={<RoleGuard requireAdmin><PlaneacionListPage /></RoleGuard>} />
+        <Route path="planeacion/:id" element={<RoleGuard requireAdmin><DependenciaDetailPage /></RoleGuard>} />
       </Route>
       <Route
         path="/rrhh"

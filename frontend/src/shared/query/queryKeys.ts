@@ -52,6 +52,11 @@ export const queryKeys = {
       ['empleados', 'list', params] as const,
     detail: (id: number) => ['empleados', id] as const,
   },
+  planeacion: {
+    all: ['planeacion'] as const,
+    list: ['planeacion', 'list'] as const,
+    detail: (id: number) => ['planeacion', id] as const,
+  },
   asistencia: {
     all: ['asistencia'] as const,
     hoy: ['asistencia', 'hoy'] as const,
