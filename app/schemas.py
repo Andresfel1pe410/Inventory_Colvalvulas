@@ -435,6 +435,82 @@ class MovimientoInventarioProceso(MovimientoInventarioProcesoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ============= PROCESO: PLANEACIÓN =============
+ESTADOS_TAREA = ("pendiente", "en_progreso", "hecha")
+
+
+class DependenciaBase(BaseModel):
+    nombre: str
+
+
+class DependenciaCreate(DependenciaBase):
+    empleado_ids: list[int] = Field(default_factory=list)
+
+
+class Dependencia(DependenciaBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DependenciaListItem(Dependencia):
+    """Fila para la lista/tarjetas de dependencias, sin traer el detalle completo."""
+    empleados_count: int
+
+
+class DependenciaEmpleadoAdd(BaseModel):
+    empleado_id: int
+
+
+class TareaCreate(BaseModel):
+    empleado_id: int
+    descripcion: str
+
+
+class TareaUpdateEstado(BaseModel):
+    estado: str = Field(..., pattern="^(pendiente|en_progreso|hecha)$")
+
+
+class Tarea(BaseModel):
+    id: int
+    dependencia_id: int
+    empleado_id: int
+    descripcion: str
+    estado: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TareaEnDependencia(BaseModel):
+    """Forma anidada de solo lectura para el detalle de una dependencia."""
+    id: int
+    descripcion: str
+    estado: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmpleadoConTareas(BaseModel):
+    empleado_id: int
+    nombre: str
+    cargo: Optional[str] = None
+    tareas: list[TareaEnDependencia]
+
+
+class DependenciaDetalle(BaseModel):
+    id: int
+    nombre: str
+    created_at: datetime
+    updated_at: datetime
+    empleados: list[EmpleadoConTareas]
+
+
 # ============= RRHH: EMPLEADOS =============
 TIPOS_EVENTO_ASISTENCIA = (
     "ENTRY",

@@ -280,3 +280,44 @@ class MovimientoInventarioProceso(Base):
     @property
     def material(self) -> str:
         return self.inventario_proceso.material
+
+
+class Dependencia(Base):
+    __tablename__ = "dependencia"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    nombre = Column(String(200), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    empleados = relationship("DependenciaEmpleado", back_populates="dependencia", cascade="all, delete-orphan")
+    tareas = relationship("Tarea", back_populates="dependencia", cascade="all, delete-orphan")
+
+
+class DependenciaEmpleado(Base):
+    __tablename__ = "dependencia_empleado"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    dependencia_id = Column(BigInteger, ForeignKey("dependencia.id", ondelete="CASCADE"), nullable=False)
+    empleado_id = Column(BigInteger, ForeignKey("empleado.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    dependencia = relationship("Dependencia", back_populates="empleados")
+    empleado = relationship("Empleado")
+
+    __table_args__ = (UniqueConstraint("dependencia_id", "empleado_id", name="_dependencia_empleado_uc"),)
+
+
+class Tarea(Base):
+    __tablename__ = "tarea"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    dependencia_id = Column(BigInteger, ForeignKey("dependencia.id", ondelete="CASCADE"), nullable=False)
+    empleado_id = Column(BigInteger, ForeignKey("empleado.id", ondelete="CASCADE"), nullable=False)
+    descripcion = Column(String(500), nullable=False)
+    estado = Column(String(20), nullable=False, default="pendiente")  # pendiente, en_progreso, hecha
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    dependencia = relationship("Dependencia", back_populates="tareas")
+    empleado = relationship("Empleado")
