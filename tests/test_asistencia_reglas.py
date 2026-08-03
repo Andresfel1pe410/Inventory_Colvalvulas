@@ -1,11 +1,11 @@
 """Pruebas de las 5 reglas de negocio de asistencia (AsistenciaService)."""
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
 
 from app.core.exceptions import ValidationError
 from app.models import Empleado, EventoAsistencia
-from app.services.asistencia_service import AsistenciaService
+from app.services.asistencia_service import COLOMBIA_TZ, AsistenciaService
 
 
 def _crear_empleado(db_session, fingerprint_id: int | None = None) -> Empleado:
@@ -14,6 +14,24 @@ def _crear_empleado(db_session, fingerprint_id: int | None = None) -> Empleado:
     db_session.commit()
     db_session.refresh(empleado)
     return empleado
+
+
+def _a_utc_naive(dt_colombia: datetime) -> datetime:
+    return dt_colombia.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _hace_sin_cruzar_medianoche(delta: timedelta) -> tuple[datetime, timedelta]:
+    """Devuelve (timestamp UTC naive, delta realmente usado) de un instante
+    `delta` atrás en hora Colombia — pero si eso cruzara a "ayer" (el test
+    corriendo de madrugada), se recorta a "desde la medianoche de hoy" en vez
+    de cruzar el día, para que el resultado no dependa de a qué hora real
+    corra la prueba."""
+    ahora = datetime.now(COLOMBIA_TZ)
+    inicio = ahora - delta
+    if inicio.date() != ahora.date():
+        inicio = datetime.combine(ahora.date(), time.min, tzinfo=COLOMBIA_TZ)
+        delta = ahora - inicio
+    return _a_utc_naive(inicio), delta
 
 
 def test_dos_entradas_seguidas_rechaza(db_session):
@@ -138,44 +156,118 @@ def test_solo_entrada_salida_usa_secuencia_corta(db_session):
 def test_horas_semana_suma_tramos_y_resta_descansos(db_session):
     """9h de jornada con 1h de almuerzo = 8h trabajadas, no 9h.
 
-    Los eventos se anclan relativo a "ahora" (no a una hora fija del reloj):
-    con una hora fija, el EXIT podía caer en el futuro según a qué hora del
-    día corriera la prueba, y `get_eventos_en_rango` lo excluye (timestamp >
-    "ahora"), dejando el tramo como si siguiera abierto — prueba intermitente."""
+    Se ancla en el día calendario ANTERIOR (siempre 100% en el pasado, sin
+    importar a qué hora real corra la prueba) para no cruzar la medianoche
+    de hoy dentro del mismo turno — el resumen agrupa eventos por día
+    calendario (hora Colombia), así que un turno que cruce de día partiría
+    en dos y el total saldría mal. `semana_inicio` apunta a ese mismo día
+    para no depender de en qué semana caiga "hoy" (ej. si hoy es lunes)."""
     empleado = _crear_empleado(db_session, fingerprint_id=40)
-    inicio_dia = datetime.utcnow() - timedelta(hours=10)
+    ayer = (datetime.now(COLOMBIA_TZ) - timedelta(days=1)).date()
+    inicio_dia = datetime.combine(ayer, time(8, 0), tzinfo=COLOMBIA_TZ)
     db_session.add_all(
         [
-            EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio_dia),
+            EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=_a_utc_naive(inicio_dia)),
             EventoAsistencia(
-                empleado_id=empleado.id, tipo_evento="LUNCH_START", timestamp=inicio_dia + timedelta(hours=4)
+                empleado_id=empleado.id,
+                tipo_evento="LUNCH_START",
+                timestamp=_a_utc_naive(inicio_dia + timedelta(hours=4)),
             ),
             EventoAsistencia(
-                empleado_id=empleado.id, tipo_evento="LUNCH_END", timestamp=inicio_dia + timedelta(hours=5)
+                empleado_id=empleado.id,
+                tipo_evento="LUNCH_END",
+                timestamp=_a_utc_naive(inicio_dia + timedelta(hours=5)),
             ),
             EventoAsistencia(
-                empleado_id=empleado.id, tipo_evento="EXIT", timestamp=inicio_dia + timedelta(hours=9)
+                empleado_id=empleado.id, tipo_evento="EXIT", timestamp=_a_utc_naive(inicio_dia + timedelta(hours=9))
             ),
         ]
     )
     db_session.commit()
 
     service = AsistenciaService(db_session)
-    resultado = service.horas_semana_empleado(empleado.id)
+    resultado = service.horas_semana_empleado(empleado.id, semana_inicio=ayer)
     assert resultado["horas_trabajadas"] == 8.0
     assert resultado["horas_objetivo"] == 42.0
+    assert resultado["dias_trabajados"] == 1
+    assert resultado["promedio_horas_dia"] == 8.0
+    assert resultado["promedio_almuerzo_min"] == 60.0
 
 
 def test_horas_semana_cuenta_tramo_abierto_hasta_ahora(db_session):
     """Si el empleado sigue trabajando (sin EXIT), las horas se cuentan hasta el momento actual."""
     empleado = _crear_empleado(db_session, fingerprint_id=41)
-    inicio = datetime.utcnow() - timedelta(hours=2)
+    inicio, delta_usado = _hace_sin_cruzar_medianoche(timedelta(hours=2))
     db_session.add(EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio))
     db_session.commit()
 
     service = AsistenciaService(db_session)
     resultado = service.horas_semana_empleado(empleado.id)
-    assert 1.9 < resultado["horas_trabajadas"] < 2.1
+    horas_esperadas = delta_usado.total_seconds() / 3600
+    assert abs(resultado["horas_trabajadas"] - horas_esperadas) < 0.05
+
+
+def _evento_colombia(empleado_id: int, tipo: str, dia: date, hora: time) -> EventoAsistencia:
+    ts_colombia = datetime.combine(dia, hora, tzinfo=COLOMBIA_TZ)
+    return EventoAsistencia(empleado_id=empleado_id, tipo_evento=tipo, timestamp=_a_utc_naive(ts_colombia))
+
+
+def test_horas_semana_pasada_ignora_otras_semanas_y_promedia_dias(db_session):
+    """Se puede consultar una semana pasada (no solo la actual, `semana_inicio`)
+    y los promedios de horas/desayuno/almuerzo salen del promedio de los días
+    trabajados esa semana, sin mezclar datos de otra semana."""
+    empleado = _crear_empleado(db_session, fingerprint_id=50)
+    hoy = datetime.now(COLOMBIA_TZ).date()
+    lunes_objetivo = (hoy - timedelta(days=hoy.weekday())) - timedelta(days=14)
+    dia1 = lunes_objetivo + timedelta(days=1)
+    dia2 = lunes_objetivo + timedelta(days=2)
+
+    eventos = [
+        _evento_colombia(empleado.id, "ENTRY", dia1, time(8, 0)),
+        _evento_colombia(empleado.id, "BREAKFAST_START", dia1, time(10, 0)),
+        _evento_colombia(empleado.id, "BREAKFAST_END", dia1, time(10, 15)),
+        _evento_colombia(empleado.id, "LUNCH_START", dia1, time(12, 0)),
+        _evento_colombia(empleado.id, "LUNCH_END", dia1, time(13, 0)),
+        _evento_colombia(empleado.id, "EXIT", dia1, time(17, 0)),
+        _evento_colombia(empleado.id, "ENTRY", dia2, time(8, 0)),
+        _evento_colombia(empleado.id, "BREAKFAST_START", dia2, time(10, 0)),
+        _evento_colombia(empleado.id, "BREAKFAST_END", dia2, time(10, 10)),
+        _evento_colombia(empleado.id, "LUNCH_START", dia2, time(12, 0)),
+        _evento_colombia(empleado.id, "LUNCH_END", dia2, time(12, 30)),
+        _evento_colombia(empleado.id, "EXIT", dia2, time(16, 0)),
+        # Evento en OTRA semana (la actual) que no debe mezclarse con lo anterior.
+        _evento_colombia(empleado.id, "ENTRY", hoy, time(8, 0)),
+    ]
+    db_session.add_all(eventos)
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    resultado = service.horas_semana_empleado(empleado.id, semana_inicio=lunes_objetivo)
+
+    horas_dia1 = 9 - 0.25 - 1  # 8am-5pm, 15min desayuno, 1h almuerzo
+    horas_dia2 = 8 - (10 / 60) - 0.5  # 8am-4pm, 10min desayuno, 30min almuerzo
+
+    assert resultado["semana_inicio"] == lunes_objetivo
+    assert resultado["semana_fin"] == lunes_objetivo + timedelta(days=6)
+    assert resultado["dias_trabajados"] == 2
+    assert resultado["horas_trabajadas"] == pytest.approx(horas_dia1 + horas_dia2, abs=0.02)
+    assert resultado["promedio_horas_dia"] == pytest.approx((horas_dia1 + horas_dia2) / 2, abs=0.02)
+    assert resultado["promedio_desayuno_min"] == pytest.approx(12.5, abs=0.1)
+    assert resultado["promedio_almuerzo_min"] == pytest.approx(45.0, abs=0.1)
+
+
+def test_horas_semana_todos_acepta_semana_pasada(db_session):
+    empleado = _crear_empleado(db_session, fingerprint_id=51)
+    hoy = datetime.now(COLOMBIA_TZ).date()
+    lunes_objetivo = (hoy - timedelta(days=hoy.weekday())) - timedelta(days=7)
+    db_session.add(_evento_colombia(empleado.id, "ENTRY", lunes_objetivo, time(8, 0)))
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    resultados = service.horas_semana_todos(semana_inicio=lunes_objetivo)
+    fila = next(r for r in resultados if r["empleado_id"] == empleado.id)
+    assert fila["semana_inicio"] == lunes_objetivo
+    assert fila["dias_trabajados"] == 1
 
 
 def test_horas_semana_no_falla_con_timestamp_timezone_aware(db_session):
@@ -183,10 +275,12 @@ def test_horas_semana_no_falla_con_timestamp_timezone_aware(db_session):
     SQLite (tests) normalmente llega naive. La primera marcada de la semana
     (un único ENTRY sin cerrar) reproducía un TypeError al restar aware-naive."""
     empleado = _crear_empleado(db_session, fingerprint_id=42)
-    inicio = datetime.now(timezone.utc) - timedelta(hours=1)
+    inicio_naive, delta_usado = _hace_sin_cruzar_medianoche(timedelta(hours=1))
+    inicio = inicio_naive.replace(tzinfo=timezone.utc)
     db_session.add(EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio))
     db_session.commit()
 
     service = AsistenciaService(db_session)
     resultado = service.horas_semana_empleado(empleado.id)
-    assert 0.9 < resultado["horas_trabajadas"] < 1.1
+    horas_esperadas = delta_usado.total_seconds() / 3600
+    assert abs(resultado["horas_trabajadas"] - horas_esperadas) < 0.05

@@ -37,6 +37,33 @@ function horaCorta(iso: string | undefined): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+// Formatea una fecha "YYYY-MM-DD" tal cual, sin pasar por Date/timezone —
+// new Date("YYYY-MM-DD") la interpreta como medianoche UTC, y en un huso
+// horario detrás de UTC (como Colombia) eso corre la fecha un día para atrás.
+function formatFechaSemana(isoDate: string): string {
+  const [, mes, dia] = isoDate.split('-')
+  return `${dia}/${mes}`
+}
+
+function lunesDeSemana(fecha: Date): Date {
+  const dia = fecha.getDay()
+  const offset = dia === 0 ? -6 : 1 - dia
+  const lunes = new Date(fecha)
+  lunes.setDate(fecha.getDate() + offset)
+  lunes.setHours(0, 0, 0, 0)
+  return lunes
+}
+
+function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function sumarDias(isoDate: string, dias: number): string {
+  const d = new Date(`${isoDate}T00:00:00`)
+  d.setDate(d.getDate() + dias)
+  return toISODate(d)
+}
+
 const LIMIT = 20
 
 export function ReporteAsistenciaPage() {
@@ -45,6 +72,9 @@ export function ReporteAsistenciaPage() {
   const [fechaFin, setFechaFin] = useState(hoyISO())
   const [tipoEvento, setTipoEvento] = useState<TipoEvento | ''>('')
   const [page, setPage] = useState(1)
+  const lunesActual = toISODate(lunesDeSemana(new Date()))
+  const [semanaInicio, setSemanaInicio] = useState(lunesActual)
+  const semanaEsActual = semanaInicio === lunesActual
 
   const { data: empleados = [] } = useEmpleadosList({ limit: 1000 })
   const {
@@ -58,7 +88,7 @@ export function ReporteAsistenciaPage() {
     isLoading: loadingHoras,
     isFetching: fetchingHoras,
     refetch: refetchHoras,
-  } = useHorasSemana()
+  } = useHorasSemana(semanaInicio)
   const {
     data: eventos = [],
     isLoading: loadingReporte,
@@ -164,9 +194,42 @@ export function ReporteAsistenciaPage() {
         </div>
       )}
 
-      {/* Horas semanales (jornada legal: 42h, lunes a hoy) */}
+      {/* Horas semanales (jornada legal: 42h) */}
       <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-medium text-slate-900">Horas semanales (lunes a hoy)</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-slate-900">
+            Horas semanales — semana del {formatFechaSemana(semanaInicio)} al {formatFechaSemana(sumarDias(semanaInicio, 6))}
+            {semanaEsActual && <span className="ml-1 text-slate-400">(actual, hasta hoy)</span>}
+          </h2>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setSemanaInicio((s) => sumarDias(s, -7))}
+              className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
+              aria-label="Semana anterior"
+            >
+              ‹ Anterior
+            </button>
+            {!semanaEsActual && (
+              <button
+                type="button"
+                onClick={() => setSemanaInicio(lunesActual)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Semana actual
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSemanaInicio((s) => sumarDias(s, 7))}
+              disabled={semanaEsActual}
+              className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              aria-label="Semana siguiente"
+            >
+              Siguiente ›
+            </button>
+          </div>
+        </div>
         {loadingHoras ? (
           <PageLoading />
         ) : horasSemana.length === 0 ? (
@@ -356,11 +419,19 @@ function Tarjeta({
 }
 
 function MedidorHoras({ horas }: { horas: HorasSemanaEmpleado }) {
+  const [abierto, setAbierto] = useState(false)
   const porcentaje = Math.min(100, (horas.horas_trabajadas / horas.horas_objetivo) * 100)
   const cumplida = horas.horas_trabajadas >= horas.horas_objetivo
 
   return (
-    <div className="rounded-md border border-slate-200 p-3">
+    <div
+      className="relative rounded-md border border-slate-200 p-3"
+      tabIndex={0}
+      onMouseEnter={() => setAbierto(true)}
+      onMouseLeave={() => setAbierto(false)}
+      onFocus={() => setAbierto(true)}
+      onBlur={() => setAbierto(false)}
+    >
       <div className="flex items-baseline justify-between gap-2">
         <p className="truncate text-sm font-medium text-slate-900">{horas.empleado_nombre}</p>
         <p className="shrink-0 text-sm text-slate-600">
@@ -377,6 +448,37 @@ function MedidorHoras({ horas }: { horas: HorasSemanaEmpleado }) {
           style={{ width: `${porcentaje}%` }}
         />
       </div>
+
+      {abierto && (
+        <div className="absolute left-0 top-full z-10 mt-1 w-64 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+          {horas.dias_trabajados === 0 ? (
+            <p className="text-sm text-slate-500">Sin marcaciones esta semana</p>
+          ) : (
+            <ul className="space-y-1.5 text-sm text-slate-700">
+              <li className="flex items-center justify-between gap-2">
+                <span>Promedio trabajado/día</span>
+                <span className="font-medium text-slate-900">{horas.promedio_horas_dia.toFixed(1)} h</span>
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>Promedio desayuno</span>
+                <span className="font-medium text-slate-900">
+                  {horas.promedio_desayuno_min > 0 ? `${Math.round(horas.promedio_desayuno_min)} min` : '—'}
+                </span>
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>Promedio almuerzo</span>
+                <span className="font-medium text-slate-900">
+                  {horas.promedio_almuerzo_min > 0 ? `${Math.round(horas.promedio_almuerzo_min)} min` : '—'}
+                </span>
+              </li>
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-slate-400">
+            Basado en {horas.dias_trabajados} día{horas.dias_trabajados !== 1 ? 's' : ''} trabajado
+            {horas.dias_trabajados !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
