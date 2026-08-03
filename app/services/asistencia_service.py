@@ -20,6 +20,14 @@ SECUENCIA_SIMPLIFICADA = ["ENTRY", "EXIT"]
 COLOMBIA_TZ = timezone(timedelta(hours=-5))
 HORA_LIMITE_ENTRADA = time(7, 0)
 
+# Si un empleado no marca salida, al cambiar de día (medianoche hora
+# Colombia) se le asume la salida a esta hora del día anterior — es la hora
+# real de salida de la mayoría de empleados según el historial, más
+# representativa que adivinar a las 8pm. Antes ese día quedaba en 0 horas/
+# excluido de los promedios, lo cual distorsionaba las métricas igual o peor.
+HORA_SALIDA_AUTOMATICA = time(16, 30)
+DIAS_ATRAS_CIERRE_AUTOMATICO = 60
+
 # Jornada legal semanal en Colombia (Ley 2101 de 2021, reducción gradual a 42h).
 HORAS_OBJETIVO_SEMANAL = 42.0
 
@@ -172,6 +180,43 @@ class AsistenciaService:
         self.repo = AsistenciaRepository(db)
         self.emp_repo = EmpleadoRepository(db)
 
+    def _cerrar_dias_pendientes(self, empleado_id: int | None = None) -> int:
+        """Al cambiar de día (medianoche hora Colombia), si un empleado tiene
+        ENTRY pero nunca marcó EXIT en un día que ya terminó, se le crea
+        automáticamente la salida a las 4:30pm de ese día (hora real de
+        salida de la mayoría de empleados según el historial) — antes ese
+        día quedaba en 0 horas en las métricas (o efectivamente invisible).
+        HOY nunca se toca mientras siga siendo hoy (todavía puede marcar).
+        Se llama tanto al marcar un evento como al pedir cualquier reporte,
+        para que se autocorrija solo sin depender de que alguien vuelva a
+        marcar."""
+        hoy = _hoy_colombia()
+        desde, _ = _rango_dia_colombia(hoy - timedelta(days=DIAS_ATRAS_CIERRE_AUTOMATICO))
+
+        query = self.db.query(EventoAsistencia).filter(EventoAsistencia.timestamp >= desde)
+        if empleado_id is not None:
+            query = query.filter(EventoAsistencia.empleado_id == empleado_id)
+        eventos = query.order_by(EventoAsistencia.empleado_id, EventoAsistencia.timestamp).all()
+
+        por_empleado_dia: dict[tuple[int, date], set[str]] = {}
+        for ev in eventos:
+            dia_local = _a_utc_aware(ev.timestamp).astimezone(COLOMBIA_TZ).date()
+            if dia_local >= hoy:
+                continue  # hoy (o algo a futuro) no se toca todavía
+            por_empleado_dia.setdefault((ev.empleado_id, dia_local), set()).add(ev.tipo_evento)
+
+        creados = 0
+        for (emp_id, dia), tipos in por_empleado_dia.items():
+            if "ENTRY" not in tipos or "EXIT" in tipos:
+                continue
+            salida_utc = datetime.combine(dia, HORA_SALIDA_AUTOMATICA, tzinfo=COLOMBIA_TZ).astimezone(timezone.utc)
+            self.repo.crear_evento(emp_id, "EXIT", device_id=None, timestamp=salida_utc)
+            creados += 1
+
+        if creados:
+            self.db.commit()
+        return creados
+
     def _validar_transicion(self, ultimo_tipo: str | None, nuevo_tipo: str) -> None:
         if nuevo_tipo == "ENTRY" and ultimo_tipo == "ENTRY":
             raise ValidationError("Ya hay una entrada registrada hoy sin salida")
@@ -208,6 +253,8 @@ class AsistenciaService:
         if not empleado or not empleado.activo:
             raise NotFoundError("Empleado no encontrado o inactivo")
 
+        self._cerrar_dias_pendientes(empleado_id)
+
         dt_inicio, dt_fin = _rango_dia_colombia(_hoy_colombia())
         ultimo = self.repo.get_ultimo_evento_en_rango(empleado_id, dt_inicio, dt_fin)
         self._validar_transicion(ultimo.tipo_evento if ultimo else None, tipo_evento)
@@ -225,6 +272,8 @@ class AsistenciaService:
         empleado = self.emp_repo.get_by_fingerprint_id(fingerprint_id)
         if not empleado or not empleado.activo:
             return {"success": False, "employee_name": None, "message": "Huella no reconocida", "event_type": None}
+
+        self._cerrar_dias_pendientes(empleado.id)
 
         dt_inicio, dt_fin = _rango_dia_colombia(_hoy_colombia())
         ultimo = self.repo.get_ultimo_evento_en_rango(empleado.id, dt_inicio, dt_fin)
@@ -255,6 +304,7 @@ class AsistenciaService:
         }
 
     def estado_hoy(self) -> list[dict]:
+        self._cerrar_dias_pendientes()
         empleados = self.emp_repo.listar(limit=10000)
         empleados_activos = [e for e in empleados if e.activo]
         dt_inicio, dt_fin = _rango_dia_colombia(_hoy_colombia())
@@ -323,6 +373,7 @@ class AsistenciaService:
         empleado = self.emp_repo.get(empleado_id)
         if not empleado:
             raise NotFoundError("Empleado no encontrado")
+        self._cerrar_dias_pendientes(empleado_id)
         resumen_por_empleado, lunes, domingo = self._resumen_semana_por_empleado(semana_inicio)
         resumen = resumen_por_empleado.get(empleado_id, _resumen_semana_empleado([], _hoy_colombia()))
         return {
@@ -338,6 +389,7 @@ class AsistenciaService:
     def horas_semana_todos(self, semana_inicio: date | None = None) -> list[dict]:
         """Resumen semanal de todos los empleados activos, para el reporte de
         RRHH en la aplicación web (tarjetas + tooltip por empleado)."""
+        self._cerrar_dias_pendientes()
         empleados = [e for e in self.emp_repo.listar(limit=10000) if e.activo]
         resumen_por_empleado, lunes, domingo = self._resumen_semana_por_empleado(semana_inicio)
         resumen_vacio = _resumen_semana_empleado([], _hoy_colombia())
@@ -363,6 +415,7 @@ class AsistenciaService:
         skip: int = 0,
         limit: int = 5000,
     ) -> list[dict]:
+        self._cerrar_dias_pendientes(empleado_id)
         return self.repo.listar(empleado_id, fecha_inicio, fecha_fin, tipo_evento, skip, limit)
 
     def sync_dispositivo(self) -> list[dict]:

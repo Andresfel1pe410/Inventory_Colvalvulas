@@ -5,7 +5,7 @@ import pytest
 
 from app.core.exceptions import ValidationError
 from app.models import Empleado, EventoAsistencia
-from app.services.asistencia_service import COLOMBIA_TZ, AsistenciaService
+from app.services.asistencia_service import COLOMBIA_TZ, AsistenciaService, _a_utc_aware, _horas_trabajadas
 
 
 def _crear_empleado(db_session, fingerprint_id: int | None = None) -> Empleado:
@@ -194,17 +194,17 @@ def test_horas_semana_suma_tramos_y_resta_descansos(db_session):
     assert resultado["promedio_almuerzo_min"] == 60.0
 
 
-def test_horas_semana_cuenta_tramo_abierto_hasta_ahora(db_session):
-    """Si el empleado sigue trabajando (sin EXIT), las horas se cuentan hasta el momento actual."""
-    empleado = _crear_empleado(db_session, fingerprint_id=41)
+def test_horas_semana_cuenta_tramo_abierto_hasta_ahora():
+    """Si el empleado sigue trabajando (sin EXIT), las horas se cuentan hasta
+    el momento actual. Prueba `_horas_trabajadas` directo (no vía el service)
+    para no mezclarse con `_cerrar_dias_pendientes`, que a partir de las 8pm
+    cerraría este mismo tramo abierto — comportamiento nuevo correcto, pero
+    un caso distinto al que esta prueba puntual quiere cubrir."""
     inicio, delta_usado = _hace_sin_cruzar_medianoche(timedelta(hours=2))
-    db_session.add(EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio))
-    db_session.commit()
-
-    service = AsistenciaService(db_session)
-    resultado = service.horas_semana_empleado(empleado.id)
+    evento = EventoAsistencia(empleado_id=1, tipo_evento="ENTRY", timestamp=inicio)
+    horas = _horas_trabajadas([evento], datetime.now(timezone.utc))
     horas_esperadas = delta_usado.total_seconds() / 3600
-    assert abs(resultado["horas_trabajadas"] - horas_esperadas) < 0.05
+    assert abs(horas - horas_esperadas) < 0.05
 
 
 def _evento_colombia(empleado_id: int, tipo: str, dia: date, hora: time) -> EventoAsistencia:
@@ -270,17 +270,77 @@ def test_horas_semana_todos_acepta_semana_pasada(db_session):
     assert fila["dias_trabajados"] == 1
 
 
-def test_horas_semana_no_falla_con_timestamp_timezone_aware(db_session):
+def test_horas_semana_no_falla_con_timestamp_timezone_aware():
     """En Postgres (producción) la columna timestamp es timezone-aware; en
     SQLite (tests) normalmente llega naive. La primera marcada de la semana
-    (un único ENTRY sin cerrar) reproducía un TypeError al restar aware-naive."""
-    empleado = _crear_empleado(db_session, fingerprint_id=42)
+    (un único ENTRY sin cerrar) reproducía un TypeError al restar aware-naive.
+    Prueba `_horas_trabajadas` directo, por la misma razón que la de arriba."""
     inicio_naive, delta_usado = _hace_sin_cruzar_medianoche(timedelta(hours=1))
     inicio = inicio_naive.replace(tzinfo=timezone.utc)
-    db_session.add(EventoAsistencia(empleado_id=empleado.id, tipo_evento="ENTRY", timestamp=inicio))
+    evento = EventoAsistencia(empleado_id=1, tipo_evento="ENTRY", timestamp=inicio)
+    horas = _horas_trabajadas([evento], datetime.now(timezone.utc))
+    horas_esperadas = delta_usado.total_seconds() / 3600
+    assert abs(horas - horas_esperadas) < 0.05
+
+
+def test_cierra_dia_sin_salida_automaticamente_a_las_4_30pm(db_session):
+    """Caso real: un empleado marca ENTRY un día y nunca marca salida (se le
+    olvidó, el sensor falló, etc.). Al cambiar de día, se le crea
+    automáticamente la salida a las 4:30pm (hora Colombia) de ese día — antes
+    ese día quedaba en 0 horas / efectivamente invisible en las métricas."""
+    empleado = _crear_empleado(db_session, fingerprint_id=60)
+    dia = datetime.now(COLOMBIA_TZ).date() - timedelta(days=3)
+    db_session.add(_evento_colombia(empleado.id, "ENTRY", dia, time(7, 0)))
     db_session.commit()
 
     service = AsistenciaService(db_session)
-    resultado = service.horas_semana_empleado(empleado.id)
-    horas_esperadas = delta_usado.total_seconds() / 3600
-    assert abs(resultado["horas_trabajadas"] - horas_esperadas) < 0.05
+    creados = service._cerrar_dias_pendientes(empleado.id)
+    assert creados == 1
+
+    eventos = (
+        db_session.query(EventoAsistencia)
+        .filter_by(empleado_id=empleado.id)
+        .order_by(EventoAsistencia.timestamp)
+        .all()
+    )
+    assert [e.tipo_evento for e in eventos] == ["ENTRY", "EXIT"]
+    # SQLite (a diferencia de Postgres) no conserva tzinfo al releer una
+    # columna DateTime(timezone=True) -- se normaliza igual que en el resto
+    # del código antes de convertir a hora Colombia.
+    salida_local = _a_utc_aware(eventos[-1].timestamp).astimezone(COLOMBIA_TZ)
+    assert salida_local.date() == dia
+    assert salida_local.hour == 16 and salida_local.minute == 30
+
+    # Volver a llamarlo no debe duplicar la salida ya creada.
+    assert service._cerrar_dias_pendientes(empleado.id) == 0
+
+
+def test_no_cierra_el_dia_de_hoy(db_session):
+    """Mientras siga siendo hoy, un ENTRY sin salida no se toca -- el
+    empleado todavía puede seguir trabajando y marcar su salida real."""
+    empleado = _crear_empleado(db_session, fingerprint_id=62)
+    hoy = datetime.now(COLOMBIA_TZ).date()
+    db_session.add(_evento_colombia(empleado.id, "ENTRY", hoy, time(7, 0)))
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    assert service._cerrar_dias_pendientes(empleado.id) == 0
+
+    eventos = db_session.query(EventoAsistencia).filter_by(empleado_id=empleado.id).all()
+    assert [e.tipo_evento for e in eventos] == ["ENTRY"]
+
+
+def test_dia_cerrado_automaticamente_cuenta_en_metricas(db_session):
+    """El día que se cierra automáticamente debe aportar horas reales a las
+    métricas (dias_trabajados, horas_trabajadas) en vez de quedar en 0 o
+    excluido — el caso real que reportó el usuario (3 días de un empleado
+    sin salida que "desaparecían" del resumen semanal)."""
+    empleado = _crear_empleado(db_session, fingerprint_id=61)
+    dia = datetime.now(COLOMBIA_TZ).date() - timedelta(days=3)
+    db_session.add(_evento_colombia(empleado.id, "ENTRY", dia, time(7, 0)))
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    resultado = service.horas_semana_empleado(empleado.id, semana_inicio=dia)
+    assert resultado["dias_trabajados"] == 1
+    assert resultado["horas_trabajadas"] == pytest.approx(9.5, abs=0.02)  # 7am -> 4:30pm asumido
