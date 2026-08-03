@@ -107,6 +107,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Built by [Andrés Felipe Nieto Gutiérrez](https://linkedin.com/in/andresfnietog)
 
+## Screenshots
+
+### Attendance Dashboard — real-time data from ESP32
+![Attendance Dashboard](./screenshots/attendance_dashboard.png)
+> Live weekly hours per employee, tracked automatically via 
+> ESP32 hardware. Color coding: blue = in progress, 
+> green = target reached.
+
 ## Configuración
 
 ### 1. Supabase
