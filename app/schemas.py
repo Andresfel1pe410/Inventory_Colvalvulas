@@ -599,13 +599,21 @@ class EmpleadoEstadoHoy(BaseModel):
 
 
 class HorasSemanaEmpleado(BaseModel):
-    """Horas trabajadas de lunes a hoy (hora Colombia) contra la jornada
-    legal semanal (42h). Usado por el reporte de RRHH en la web."""
+    """Resumen semanal de un empleado (horas totales contra la jornada legal
+    de 42h, más promedios diarios) para una semana cualquiera — la actual
+    (de lunes a hoy) o una semana pasada ya cerrada. Usado por el reporte de
+    RRHH en la web (tarjetas + tooltip por empleado)."""
     empleado_id: int
     empleado_nombre: str
     cargo: Optional[str] = None
     horas_trabajadas: float
     horas_objetivo: float
+    semana_inicio: date
+    semana_fin: date
+    dias_trabajados: int
+    promedio_horas_dia: float
+    promedio_desayuno_min: float
+    promedio_almuerzo_min: float
 
 
 # ============= RRHH: CONTRATO DISPOSITIVO (ESP32) =============
