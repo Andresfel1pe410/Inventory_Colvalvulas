@@ -9,13 +9,22 @@ class AsistenciaRepository:
         self.db = db
 
     def crear_evento(
-        self, empleado_id: int, tipo_evento: str, device_id: int | None = None
+        self,
+        empleado_id: int,
+        tipo_evento: str,
+        device_id: int | None = None,
+        timestamp: datetime | None = None,
     ) -> EventoAsistencia:
+        """`timestamp` explícito solo lo usa el cierre automático de días sin
+        salida (ver AsistenciaService._cerrar_dias_pendientes) — normalmente
+        se deja en None y el modelo pone la hora real (datetime.utcnow)."""
         evento = EventoAsistencia(
             empleado_id=empleado_id,
             tipo_evento=tipo_evento,
             device_id=device_id,
         )
+        if timestamp is not None:
+            evento.timestamp = timestamp
         self.db.add(evento)
         self.db.flush()
         return evento
