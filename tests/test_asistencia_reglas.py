@@ -16,6 +16,21 @@ def _crear_empleado(db_session, fingerprint_id: int | None = None) -> Empleado:
     return empleado
 
 
+def _avanzar_reloj(db_session, empleado_id: int, minutos: int = 11) -> None:
+    """Empuja el timestamp del último evento del empleado hacia atrás, para
+    simular que pasó tiempo real entre una marca y la siguiente -- sin esto,
+    dos llamadas seguidas en la misma prueba caerían en el anti-rebote de
+    TIEMPO_MINIMO_ENTRE_EVENTOS."""
+    ultimo = (
+        db_session.query(EventoAsistencia)
+        .filter_by(empleado_id=empleado_id)
+        .order_by(EventoAsistencia.id.desc())
+        .first()
+    )
+    ultimo.timestamp = ultimo.timestamp - timedelta(minutes=minutos)
+    db_session.commit()
+
+
 def _a_utc_naive(dt_colombia: datetime) -> datetime:
     return dt_colombia.astimezone(timezone.utc).replace(tzinfo=None)
 
@@ -120,7 +135,8 @@ def test_registrar_evento_dispositivo_exitoso(db_session):
 
 
 def test_registrar_evento_dispositivo_avanza_secuencia_automaticamente(db_session):
-    """Sin mandar 'event': cada scan avanza al siguiente evento de la secuencia."""
+    """Sin mandar 'event': cada scan avanza al siguiente evento de la secuencia
+    (con >10 min simulados entre cada uno, si no el anti-rebote los bloquea)."""
     empleado = _crear_empleado(db_session, fingerprint_id=21)
     service = AsistenciaService(db_session)
 
@@ -129,11 +145,38 @@ def test_registrar_evento_dispositivo_avanza_secuencia_automaticamente(db_sessio
         resultado = service.registrar_evento_dispositivo(fingerprint_id=21, device_id=1)
         assert resultado["success"] is True
         assert resultado["event_type"] == esperado
+        _avanzar_reloj(db_session, empleado.id)
 
     # Ya completó todos los eventos del día: el siguiente scan no registra nada.
     resultado = service.registrar_evento_dispositivo(fingerprint_id=21, device_id=1)
     assert resultado["success"] is False
     assert resultado["event_type"] is None
+
+
+def test_registrar_evento_dispositivo_rechaza_marcas_muy_seguidas(db_session):
+    """El lector a veces queda 'pegado' con el dedo y el ESP32 manda varias
+    peticiones seguidas para la misma persona -- la segunda (y siguientes)
+    dentro de los 10 minutos se ignoran, no avanzan la secuencia."""
+    empleado = _crear_empleado(db_session, fingerprint_id=22)
+    service = AsistenciaService(db_session)
+
+    r1 = service.registrar_evento_dispositivo(fingerprint_id=22, device_id=1)
+    assert r1["success"] is True
+    assert r1["event_type"] == "ENTRY"
+
+    r2 = service.registrar_evento_dispositivo(fingerprint_id=22, device_id=1)
+    assert r2["success"] is False
+    assert r2["event_type"] is None
+
+    eventos = db_session.query(EventoAsistencia).filter_by(empleado_id=empleado.id).all()
+    assert len(eventos) == 1
+    assert eventos[0].tipo_evento == "ENTRY"
+
+    # Pasados los 10 minutos, sí avanza a la siguiente marca.
+    _avanzar_reloj(db_session, empleado.id)
+    r3 = service.registrar_evento_dispositivo(fingerprint_id=22, device_id=1)
+    assert r3["success"] is True
+    assert r3["event_type"] == "BREAKFAST_START"
 
 
 def test_solo_entrada_salida_usa_secuencia_corta(db_session):
@@ -145,9 +188,11 @@ def test_solo_entrada_salida_usa_secuencia_corta(db_session):
     service = AsistenciaService(db_session)
     r1 = service.registrar_evento_dispositivo(fingerprint_id=30, device_id=1)
     assert r1["event_type"] == "ENTRY"
+    _avanzar_reloj(db_session, empleado.id)
 
     r2 = service.registrar_evento_dispositivo(fingerprint_id=30, device_id=1)
     assert r2["event_type"] == "EXIT"
+    _avanzar_reloj(db_session, empleado.id)
 
     r3 = service.registrar_evento_dispositivo(fingerprint_id=30, device_id=1)
     assert r3["success"] is False

@@ -28,6 +28,12 @@ HORA_LIMITE_ENTRADA = time(7, 0)
 HORA_SALIDA_AUTOMATICA = time(16, 30)
 DIAS_ATRAS_CIERRE_AUTOMATICO = 60
 
+# El lector de huella a veces queda "marcado" con el dedo (residuo óptico o
+# el dedo no se levantó a tiempo) y el ESP32 manda varias peticiones seguidas
+# para la misma persona en segundos. Se ignora cualquier marca nueva si la
+# última de ese empleado fue hace menos de este tiempo.
+TIEMPO_MINIMO_ENTRE_EVENTOS = timedelta(minutes=10)
+
 # Jornada legal semanal en Colombia (Ley 2101 de 2021, reducción gradual a 42h).
 HORAS_OBJETIVO_SEMANAL = 42.0
 
@@ -277,6 +283,20 @@ class AsistenciaService:
 
         dt_inicio, dt_fin = _rango_dia_colombia(_hoy_colombia())
         ultimo = self.repo.get_ultimo_evento_en_rango(empleado.id, dt_inicio, dt_fin)
+
+        if ultimo is not None:
+            transcurrido = datetime.now(timezone.utc) - _a_utc_aware(ultimo.timestamp)
+            if transcurrido < TIEMPO_MINIMO_ENTRE_EVENTOS:
+                horas = self._horas_por_empleado_semana_actual().get(empleado.id, 0.0)
+                return {
+                    "success": False,
+                    "employee_name": empleado.nombre,
+                    "message": "Ya se registró una marca hace unos momentos. Espera unos minutos.",
+                    "event_type": None,
+                    "horas_semana": horas,
+                    "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
+                }
+
         siguiente = self._siguiente_evento(empleado, ultimo.tipo_evento if ultimo else None)
 
         if siguiente is None:
