@@ -5,6 +5,7 @@ import type {
   DependenciaDetalle,
   DependenciaListItem,
   Tarea,
+  TareaConDependencia,
   TareaCreate,
   TareaEstado,
 } from '../types/planeacion.types'
@@ -32,8 +33,19 @@ export const planeacionService = {
   crearTarea: (dependenciaId: number, data: TareaCreate) =>
     procesoApi.post<Tarea>(`/planeacion/dependencias/${dependenciaId}/tareas`, data).then((r) => r.data),
 
-  actualizarEstadoTarea: (dependenciaId: number, tareaId: number, estado: TareaEstado) =>
+  actualizarEstadoTarea: (dependenciaId: number, tareaId: number, estado: TareaEstado, realizado?: number) =>
     procesoApi
-      .patch<Tarea>(`/planeacion/dependencias/${dependenciaId}/tareas/${tareaId}`, { estado })
+      .patch<Tarea>(`/planeacion/dependencias/${dependenciaId}/tareas/${tareaId}`, { estado, realizado })
+      .then((r) => r.data),
+
+  eliminarTarea: (dependenciaId: number, tareaId: number) =>
+    procesoApi.delete(`/planeacion/dependencias/${dependenciaId}/tareas/${tareaId}`),
+
+  listarMisTareas: () =>
+    procesoApi.get<TareaConDependencia[]>('/planeacion/mis-tareas').then((r) => r.data),
+
+  actualizarEstadoMiTarea: (tareaId: number, estado: TareaEstado, realizado?: number) =>
+    procesoApi
+      .patch<TareaConDependencia>(`/planeacion/mis-tareas/${tareaId}`, { estado, realizado })
       .then((r) => r.data),
 }

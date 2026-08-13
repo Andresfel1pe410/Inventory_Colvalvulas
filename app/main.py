@@ -15,7 +15,7 @@ from app.core.exceptions import AppException
 from app.api.auth.auth_router import router as auth_router
 from app.api.auth.debug_auth import router as debug_auth
 from app.api.ventas import clientes, productos, inventario, pedidos, remisiones, usuarios, roles, reportes
-from app.api.proceso import inventario_proceso, planeacion
+from app.api.proceso import inventario_proceso, planeacion, mis_tareas
 from app.api.rrhh import empleados, asistencia, device
 
 setup_logging()
@@ -89,6 +89,7 @@ for api_prefix in (settings.API_V1_PREFIX, ventas_prefix):
 for api_prefix in (settings.API_V1_PREFIX, proceso_prefix):
     app.include_router(inventario_proceso, prefix=api_prefix)
     app.include_router(planeacion, prefix=api_prefix)
+    app.include_router(mis_tareas, prefix=api_prefix)
 
 for api_prefix in (settings.API_V1_PREFIX, rrhh_prefix):
     app.include_router(empleados, prefix=api_prefix)

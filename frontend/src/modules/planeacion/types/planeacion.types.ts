@@ -21,6 +21,8 @@ export interface Tarea {
   dependencia_id: number
   empleado_id: number
   descripcion: string
+  cantidad: number
+  realizado: number
   estado: TareaEstado
   created_at: string
   updated_at: string
@@ -29,11 +31,14 @@ export interface Tarea {
 export interface TareaCreate {
   empleado_id: number
   descripcion: string
+  cantidad: number
 }
 
 export interface TareaEnDependencia {
   id: number
   descripcion: string
+  cantidad: number
+  realizado: number
   estado: TareaEstado
   created_at: string
   updated_at: string
@@ -52,4 +57,8 @@ export interface DependenciaDetalle {
   created_at: string
   updated_at: string
   empleados: EmpleadoConTareas[]
+}
+
+export interface TareaConDependencia extends Tarea {
+  dependencia_nombre: string
 }

@@ -467,10 +467,12 @@ class DependenciaEmpleadoAdd(BaseModel):
 class TareaCreate(BaseModel):
     empleado_id: int
     descripcion: str
+    cantidad: int = Field(..., ge=1)
 
 
-class TareaUpdateEstado(BaseModel):
+class TareaUpdate(BaseModel):
     estado: str = Field(..., pattern="^(pendiente|en_progreso|hecha)$")
+    realizado: Optional[int] = Field(None, ge=0)
 
 
 class Tarea(BaseModel):
@@ -478,6 +480,8 @@ class Tarea(BaseModel):
     dependencia_id: int
     empleado_id: int
     descripcion: str
+    cantidad: int
+    realizado: int
     estado: str
     created_at: datetime
     updated_at: datetime
@@ -489,6 +493,8 @@ class TareaEnDependencia(BaseModel):
     """Forma anidada de solo lectura para el detalle de una dependencia."""
     id: int
     descripcion: str
+    cantidad: int
+    realizado: int
     estado: str
     created_at: datetime
     updated_at: datetime
@@ -509,6 +515,12 @@ class DependenciaDetalle(BaseModel):
     created_at: datetime
     updated_at: datetime
     empleados: list[EmpleadoConTareas]
+
+
+class TareaConDependencia(Tarea):
+    """Tarea vista desde 'mis tareas': incluye el nombre de la dependencia
+    porque el empleado no navega por dependencia, ve todas sus tareas juntas."""
+    dependencia_nombre: str
 
 
 # ============= RRHH: EMPLEADOS =============
@@ -553,6 +565,17 @@ class Empleado(EmpleadoBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EmpleadoAccesoCreate(BaseModel):
+    """Datos para crear el acceso de login (Supabase Auth) de un empleado ya existente."""
+    email: str
+    password: str = Field(min_length=6)
+
+
+class EmpleadoAccesoEstado(BaseModel):
+    tiene_acceso: bool
+    email: Optional[str] = None
 
 
 # ============= RRHH: ASISTENCIA =============

@@ -2,10 +2,16 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { PageLoading } from '@/shared/components'
 import { useSectionPath } from '@/app/routing/sectionPath'
-import { useDependenciaDetalle, useQuitarEmpleado } from '../hooks/usePlaneacion'
+import {
+  useDependenciaDetalle,
+  useQuitarEmpleado,
+  useActualizarEstadoTarea,
+  useEliminarTarea,
+} from '../hooks/usePlaneacion'
 import { AgregarEmpleadoControl } from '../components/AgregarEmpleadoControl'
 import { AgregarTareaModal } from '../components/AgregarTareaModal'
 import { TareaEstadoSelect } from '../components/TareaEstadoSelect'
+import { TareaRealizadoInput } from '../components/TareaRealizadoInput'
 
 export function DependenciaDetailPage() {
   const { id } = useParams()
@@ -13,6 +19,8 @@ export function DependenciaDetailPage() {
   const sectionPath = useSectionPath()
   const { data: dependencia, isLoading } = useDependenciaDetalle(dependenciaId)
   const quitarMutation = useQuitarEmpleado(dependenciaId)
+  const actualizarEstadoMutation = useActualizarEstadoTarea(dependenciaId)
+  const eliminarTareaMutation = useEliminarTarea(dependenciaId)
   const [tareaModalEmpleado, setTareaModalEmpleado] = useState<{ id: number; nombre: string } | null>(null)
 
   if (isLoading) {
@@ -86,7 +94,29 @@ export function DependenciaDetailPage() {
                   {emp.tareas.map((tarea) => (
                     <li key={tarea.id} className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2">
                       <span className="text-sm text-slate-800">{tarea.descripcion}</span>
-                      <TareaEstadoSelect dependenciaId={dependenciaId} tareaId={tarea.id} estado={tarea.estado} />
+                      <div className="flex items-center gap-3">
+                        <TareaRealizadoInput
+                          cantidad={tarea.cantidad}
+                          realizado={tarea.realizado}
+                          disabled={actualizarEstadoMutation.isPending}
+                          onCommit={(realizado) =>
+                            actualizarEstadoMutation.mutate({ tareaId: tarea.id, estado: tarea.estado, realizado })
+                          }
+                        />
+                        <TareaEstadoSelect
+                          estado={tarea.estado}
+                          disabled={actualizarEstadoMutation.isPending}
+                          onChange={(estado) => actualizarEstadoMutation.mutate({ tareaId: tarea.id, estado })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => eliminarTareaMutation.mutate(tarea.id)}
+                          disabled={eliminarTareaMutation.isPending}
+                          className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

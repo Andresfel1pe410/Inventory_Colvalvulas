@@ -30,10 +30,12 @@ class Usuario(Base):
     nombre = Column(String(100), nullable=False)
     apellido = Column(String(100))
     activo = Column(Boolean, default=True)
+    empleado_id = Column(BigInteger, ForeignKey("empleado.id", ondelete="SET NULL"), unique=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     roles = relationship("UsuarioRol", back_populates="usuario", cascade="all, delete-orphan")
+    empleado = relationship("Empleado")
 
 
 class UsuarioRol(Base):
@@ -315,6 +317,8 @@ class Tarea(Base):
     dependencia_id = Column(BigInteger, ForeignKey("dependencia.id", ondelete="CASCADE"), nullable=False)
     empleado_id = Column(BigInteger, ForeignKey("empleado.id", ondelete="CASCADE"), nullable=False)
     descripcion = Column(String(500), nullable=False)
+    cantidad = Column(Integer, nullable=False, default=1)
+    realizado = Column(Integer, nullable=False, default=0)
     estado = Column(String(20), nullable=False, default="pendiente")  # pendiente, en_progreso, hecha
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)

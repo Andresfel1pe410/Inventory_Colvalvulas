@@ -17,12 +17,14 @@ export function AgregarTareaModal({
   empleadoNombre,
 }: AgregarTareaModalProps) {
   const [descripcion, setDescripcion] = useState('')
+  const [cantidad, setCantidad] = useState('')
   const [error, setError] = useState('')
   const crearMutation = useCrearTarea(dependenciaId)
 
   useEffect(() => {
     if (open) {
       setDescripcion('')
+      setCantidad('')
       setError('')
     }
   }, [open])
@@ -35,9 +37,18 @@ export function AgregarTareaModal({
       setError('La descripción de la tarea es obligatoria')
       return
     }
+    const cantidadNum = parseInt(cantidad, 10)
+    if (!cantidad || Number.isNaN(cantidadNum) || cantidadNum < 1) {
+      setError('La cantidad debe ser un número mayor a 0')
+      return
+    }
 
     try {
-      await crearMutation.mutateAsync({ empleado_id: empleadoId, descripcion: descripcion.trim() })
+      await crearMutation.mutateAsync({
+        empleado_id: empleadoId,
+        descripcion: descripcion.trim(),
+        cantidad: cantidadNum,
+      })
       onClose()
     } catch (err) {
       setError((err as any)?.response?.data?.detail || 'Error al crear la tarea')
@@ -63,6 +74,20 @@ export function AgregarTareaModal({
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-primary-600 focus:outline-none"
               disabled={crearMutation.isPending}
               autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Cantidad *</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value.replace(/\D/g, ''))}
+              placeholder="Ej: 20"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-primary-600 focus:outline-none"
+              disabled={crearMutation.isPending}
             />
           </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEmpleado, useEmpleadoCreate, useEmpleadoUpdate } from '../hooks/useEmpleados'
+import { AccesoEmpleadoCard } from '../components/AccesoEmpleadoCard'
 import { PageLoading } from '@/shared/components'
 import { useSectionPath } from '@/app/routing/sectionPath'
 import type { EmpleadoCreate } from '../types/empleado.types'
@@ -199,6 +200,12 @@ export function EmpleadoFormPage() {
           </button>
         </div>
       </form>
+
+      {isEdit && empleado && (
+        <div className="mt-6 max-w-xl">
+          <AccesoEmpleadoCard empleadoId={empleado.id} />
+        </div>
+      )}
     </div>
   )
 }

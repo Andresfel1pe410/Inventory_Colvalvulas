@@ -59,8 +59,46 @@ export function useCrearTarea(dependenciaId: number) {
 export function useActualizarEstadoTarea(dependenciaId: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ tareaId, estado }: { tareaId: number; estado: TareaEstado }) =>
-      planeacionService.actualizarEstadoTarea(dependenciaId, tareaId, estado),
+    mutationFn: ({
+      tareaId,
+      estado,
+      realizado,
+    }: {
+      tareaId: number
+      estado: TareaEstado
+      realizado?: number
+    }) => planeacionService.actualizarEstadoTarea(dependenciaId, tareaId, estado, realizado),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.planeacion.detail(dependenciaId) }),
+  })
+}
+
+export function useEliminarTarea(dependenciaId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (tareaId: number) => planeacionService.eliminarTarea(dependenciaId, tareaId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.planeacion.detail(dependenciaId) }),
+  })
+}
+
+export function useMisTareas() {
+  return useQuery({
+    queryKey: queryKeys.planeacion.misTareas,
+    queryFn: () => planeacionService.listarMisTareas(),
+  })
+}
+
+export function useActualizarMiTarea() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      tareaId,
+      estado,
+      realizado,
+    }: {
+      tareaId: number
+      estado: TareaEstado
+      realizado?: number
+    }) => planeacionService.actualizarEstadoMiTarea(tareaId, estado, realizado),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.planeacion.misTareas }),
   })
 }

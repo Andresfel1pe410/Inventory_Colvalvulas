@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.auth.jwt import get_current_user
 from app.api.deps import require_admin
 from app.core.database import get_db
-from app.models import Pedido, Usuario, Cliente, DetallePedido, Producto
+from app.models import Pedido, Usuario, Cliente, DetallePedido, Producto, Inventario
 
 router = APIRouter(prefix="/reportes", tags=["reportes"])
 
@@ -79,6 +79,8 @@ def ventas_por_vendedor_mes(
             continue
         if isinstance(r.dia, datetime):
             d: date = r.dia.date()
+        elif isinstance(r.dia, str):
+            d = datetime.strptime(r.dia, "%Y-%m-%d").date()
         else:
             d = r.dia
         idx = d.day - 1
@@ -116,11 +118,32 @@ def ventas_por_vendedor_mes(
         .order_by(func.sum(Pedido.total).desc())
         .all()
     )
+    # Cantidad de unidades compradas por cliente -- consulta aparte para no
+    # duplicar Pedido.total por el fan-out del join con DetallePedido.
+    cantidad_por_cliente = {
+        int(cid): int(cant or 0)
+        for cid, cant in (
+            db.query(
+                Pedido.cliente_id,
+                func.sum(DetallePedido.cantidad).label("cantidad"),
+            )
+            .join(DetallePedido, DetallePedido.pedido_id == Pedido.id)
+            .filter(
+                Pedido.estado == "enviado",
+                Pedido.fecha_envio.isnot(None),
+                Pedido.fecha_envio >= start,
+                Pedido.fecha_envio <= end,
+            )
+            .group_by(Pedido.cliente_id)
+            .all()
+        )
+    }
     top_clientes = [
         {
             "cliente_id": int(cid),
             "nombre": raz or f"Cliente #{cid}",
             "total_mes": float(total or 0),
+            "cantidad": cantidad_por_cliente.get(int(cid), 0),
         }
         for cid, total, raz in top_clientes_rows
     ]
@@ -283,8 +306,9 @@ def top_clientes_productos_acumulado(
     if not month_list:
         raise HTTPException(400, "Debe indicar al menos un mes válido")
 
+    _, last_day = calendar.monthrange(year, max(month_list))
     start = datetime(year, min(month_list), 1, 0, 0, 0, tzinfo=timezone.utc)
-    end = datetime(year, max(month_list), 31, 23, 59, 59, tzinfo=timezone.utc)
+    end = datetime(year, max(month_list), last_day, 23, 59, 59, tzinfo=timezone.utc)
 
     clientes_q = (
         db.query(
@@ -306,27 +330,52 @@ def top_clientes_productos_acumulado(
         clientes_q = clientes_q.limit(limit)
     top_clientes_rows = clientes_q.all()
 
+    # Cantidad de unidades compradas por cliente -- consulta aparte para no
+    # duplicar Pedido.total por el fan-out del join con DetallePedido.
+    cantidad_por_cliente = {
+        int(cid): int(cant or 0)
+        for cid, cant in (
+            db.query(
+                Pedido.cliente_id,
+                func.sum(DetallePedido.cantidad).label("cantidad"),
+            )
+            .join(DetallePedido, DetallePedido.pedido_id == Pedido.id)
+            .filter(
+                Pedido.estado == "enviado",
+                Pedido.fecha_envio.isnot(None),
+                Pedido.fecha_envio >= start,
+                Pedido.fecha_envio <= end,
+            )
+            .group_by(Pedido.cliente_id)
+            .all()
+        )
+    }
+
     productos_q = (
         db.query(
             DetallePedido.producto_id,
             Producto.referencia,
             Producto.material,
             func.sum(DetallePedido.cantidad).label("cantidad"),
+            func.coalesce(Inventario.stock_actual, 0).label("stock_actual"),
         )
         .join(Pedido, DetallePedido.pedido_id == Pedido.id)
         .join(Producto, Producto.id == DetallePedido.producto_id)
+        .outerjoin(Inventario, Inventario.producto_id == Producto.id)
         .filter(
             Pedido.estado == "enviado",
             Pedido.fecha_envio.isnot(None),
             Pedido.fecha_envio >= start,
             Pedido.fecha_envio <= end,
         )
-        .group_by(DetallePedido.producto_id, Producto.referencia, Producto.material)
+        .group_by(DetallePedido.producto_id, Producto.referencia, Producto.material, Inventario.stock_actual)
         .order_by(func.sum(DetallePedido.cantidad).desc())
     )
     if limit > 0:
         productos_q = productos_q.limit(limit)
     top_productos_rows = productos_q.all()
+
+    num_meses = len(month_list)
 
     return {
         "year": year,
@@ -335,7 +384,9 @@ def top_clientes_productos_acumulado(
             {
                 "cliente_id": int(cid),
                 "nombre": raz or f"Cliente #{cid}",
-                "total_mes": float(total or 0),
+                "total": float(total or 0),
+                "promedio": float(total or 0) / num_meses,
+                "cantidad": cantidad_por_cliente.get(int(cid), 0),
             }
             for cid, raz, total in top_clientes_rows
         ],
@@ -345,7 +396,9 @@ def top_clientes_productos_acumulado(
                 "referencia": ref or f"Producto #{pid}",
                 "material": mat or "",
                 "cantidad": int(cant or 0),
+                "promedio": float(cant or 0) / num_meses,
+                "stock_actual": int(stock or 0),
             }
-            for pid, ref, mat, cant in top_productos_rows
+            for pid, ref, mat, cant, stock in top_productos_rows
         ],
     }

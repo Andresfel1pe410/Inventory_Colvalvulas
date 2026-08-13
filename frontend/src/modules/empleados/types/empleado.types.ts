@@ -30,3 +30,13 @@ export interface EmpleadoUpdate {
   fingerprint_id?: number
   solo_entrada_salida?: boolean
 }
+
+export interface EmpleadoAccesoEstado {
+  tiene_acceso: boolean
+  email?: string | null
+}
+
+export interface EmpleadoAccesoCreate {
+  email: string
+  password: string
+}

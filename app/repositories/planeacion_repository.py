@@ -84,9 +84,25 @@ class PlaneacionRepository:
             .all()
         )
 
+    def get_tareas_de_empleado(self, empleado_id: int) -> list[Tarea]:
+        """Tareas de un empleado a través de TODAS sus dependencias (para
+        'mis tareas') -- con la dependencia precargada para no hacer N+1."""
+        return (
+            self.db.query(Tarea)
+            .filter_by(empleado_id=empleado_id)
+            .options(joinedload(Tarea.dependencia))
+            .order_by(Tarea.created_at)
+            .all()
+        )
+
     # ---------- Tareas ----------
-    def crear_tarea(self, dependencia_id: int, empleado_id: int, descripcion: str) -> Tarea:
-        tarea = Tarea(dependencia_id=dependencia_id, empleado_id=empleado_id, descripcion=descripcion)
+    def crear_tarea(self, dependencia_id: int, empleado_id: int, descripcion: str, cantidad: int = 1) -> Tarea:
+        tarea = Tarea(
+            dependencia_id=dependencia_id,
+            empleado_id=empleado_id,
+            descripcion=descripcion,
+            cantidad=cantidad,
+        )
         self.db.add(tarea)
         self.db.flush()
         return tarea
@@ -94,7 +110,13 @@ class PlaneacionRepository:
     def get_tarea(self, tarea_id: int) -> Tarea | None:
         return self.db.query(Tarea).filter_by(id=tarea_id).first()
 
-    def actualizar_estado_tarea(self, tarea: Tarea, estado: str) -> Tarea:
+    def actualizar_tarea(self, tarea: Tarea, estado: str, realizado: int | None = None) -> Tarea:
         tarea.estado = estado
+        if realizado is not None:
+            tarea.realizado = realizado
         self.db.flush()
         return tarea
+
+    def eliminar_tarea(self, tarea: Tarea) -> None:
+        self.db.delete(tarea)
+        self.db.flush()
