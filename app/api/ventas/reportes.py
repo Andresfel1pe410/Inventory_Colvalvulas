@@ -351,6 +351,19 @@ def top_clientes_productos_acumulado(
         )
     }
 
+    # "Disponible" = stock_actual menos lo requerido por pedidos aún no enviados
+    # (misma definición que usa el módulo de Inventario).
+    requerido_subq = (
+        db.query(
+            DetallePedido.producto_id.label("producto_id"),
+            func.sum(DetallePedido.cantidad).label("requerido"),
+        )
+        .join(Pedido, Pedido.id == DetallePedido.pedido_id)
+        .filter(Pedido.estado.in_(("en_espera", "en_proceso")))
+        .group_by(DetallePedido.producto_id)
+        .subquery()
+    )
+
     productos_q = (
         db.query(
             DetallePedido.producto_id,
@@ -358,17 +371,25 @@ def top_clientes_productos_acumulado(
             Producto.material,
             func.sum(DetallePedido.cantidad).label("cantidad"),
             func.coalesce(Inventario.stock_actual, 0).label("stock_actual"),
+            func.coalesce(requerido_subq.c.requerido, 0).label("requerido"),
         )
         .join(Pedido, DetallePedido.pedido_id == Pedido.id)
         .join(Producto, Producto.id == DetallePedido.producto_id)
         .outerjoin(Inventario, Inventario.producto_id == Producto.id)
+        .outerjoin(requerido_subq, requerido_subq.c.producto_id == Producto.id)
         .filter(
             Pedido.estado == "enviado",
             Pedido.fecha_envio.isnot(None),
             Pedido.fecha_envio >= start,
             Pedido.fecha_envio <= end,
         )
-        .group_by(DetallePedido.producto_id, Producto.referencia, Producto.material, Inventario.stock_actual)
+        .group_by(
+            DetallePedido.producto_id,
+            Producto.referencia,
+            Producto.material,
+            Inventario.stock_actual,
+            requerido_subq.c.requerido,
+        )
         .order_by(func.sum(DetallePedido.cantidad).desc())
     )
     if limit > 0:
@@ -376,6 +397,23 @@ def top_clientes_productos_acumulado(
     top_productos_rows = productos_q.all()
 
     num_meses = len(month_list)
+
+    top_productos = []
+    for pid, ref, mat, cant, stock, requerido in top_productos_rows:
+        promedio = float(cant or 0) / num_meses
+        disponible = int(stock or 0) - int(requerido or 0)
+        top_productos.append(
+            {
+                "producto_id": int(pid),
+                "referencia": ref or f"Producto #{pid}",
+                "material": mat or "",
+                "cantidad": int(cant or 0),
+                "promedio": promedio,
+                "stock_actual": int(stock or 0),
+                "disponible": disponible,
+                "produccion": disponible - promedio,
+            }
+        )
 
     return {
         "year": year,
@@ -390,15 +428,5 @@ def top_clientes_productos_acumulado(
             }
             for cid, raz, total in top_clientes_rows
         ],
-        "top_productos": [
-            {
-                "producto_id": int(pid),
-                "referencia": ref or f"Producto #{pid}",
-                "material": mat or "",
-                "cantidad": int(cant or 0),
-                "promedio": float(cant or 0) / num_meses,
-                "stock_actual": int(stock or 0),
-            }
-            for pid, ref, mat, cant, stock in top_productos_rows
-        ],
+        "top_productos": top_productos,
     }

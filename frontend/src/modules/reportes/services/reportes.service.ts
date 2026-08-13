@@ -40,6 +40,8 @@ export interface TopClientesProductosAcumuladoResponse {
     cantidad: number
     promedio: number
     stock_actual: number
+    disponible: number
+    produccion: number
   }[]
 }
 

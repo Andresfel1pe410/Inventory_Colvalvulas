@@ -95,6 +95,30 @@ def test_top_clientes_productos_varios_meses_incluye_promedio_y_stock(client, ad
         numero_pedido="PED-FEB",
     )
     db_session.add(Inventario(producto_id=producto.id, stock_actual=42, stock_minimo=0))
+
+    # Pedido pendiente (no enviado) del mismo producto -- resta del "Disponible".
+    usuario_pendiente = Usuario(auth_user_id="auth-pendiente", email="pendiente@test.com", nombre="V", activo=True)
+    db_session.add(usuario_pendiente)
+    db_session.flush()
+    pedido_pendiente = Pedido(
+        numero_pedido="PED-PENDIENTE",
+        cliente_id=cliente.id,
+        usuario_id=usuario_pendiente.id,
+        estado="en_espera",
+        subtotal=0,
+        total=0,
+    )
+    db_session.add(pedido_pendiente)
+    db_session.flush()
+    db_session.add(
+        DetallePedido(
+            pedido_id=pedido_pendiente.id,
+            producto_id=producto.id,
+            cantidad=10,
+            precio_unitario=200,
+            subtotal=2000,
+        )
+    )
     db_session.commit()
 
     resp = client.get(
@@ -112,3 +136,5 @@ def test_top_clientes_productos_varios_meses_incluye_promedio_y_stock(client, ad
     assert producto_data["cantidad"] == 10  # 4 + 6
     assert producto_data["promedio"] == 5.0  # 10 / 2 meses
     assert producto_data["stock_actual"] == 42
+    assert producto_data["disponible"] == 32  # 42 stock - 10 requerido (pendiente)
+    assert producto_data["produccion"] == 27.0  # 32 disponible - 5.0 promedio
