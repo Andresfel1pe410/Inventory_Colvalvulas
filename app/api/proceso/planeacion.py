@@ -15,7 +15,7 @@ from app.schemas import (
     DependenciaListItem,
     Tarea,
     TareaCreate,
-    TareaUpdateEstado,
+    TareaUpdate,
 )
 from app.services.planeacion_service import PlaneacionService
 
@@ -87,16 +87,27 @@ def crear_tarea(
     current_user: Usuario = Depends(get_current_user),
     _admin: Usuario = Depends(require_admin),
 ):
-    return PlaneacionService(db).crear_tarea(dependencia_id, data.empleado_id, data.descripcion)
+    return PlaneacionService(db).crear_tarea(dependencia_id, data.empleado_id, data.descripcion, data.cantidad)
 
 
 @router.patch("/dependencias/{dependencia_id}/tareas/{tarea_id}", response_model=Tarea)
 def actualizar_estado_tarea(
     dependencia_id: int,
     tarea_id: int,
-    data: TareaUpdateEstado,
+    data: TareaUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
     _admin: Usuario = Depends(require_admin),
 ):
-    return PlaneacionService(db).actualizar_estado_tarea(dependencia_id, tarea_id, data.estado)
+    return PlaneacionService(db).actualizar_estado_tarea(dependencia_id, tarea_id, data.estado, data.realizado)
+
+
+@router.delete("/dependencias/{dependencia_id}/tareas/{tarea_id}", status_code=204)
+def eliminar_tarea(
+    dependencia_id: int,
+    tarea_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
+):
+    PlaneacionService(db).eliminar_tarea(dependencia_id, tarea_id)

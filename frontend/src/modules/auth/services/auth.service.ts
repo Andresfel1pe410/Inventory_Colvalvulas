@@ -6,23 +6,15 @@ import { AUTH_API_BASE } from '@/shared/config'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-const memoryStorage: Record<string, string> = {}
-
-const customStorage = {
-  getItem: (key: string) => memoryStorage[key] ?? null,
-  setItem: (key: string, value: string) => {
-    memoryStorage[key] = value
-  },
-  removeItem: (key: string) => {
-    delete memoryStorage[key]
-  },
-}
-
+// Antes usaba un objeto en memoria como "storage" (se perdía en cada
+// recarga aunque persistSession estuviera en true) y nada restauraba la
+// sesión al cargar la app -- por eso siempre pedía loguearse de nuevo.
+// Ahora usa el localStorage por defecto de Supabase, y App.tsx restaura la
+// sesión al arrancar (ver supabase.auth.getSession() ahí).
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: customStorage,
     storageKey: 'erp-auth',
-    persistSession: false,
+    persistSession: true,
   },
 })
 

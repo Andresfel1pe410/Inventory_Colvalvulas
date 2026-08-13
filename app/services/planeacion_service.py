@@ -101,30 +101,95 @@ class PlaneacionService:
             self.db.commit()
 
     # ---------- Tareas ----------
-    def crear_tarea(self, dependencia_id: int, empleado_id: int, descripcion: str, commit: bool = True):
+    def crear_tarea(
+        self, dependencia_id: int, empleado_id: int, descripcion: str, cantidad: int = 1, commit: bool = True
+    ):
         if not self.repo.get(dependencia_id):
             raise NotFoundError("Dependencia no encontrada")
         if not descripcion or not descripcion.strip():
             raise ValidationError("La descripción de la tarea es obligatoria")
+        if cantidad is None or cantidad < 1:
+            raise ValidationError("La cantidad debe ser mayor a 0")
         if not self.repo.empleado_asignado(dependencia_id, empleado_id):
             raise ValidationError("El empleado no está asignado a esta dependencia")
 
-        tarea = self.repo.crear_tarea(dependencia_id, empleado_id, descripcion.strip())
+        tarea = self.repo.crear_tarea(dependencia_id, empleado_id, descripcion.strip(), cantidad)
         if commit:
             self.db.commit()
             self.db.refresh(tarea)
         return tarea
 
-    def actualizar_estado_tarea(self, dependencia_id: int, tarea_id: int, estado: str, commit: bool = True):
+    def actualizar_estado_tarea(
+        self,
+        dependencia_id: int,
+        tarea_id: int,
+        estado: str,
+        realizado: int | None = None,
+        commit: bool = True,
+    ):
         if estado not in ESTADOS_TAREA:
             raise ValidationError(f"Estado inválido. Válidos: {ESTADOS_TAREA}")
+        if realizado is not None and realizado < 0:
+            raise ValidationError("Realizado no puede ser negativo")
 
         tarea = self.repo.get_tarea(tarea_id)
         if not tarea or tarea.dependencia_id != dependencia_id:
             raise NotFoundError("Tarea no encontrada en esta dependencia")
 
-        tarea = self.repo.actualizar_estado_tarea(tarea, estado)
+        tarea = self.repo.actualizar_tarea(tarea, estado, realizado)
         if commit:
             self.db.commit()
             self.db.refresh(tarea)
         return tarea
+
+    def eliminar_tarea(self, dependencia_id: int, tarea_id: int, commit: bool = True):
+        tarea = self.repo.get_tarea(tarea_id)
+        if not tarea or tarea.dependencia_id != dependencia_id:
+            raise NotFoundError("Tarea no encontrada en esta dependencia")
+
+        self.repo.eliminar_tarea(tarea)
+        if commit:
+            self.db.commit()
+
+    # ---------- Mis tareas (autoservicio del empleado) ----------
+    def listar_tareas_de_empleado(self, empleado_id: int) -> list[dict]:
+        return [self._tarea_con_dependencia(t) for t in self.repo.get_tareas_de_empleado(empleado_id)]
+
+    def actualizar_estado_tarea_de_empleado(
+        self,
+        empleado_id: int,
+        tarea_id: int,
+        estado: str,
+        realizado: int | None = None,
+        commit: bool = True,
+    ) -> dict:
+        if estado not in ESTADOS_TAREA:
+            raise ValidationError(f"Estado inválido. Válidos: {ESTADOS_TAREA}")
+        if realizado is not None and realizado < 0:
+            raise ValidationError("Realizado no puede ser negativo")
+
+        tarea = self.repo.get_tarea(tarea_id)
+        if not tarea or tarea.empleado_id != empleado_id:
+            # 404, no 403: no revela si la tarea existe pero es de otro empleado.
+            raise NotFoundError("Tarea no encontrada")
+
+        tarea = self.repo.actualizar_tarea(tarea, estado, realizado)
+        if commit:
+            self.db.commit()
+            self.db.refresh(tarea)
+        return self._tarea_con_dependencia(tarea)
+
+    @staticmethod
+    def _tarea_con_dependencia(tarea) -> dict:
+        return {
+            "id": tarea.id,
+            "dependencia_id": tarea.dependencia_id,
+            "empleado_id": tarea.empleado_id,
+            "descripcion": tarea.descripcion,
+            "cantidad": tarea.cantidad,
+            "realizado": tarea.realizado,
+            "estado": tarea.estado,
+            "created_at": tarea.created_at,
+            "updated_at": tarea.updated_at,
+            "dependencia_nombre": tarea.dependencia.nombre,
+        }

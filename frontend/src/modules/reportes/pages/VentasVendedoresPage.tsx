@@ -20,6 +20,14 @@ function formatCOPAxisMillions(valuePesos: number): string {
   return `${m.toFixed(0)} M`
 }
 
+function fmtQty(n: number): string {
+  return (n || 0).toLocaleString('es-CO')
+}
+
+function fmtAvgQty(n: number): string {
+  return (n || 0).toLocaleString('es-CO', { maximumFractionDigits: 1 })
+}
+
 function cumulative(values: number[]): number[] {
   let acc = 0
   return values.map((v) => {
@@ -248,9 +256,6 @@ export function VentasVendedoresPage() {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;')
 
-    const fmtInt = (n: number) => (n || 0).toLocaleString('es-CO')
-    const fmtQty = (n: number) => (n || 0).toLocaleString('es-CO')
-
     setIsPrinting(true)
 
     try {
@@ -259,30 +264,34 @@ export function VentasVendedoresPage() {
         months: acumMonths,
       })
 
-      const headerLines = [
-        'REPORTE ACUMULADO (solo texto)',
-        `Generado: ${new Date().toLocaleString('es-CO')}`,
-        `Año: ${topAcumFull.year}`,
-        `Meses: ${topAcumFull.months.join(', ')}`,
-        '',
-      ]
+      const multiMes = topAcumFull.months.length > 1
 
-      const clientesLines = [
-        `CLIENTES (total: ${fmtInt(topAcumFull.top_clientes.length)})`,
-        ...topAcumFull.top_clientes.map((c, idx) => `${idx + 1}. ${c.nombre} — ${formatCOP(c.total)}`),
-        '',
-      ]
+      const clientesRows = topAcumFull.top_clientes
+        .map(
+          (c, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(c.nombre)}</td>
+          <td class="num">${fmtQty(c.cantidad)}</td>
+          <td class="num">${formatCOP(c.total)}</td>
+          ${multiMes ? `<td class="num">${formatCOP(c.promedio)}</td>` : ''}
+        </tr>`
+        )
+        .join('')
 
-      const productosLines = [
-        `PRODUCTOS (total: ${fmtInt(topAcumFull.top_productos.length)})`,
-        ...topAcumFull.top_productos.map((p, idx) => {
-          const mat = p.material ? ` (${p.material})` : ''
-          return `${idx + 1}. ${p.referencia}${mat} — ${fmtQty(p.cantidad)}`
-        }),
-        '',
-      ]
-
-      const text = [...headerLines, ...clientesLines, ...productosLines].join('\n')
+      const productosRows = topAcumFull.top_productos
+        .map(
+          (p, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(p.referencia)}</td>
+          <td>${escapeHtml(p.material || '')}</td>
+          <td class="num">${fmtQty(p.cantidad)}</td>
+          ${multiMes ? `<td class="num">${fmtAvgQty(p.promedio)}</td>` : ''}
+          <td class="num">${fmtQty(p.stock_actual)}</td>
+        </tr>`
+        )
+        .join('')
 
       const html = `<!doctype html>
 <html>
@@ -291,12 +300,49 @@ export function VentasVendedoresPage() {
     <title>Reporte</title>
     <style>
       @page { size: A4; margin: 14mm; }
-      body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; color: #0f172a; }
-      pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+      body { font-family: -apple-system, Segoe UI, Arial, sans-serif; font-size: 11px; color: #0f172a; }
+      h1 { font-size: 16px; margin: 0 0 4px; }
+      h2 { font-size: 13px; margin: 18px 0 6px; }
+      p { margin: 2px 0; color: #475569; }
+      table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+      th, td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
+      th { background: #f1f5f9; }
+      td.num, th.num { text-align: right; }
     </style>
   </head>
   <body>
-    <pre>${escapeHtml(text)}</pre>
+    <h1>Reporte acumulado</h1>
+    <p>Generado: ${escapeHtml(new Date().toLocaleString('es-CO'))}</p>
+    <p>Año: ${topAcumFull.year} — Meses: ${escapeHtml(topAcumFull.months.join(', '))}</p>
+
+    <h2>Clientes (${fmtQty(topAcumFull.top_clientes.length)})</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Cliente</th>
+          <th class="num">Cantidad</th>
+          <th class="num">Total</th>
+          ${multiMes ? '<th class="num">Promedio</th>' : ''}
+        </tr>
+      </thead>
+      <tbody>${clientesRows}</tbody>
+    </table>
+
+    <h2>Productos (${fmtQty(topAcumFull.top_productos.length)})</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Referencia</th>
+          <th>Material</th>
+          <th class="num">Cantidad</th>
+          ${multiMes ? '<th class="num">Promedio</th>' : ''}
+          <th class="num">Stock actual</th>
+        </tr>
+      </thead>
+      <tbody>${productosRows}</tbody>
+    </table>
   </body>
 </html>`
 
@@ -553,15 +599,16 @@ export function VentasVendedoresPage() {
                           {c.nombre}
                         </span>
                       </div>
-                      <div className="whitespace-nowrap text-xs font-medium text-slate-700">
-                        {formatCOP(c.total_mes)}
+                      <div className="flex items-center gap-2 whitespace-nowrap text-xs text-slate-700">
+                        <span className="text-slate-500">{fmtQty(c.cantidad)} und.</span>
+                        <span className="font-medium">{formatCOP(c.total_mes)}</span>
                       </div>
                     </div>
                   ))
                 )}
               </div>
             </div>
-  
+
             <div className="rounded-lg border border-slate-200 bg-white p-4">
               <h3 className="text-sm font-semibold text-slate-900">Top productos del mes</h3>
               <p className="mt-1 text-xs text-slate-500">Cantidad fabricada (pedidos enviados)</p>
@@ -667,7 +714,13 @@ export function VentasVendedoresPage() {
                     {topAcum.top_clientes.slice(0, 15).map((c, idx) => (
                       <div key={c.cliente_id} className="flex items-center justify-between rounded border border-slate-200 px-2 py-1 text-xs">
                         <span className="truncate">#{idx + 1} {c.nombre}</span>
-                        <span className="font-medium">{formatCOP(c.total)}</span>
+                        <span className="flex items-center gap-2 whitespace-nowrap">
+                          <span className="text-slate-500">{fmtQty(c.cantidad)} und.</span>
+                          <span className="font-medium">Total {formatCOP(c.total)}</span>
+                          {topAcum.months.length > 1 && (
+                            <span className="text-slate-500">Prom. {formatCOP(c.promedio)}</span>
+                          )}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -679,7 +732,13 @@ export function VentasVendedoresPage() {
                     {topAcum.top_productos.slice(0, 15).map((p, idx) => (
                       <div key={p.producto_id} className="flex items-center justify-between rounded border border-slate-200 px-2 py-1 text-xs">
                         <span className="truncate">#{idx + 1} {p.referencia}</span>
-                        <span className="font-medium">{p.cantidad.toLocaleString('es-CO')}</span>
+                        <span className="flex items-center gap-2 whitespace-nowrap">
+                          <span className="font-medium">Total {fmtQty(p.cantidad)}</span>
+                          {topAcum.months.length > 1 && (
+                            <span className="text-slate-500">Prom. {fmtAvgQty(p.promedio)}</span>
+                          )}
+                          <span className="text-slate-500">Stock {fmtQty(p.stock_actual)}</span>
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -687,8 +746,8 @@ export function VentasVendedoresPage() {
               </div>
             )}
           </div>
-  
-          {/* El PDF se genera en una ventana nueva (solo texto) */}
+
+          {/* El PDF se genera en una ventana nueva, como tabla */}
         </div>
       )}
     </div>

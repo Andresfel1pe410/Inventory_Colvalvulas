@@ -7,7 +7,7 @@ import { ClientesListPage, ClienteFormPage, ClienteDetailPage } from '@/modules/
 import { ProductosListPage, ProductoFormPage } from '@/modules/productos'
 import { InventarioPage } from '@/modules/inventario'
 import { InventarioProcesoPage } from '@/modules/inventario-proceso'
-import { PlaneacionListPage, DependenciaDetailPage } from '@/modules/planeacion'
+import { PlaneacionListPage, DependenciaDetailPage, MisTareasPage } from '@/modules/planeacion'
 import { PedidosListPage, PedidoFormPage, PedidoDetailPage, PedidoEditPage } from '@/modules/pedidos'
 import { ControlPedidosPage } from '@/modules/control-pedidos'
 import { RemisionesListPage } from '@/modules/remisiones'
@@ -21,6 +21,7 @@ export function RootApp() {
   const isAdmin = useAuthStore((s) => s.user?.roles?.includes('admin'))
   const isAlmacen = useAuthStore((s) => s.user?.roles?.includes('almacen'))
   const isAuditorContable = useAuthStore((s) => s.user?.roles?.includes('auditor_contable'))
+  const isEmpleado = useAuthStore((s) => s.user?.roles?.includes('empleado'))
   const ventasPath = (path: string) => buildSectionPath('/ventas', path)
 
   return (
@@ -30,7 +31,15 @@ export function RootApp() {
         path="/"
         element={
           <ProtectedRoute>
-            <ModuleSelectPage />
+            {isEmpleado ? <Navigate to="/empleado" replace /> : <ModuleSelectPage />}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/empleado"
+        element={
+          <ProtectedRoute>
+            <MisTareasPage />
           </ProtectedRoute>
         }
       />

@@ -1,5 +1,11 @@
 import { rrhhApi } from '@/shared/services/api'
-import type { Empleado, EmpleadoCreate, EmpleadoUpdate } from '../types/empleado.types'
+import type {
+  Empleado,
+  EmpleadoAccesoCreate,
+  EmpleadoAccesoEstado,
+  EmpleadoCreate,
+  EmpleadoUpdate,
+} from '../types/empleado.types'
 
 export const empleadoService = {
   list: (params?: { skip?: number; limit?: number; search?: string }) =>
@@ -13,4 +19,9 @@ export const empleadoService = {
     rrhhApi.put<Empleado>(`/empleados/${id}`, data).then((r) => r.data),
 
   delete: (id: number) => rrhhApi.delete(`/empleados/${id}`),
+
+  getAcceso: (id: number) => rrhhApi.get<EmpleadoAccesoEstado>(`/empleados/${id}/acceso`).then((r) => r.data),
+
+  crearAcceso: (id: number, data: EmpleadoAccesoCreate) =>
+    rrhhApi.post<EmpleadoAccesoEstado>(`/empleados/${id}/acceso`, data).then((r) => r.data),
 }

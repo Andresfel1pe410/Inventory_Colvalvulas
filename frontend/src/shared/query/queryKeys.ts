@@ -56,6 +56,7 @@ export const queryKeys = {
     all: ['planeacion'] as const,
     list: ['planeacion', 'list'] as const,
     detail: (id: number) => ['planeacion', id] as const,
+    misTareas: ['planeacion', 'mis-tareas'] as const,
   },
   asistencia: {
     all: ['asistencia'] as const,
