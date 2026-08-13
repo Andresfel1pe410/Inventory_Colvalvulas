@@ -289,6 +289,8 @@ export function VentasVendedoresPage() {
           <td class="num">${fmtQty(p.cantidad)}</td>
           ${multiMes ? `<td class="num">${fmtAvgQty(p.promedio)}</td>` : ''}
           <td class="num">${fmtQty(p.stock_actual)}</td>
+          <td class="num">${fmtQty(p.disponible)}</td>
+          <td class="num">${fmtAvgQty(p.produccion)}</td>
         </tr>`
         )
         .join('')
@@ -339,6 +341,8 @@ export function VentasVendedoresPage() {
           <th class="num">Cantidad</th>
           ${multiMes ? '<th class="num">Promedio</th>' : ''}
           <th class="num">Stock actual</th>
+          <th class="num">Disponible</th>
+          <th class="num">Producción</th>
         </tr>
       </thead>
       <tbody>${productosRows}</tbody>
