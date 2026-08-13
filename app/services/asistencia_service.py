@@ -354,6 +354,7 @@ class AsistenciaService:
                     "estado": estado,
                     "ultimo_evento": ultimo.tipo_evento if ultimo else None,
                     "ultima_hora": ultimo.timestamp if ultimo else None,
+                    "hora_entrada": primer_entry.timestamp if primer_entry else None,
                     "entrada_tardia": entrada_tardia,
                 }
             )

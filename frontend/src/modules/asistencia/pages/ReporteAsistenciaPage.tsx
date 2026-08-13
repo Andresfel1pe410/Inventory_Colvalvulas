@@ -406,8 +406,8 @@ function Tarjeta({
             {empleados.map((e) => (
               <li key={e.empleado_id} className="flex items-center justify-between gap-2">
                 <span>{e.nombre}</span>
-                {mostrarHora && e.ultima_hora && (
-                  <span className="shrink-0 text-xs text-slate-400">{horaCorta(e.ultima_hora)}</span>
+                {mostrarHora && e.hora_entrada && (
+                  <span className="shrink-0 text-xs text-slate-400">{horaCorta(e.hora_entrada)}</span>
                 )}
               </li>
             ))}

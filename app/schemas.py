@@ -616,6 +616,7 @@ class EmpleadoEstadoHoy(BaseModel):
     estado: str  # presente | ausente | en_desayuno | en_almuerzo | salida
     ultimo_evento: Optional[str] = None
     ultima_hora: Optional[datetime] = None
+    hora_entrada: Optional[datetime] = None
     entrada_tardia: bool = False
 
     model_config = ConfigDict(from_attributes=True)

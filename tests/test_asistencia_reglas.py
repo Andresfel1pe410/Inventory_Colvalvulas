@@ -389,3 +389,24 @@ def test_dia_cerrado_automaticamente_cuenta_en_metricas(db_session):
     resultado = service.horas_semana_empleado(empleado.id, semana_inicio=dia)
     assert resultado["dias_trabajados"] == 1
     assert resultado["horas_trabajadas"] == pytest.approx(9.5, abs=0.02)  # 7am -> 4:30pm asumido
+
+
+def test_estado_hoy_hora_entrada_es_la_del_entry_no_el_ultimo_evento(db_session):
+    """Bug reportado: en la tarjeta 'Entradas tardías' la hora mostrada era la
+    del último evento del día (desayuno, almuerzo, salida...), no la de la
+    entrada real -- 'las horas no tienen nada que ver con las entradas
+    reales'. `hora_entrada` debe venir siempre del evento ENTRY."""
+    empleado = _crear_empleado(db_session, fingerprint_id=63)
+    hoy = datetime.now(COLOMBIA_TZ).date()
+    db_session.add(_evento_colombia(empleado.id, "ENTRY", hoy, time(7, 45)))  # tardía
+    db_session.add(_evento_colombia(empleado.id, "BREAKFAST_START", hoy, time(9, 30)))
+    db_session.commit()
+
+    service = AsistenciaService(db_session)
+    fila = next(e for e in service.estado_hoy() if e["empleado_id"] == empleado.id)
+
+    assert fila["ultimo_evento"] == "BREAKFAST_START"
+    assert fila["entrada_tardia"] is True
+    assert fila["hora_entrada"] != fila["ultima_hora"]
+    assert _a_utc_aware(fila["hora_entrada"]).astimezone(COLOMBIA_TZ).time() == time(7, 45)
+    assert _a_utc_aware(fila["ultima_hora"]).astimezone(COLOMBIA_TZ).time() == time(9, 30)

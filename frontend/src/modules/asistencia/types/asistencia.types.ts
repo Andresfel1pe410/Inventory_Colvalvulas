@@ -25,6 +25,7 @@ export interface EmpleadoEstadoHoy {
   estado: EstadoHoy
   ultimo_evento?: TipoEvento
   ultima_hora?: string
+  hora_entrada?: string
   entrada_tardia: boolean
 }
 
