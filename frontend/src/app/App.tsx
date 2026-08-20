@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import { RootApp } from '@/apps/root/RootApp'
 import { supabase, fetchMe } from '@/modules/auth/services/auth.service'
 import { useAuthStore } from '@/modules/auth/store/authStore'
+import { useIdleLogout } from '@/modules/auth/hooks/useIdleLogout'
 import { PageLoading } from '@/shared/components'
 
 export default function App() {
   const [bootstrapped, setBootstrapped] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
+
+  useIdleLogout()
 
   useEffect(() => {
     let activo = true
