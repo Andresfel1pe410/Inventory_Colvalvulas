@@ -255,6 +255,7 @@ class MovimientoInventarioReporteDetalle(BaseModel):
     cliente_razon_social: Optional[str] = None
     numero_remision: Optional[str] = None
     motivo: Optional[str] = None
+    usuario_nombre: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

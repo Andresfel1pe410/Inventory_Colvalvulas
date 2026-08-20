@@ -3,7 +3,7 @@ from datetime import datetime, date
 
 from sqlalchemy import and_, func
 
-from app.models import MovimientoInventario, Producto, Remision, Pedido, Cliente
+from app.models import MovimientoInventario, Producto, Remision, Pedido, Cliente, Usuario
 
 
 class MovimientoInventarioRepository:
@@ -106,12 +106,14 @@ class MovimientoInventarioRepository:
         fecha_fin: date,
         skip: int = 0,
         limit: int = 5000,
+        producto_id: int | None = None,
     ) -> list[dict]:
-        """Lista movimientos de entrada y salida con contexto de pedido/remisión."""
+        """Lista movimientos de entrada y salida con contexto de pedido/remisión.
+        `producto_id` filtra a una sola referencia si se indica."""
         dt_inicio = datetime.combine(fecha_inicio, datetime.min.time())
         dt_fin = datetime.combine(fecha_fin, datetime.max.time())
 
-        rows = (
+        query = (
             self.db.query(
                 MovimientoInventario.id,
                 MovimientoInventario.producto_id,
@@ -129,6 +131,8 @@ class MovimientoInventarioRepository:
                 Pedido.numero_pedido,
                 Cliente.razon_social,
                 Remision.numero_remision,
+                Usuario.nombre,
+                Usuario.apellido,
             )
             .join(Producto, Producto.id == MovimientoInventario.producto_id)
             .outerjoin(
@@ -140,6 +144,7 @@ class MovimientoInventarioRepository:
             )
             .outerjoin(Pedido, Pedido.id == Remision.pedido_id)
             .outerjoin(Cliente, Cliente.id == Pedido.cliente_id)
+            .outerjoin(Usuario, Usuario.id == MovimientoInventario.usuario_id)
             .filter(
                 MovimientoInventario.tipo.in_(["entrada", "salida"]),
                 and_(
@@ -147,7 +152,12 @@ class MovimientoInventarioRepository:
                     MovimientoInventario.created_at <= dt_fin,
                 ),
             )
-            .order_by(MovimientoInventario.created_at.desc(), MovimientoInventario.id.desc())
+        )
+        if producto_id is not None:
+            query = query.filter(MovimientoInventario.producto_id == producto_id)
+
+        rows = (
+            query.order_by(MovimientoInventario.created_at.desc(), MovimientoInventario.id.desc())
             .offset(skip)
             .limit(limit)
             .all()
@@ -156,7 +166,7 @@ class MovimientoInventarioRepository:
         result = []
         for (
             mov_id,
-            producto_id,
+            producto_id_fila,
             tipo,
             cantidad,
             stock_anterior,
@@ -171,11 +181,14 @@ class MovimientoInventarioRepository:
             numero_pedido,
             razon_social,
             numero_remision,
+            usuario_nombre,
+            usuario_apellido,
         ) in rows:
+            nombre_completo = f"{usuario_nombre or ''} {usuario_apellido or ''}".strip()
             result.append(
                 {
                     "id": mov_id,
-                    "producto_id": producto_id,
+                    "producto_id": producto_id_fila,
                     "producto_referencia": ref or "",
                     "producto_material": mat or "",
                     "tipo": tipo,
@@ -189,6 +202,7 @@ class MovimientoInventarioRepository:
                     "cliente_razon_social": razon_social,
                     "numero_remision": numero_remision,
                     "motivo": motivo,
+                    "usuario_nombre": nombre_completo or None,
                     "created_at": created_at,
                 }
             )
