@@ -255,6 +255,7 @@ class MovimientoInventarioReporteDetalle(BaseModel):
     cliente_razon_social: Optional[str] = None
     numero_remision: Optional[str] = None
     motivo: Optional[str] = None
+    usuario_nombre: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -616,6 +617,7 @@ class EmpleadoEstadoHoy(BaseModel):
     estado: str  # presente | ausente | en_desayuno | en_almuerzo | salida
     ultimo_evento: Optional[str] = None
     ultima_hora: Optional[datetime] = None
+    hora_entrada: Optional[datetime] = None
     entrada_tardia: bool = False
 
     model_config = ConfigDict(from_attributes=True)

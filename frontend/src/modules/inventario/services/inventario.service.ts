@@ -38,6 +38,7 @@ export interface MovimientoInventarioReporteDetalle {
   cliente_razon_social?: string | null
   numero_remision?: string | null
   motivo?: string | null
+  usuario_nombre?: string | null
   created_at: string
 }
 
@@ -75,6 +76,7 @@ export const inventarioService = {
   listarReporteMovimientos: (params: {
     fecha_inicio: string
     fecha_fin: string
+    producto_id?: number
     skip?: number
     limit?: number
   }) =>
