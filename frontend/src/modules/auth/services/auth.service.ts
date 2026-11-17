@@ -86,10 +86,12 @@ export async function login(email: string, password: string): Promise<{ session:
 
   const token = data.session.access_token
   const user = await fetchMe(token)
+  localStorage.setItem('erp_last_activity', String(Date.now()))
 
   return { session: data.session, user }
 }
 
 export async function logout(): Promise<void> {
+  localStorage.removeItem('erp_last_activity')
   await supabase.auth.signOut()
 }

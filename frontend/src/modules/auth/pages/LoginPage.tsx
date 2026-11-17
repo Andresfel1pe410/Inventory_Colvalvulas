@@ -8,7 +8,18 @@ export function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const navigate = useNavigate()
   const location = useLocation()
-  const sesionExpirada = Boolean((location.state as { sesionExpirada?: boolean } | null)?.sesionExpirada)
+  const [sesionExpirada, setSesionExpirada] = useState(
+    () =>
+      Boolean((location.state as { sesionExpirada?: boolean } | null)?.sesionExpirada) ||
+      sessionStorage.getItem('erp_sesion_expirada') === '1'
+  )
+
+  useEffect(() => {
+    if (sessionStorage.getItem('erp_sesion_expirada')) {
+      sessionStorage.removeItem('erp_sesion_expirada')
+      setSesionExpirada(true)
+    }
+  }, [])
 
   useEffect(() => {
     if (isAuthenticated) {
