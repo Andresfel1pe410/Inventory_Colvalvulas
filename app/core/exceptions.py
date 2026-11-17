@@ -1,4 +1,6 @@
-from fastapi import HTTPException, status
+"""Excepciones de dominio. `main.py` las convierte en respuestas HTTP
+(ver `app_exception_handler` allí)."""
+
 
 class AppException(Exception):
     """Excepción base de la aplicación."""
@@ -28,8 +30,3 @@ class ForbiddenError(AppException):
 
     def __init__(self, message: str = "Acceso denegado"):
         super().__init__(message, status_code=403)
-
-
-def app_exception_handler(exc: AppException) -> HTTPException:
-    """Convierte AppException a HTTPException."""
-    return HTTPException(status_code=exc.status_code, detail=exc.message)

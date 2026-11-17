@@ -21,6 +21,25 @@ security = HTTPBearer(auto_error=False)
 _jwks_client: PyJWKClient | None = None
 
 
+def _get_jwks_client() -> PyJWKClient:
+    global _jwks_client
+    if _jwks_client is None:
+        jwks_uri = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        _jwks_client = PyJWKClient(jwks_uri, cache_jwk_set=True, lifespan=3600, timeout=10)
+    return _jwks_client
+
+
+def precargar_jwks() -> None:
+    """Descarga las llaves públicas de Supabase al arrancar, para que la
+    primera petición de un usuario no pague esa descarga. Si falla (sin red,
+    proyecto con HS256), no detiene el arranque: se reintenta en la primera
+    validación."""
+    try:
+        _get_jwks_client().get_jwk_set()
+    except Exception as e:  # noqa: BLE001 - solo es un precalentamiento
+        logger.info("No se pudo precargar JWKS (se cargará bajo demanda): %s", e)
+
+
 def verify_token(token: str) -> dict:
     if not token:
         raise HTTPException(
@@ -52,11 +71,7 @@ def verify_token(token: str) -> dict:
                 leeway=60,
             )
         if alg in ("RS256", "ES256"):
-            global _jwks_client
-            if _jwks_client is None:
-                jwks_uri = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
-                _jwks_client = PyJWKClient(jwks_uri, cache_jwk_set=True, lifespan=3600)
-            signing_key = _jwks_client.get_signing_key_from_jwt(token)
+            signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
             return jwt.decode(
                 token,
                 signing_key.key,
@@ -84,10 +99,17 @@ def verify_token(token: str) -> dict:
     )
 
 
-async def get_current_user(
+def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Security(security),
     db: Session = Depends(get_db),
 ) -> Usuario:
+    """Dependencia de autenticación.
+
+    Es `def` (no `async def`) a propósito: hace I/O bloqueante (consulta a la
+    BD con SQLAlchemy síncrono y, la primera vez, descarga del JWKS). FastAPI
+    ejecuta las dependencias `def` en el threadpool; si fuera `async def`,
+    ese I/O correría en el event loop y frenaría TODAS las peticiones del
+    worker mientras espera a la base de datos."""
     if credentials is None:
         logger.warning("401: No se proporcionó token (Authorization header vacío)")
         raise HTTPException(
@@ -131,3 +153,13 @@ async def get_current_user(
         )
 
     return usuario
+
+
+def get_current_roles(usuario: Usuario = Depends(get_current_user)) -> list[str]:
+    """Nombres de rol del usuario autenticado.
+
+    FastAPI cachea las dependencias por request, así que todas las
+    verificaciones de permisos de una misma petición comparten este resultado.
+    En producción los roles ya vienen cargados por el JOIN de
+    `UsuarioRepository.get_by_auth_id` (no hay consulta extra)."""
+    return [ur.rol.nombre for ur in usuario.roles if ur.rol is not None]

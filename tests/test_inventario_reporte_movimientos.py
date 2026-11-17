@@ -4,6 +4,7 @@ from datetime import date
 
 from app.models import MovimientoInventario, Producto, Usuario
 from app.repositories.movimiento_inventario_repository import MovimientoInventarioRepository
+from tests.helpers import fake_auth_id
 
 
 def _crear_movimiento(db_session, producto, usuario, tipo="entrada", cantidad=5):
@@ -23,7 +24,7 @@ def _crear_movimiento(db_session, producto, usuario, tipo="entrada", cantidad=5)
 
 def test_reporte_movimientos_incluye_usuario_que_lo_hizo(db_session):
     producto = Producto(referencia="REF-A", material="Acero")
-    usuario = Usuario(auth_user_id="auth-1", email="ana@test.com", nombre="Ana", apellido="Gomez", activo=True)
+    usuario = Usuario(auth_user_id=fake_auth_id("auth-1"), email="ana@test.com", nombre="Ana", apellido="Gomez", activo=True)
     db_session.add_all([producto, usuario])
     db_session.flush()
     _crear_movimiento(db_session, producto, usuario)

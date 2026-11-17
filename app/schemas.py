@@ -13,10 +13,6 @@ class RolBase(BaseModel):
     descripcion: Optional[str] = None
 
 
-class RolCreate(RolBase):
-    pass
-
-
 class Rol(RolBase):
     id: int
     created_at: datetime
@@ -31,10 +27,6 @@ class UsuarioBase(BaseModel):
     nombre: str
     apellido: Optional[str] = None
     activo: bool = True
-
-
-class UsuarioCreate(UsuarioBase):
-    auth_user_id: str
 
 
 class Usuario(UsuarioBase):
@@ -153,16 +145,6 @@ class InventarioBase(BaseModel):
     producto_id: int
     stock_actual: int = Field(default=0, ge=0)
     stock_minimo: int = 0
-    ubicacion: Optional[str] = None
-
-
-class InventarioCreate(InventarioBase):
-    pass
-
-
-class InventarioUpdate(BaseModel):
-    stock_actual: Optional[int] = Field(None, ge=0)
-    stock_minimo: Optional[int] = Field(None, ge=0)
     ubicacion: Optional[str] = None
 
 

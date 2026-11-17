@@ -11,6 +11,7 @@ from app.models import Cliente, DetallePedido, Empleado as _Empleado  # noqa: F4
 from app.models import Inventario, Pedido, Producto, Usuario
 from app.repositories.remision_repository import RemisionRepository
 from app.services.pedido_service import PedidoService
+from tests.helpers import fake_auth_id
 
 
 def _crear_pedido_con_producto(db_session, stock_disponible: int, cantidad_pedida: int):
@@ -20,7 +21,7 @@ def _crear_pedido_con_producto(db_session, stock_disponible: int, cantidad_pedid
         numero_identificacion="1",
         estado_cliente="enviar",
     )
-    usuario = Usuario(auth_user_id="auth-vendedor", email="vendedor@test.com", nombre="Vendedor", activo=True)
+    usuario = Usuario(auth_user_id=fake_auth_id("auth-vendedor"), email="vendedor@test.com", nombre="Vendedor", activo=True)
     producto = Producto(referencia="REF-1", material="Acero")
     db_session.add_all([cliente, usuario, producto])
     db_session.flush()

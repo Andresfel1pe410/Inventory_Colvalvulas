@@ -1,18 +1,24 @@
-"""Dependencias de permisos compartidas entre routers."""
-from fastapi import Depends, HTTPException
-from sqlalchemy.orm import Session
+"""Dependencias de permisos compartidas entre routers.
 
-from app.core.database import get_db
-from app.api.auth.jwt import get_current_user
+Todas se apoyan en `get_current_roles`, que FastAPI resuelve una sola vez por
+request: aunque un endpoint use varias verificaciones, los roles no se vuelven
+a consultar en la base de datos.
+"""
+from fastapi import Depends, HTTPException
+
+from app.api.auth.jwt import get_current_user, get_current_roles
 from app.models import Usuario
-from app.repositories.usuario_repository import UsuarioRepository
+
+
+def es_vendedor_solo(roles: list[str]) -> bool:
+    """Vendedor sin rol admin: solo puede ver/editar sus propios pedidos y listas."""
+    return "vendedor" in roles and "admin" not in roles
 
 
 def require_admin(
-    db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ) -> Usuario:
-    roles = UsuarioRepository(db).get_roles(usuario.id)
     if "admin" not in roles:
         raise HTTPException(403, "Solo administradores pueden acceder")
     return usuario
@@ -20,10 +26,9 @@ def require_admin(
 
 def require_roles(*roles_permitidos: str):
     def _dep(
-        db: Session = Depends(get_db),
         usuario: Usuario = Depends(get_current_user),
+        roles: list[str] = Depends(get_current_roles),
     ) -> Usuario:
-        roles = UsuarioRepository(db).get_roles(usuario.id)
         if not any(r in roles for r in roles_permitidos):
             raise HTTPException(403, f"Requiere uno de estos roles: {', '.join(roles_permitidos)}")
         return usuario

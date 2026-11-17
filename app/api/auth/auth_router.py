@@ -3,10 +3,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.auth.jwt import get_current_user
+from app.api.auth.jwt import get_current_user, get_current_roles
+from app.api.deps import es_vendedor_solo
 from app.core.database import get_db
 from app.models import Usuario
-from app.repositories.usuario_repository import UsuarioRepository
 from app.repositories.vendedor_lista_repository import VendedorListaRepository
 
 
@@ -26,11 +26,11 @@ router = APIRouter(tags=["auth"])
 def me(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
     """Devuelve el usuario actual con roles y listas asignadas (si es vendedor)."""
-    roles = UsuarioRepository(db).get_roles(current_user.id)
     listas_precio = None
-    if "vendedor" in roles and "admin" not in roles:
+    if es_vendedor_solo(roles):
         listas_precio = VendedorListaRepository(db).get_listas_by_usuario(current_user.id)
 
     return MeResponse(

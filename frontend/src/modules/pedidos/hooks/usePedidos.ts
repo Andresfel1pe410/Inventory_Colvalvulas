@@ -1,10 +1,9 @@
-import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { pedidoService } from '../services/pedido.service'
 import { queryKeys } from '@/shared/query/queryKeys'
 import type {
   PedidoCreate,
   PedidoUpdateFull,
-  DetallePedidoCreate,
 } from '../types/pedido.types'
 import type { PedidoEnvioCreate } from '../services/pedido.service'
 
@@ -25,21 +24,6 @@ export function usePedido(id: number | null) {
     queryFn: () => pedidoService.get(id!),
     enabled: id != null && id > 0,
   })
-}
-
-export function usePedidosDetails(ids: number[]) {
-  const results = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: queryKeys.pedidos.detail(id),
-      queryFn: () => pedidoService.get(id),
-      enabled: ids.length > 0,
-    })),
-  })
-  const map: Record<number, Awaited<ReturnType<typeof pedidoService.get>>> = {}
-  results.forEach((r) => {
-    if (r.data) map[r.data.id] = r.data
-  })
-  return map
 }
 
 /** Una sola petición para traer varios pedidos con detalles (evita N+1). */
@@ -67,23 +51,6 @@ export function usePedidoUpdate() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: queryKeys.pedidos.all })
       qc.invalidateQueries({ queryKey: queryKeys.pedidos.detail(id) })
-    },
-  })
-}
-
-export function usePedidoAddDetalle() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      pedidoId,
-      detalle,
-    }: {
-      pedidoId: number
-      detalle: DetallePedidoCreate
-    }) => pedidoService.addDetalle(pedidoId, detalle),
-    onSuccess: (_, { pedidoId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.pedidos.all })
-      qc.invalidateQueries({ queryKey: queryKeys.pedidos.detail(pedidoId) })
     },
   })
 }

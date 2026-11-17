@@ -1,11 +1,10 @@
 """
 Modelos SQLAlchemy ORM - Mapeo de tablas PostgreSQL.
 """
-from datetime import datetime, date
-from decimal import Decimal
+from datetime import datetime
 from sqlalchemy import (
-    Column, BigInteger, String, Text, Boolean, Integer, 
-    Numeric, DateTime, Date, ForeignKey, CheckConstraint, UniqueConstraint, Uuid
+    Column, BigInteger, String, Text, Boolean, Integer,
+    Numeric, DateTime, Date, ForeignKey, UniqueConstraint, Uuid
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base

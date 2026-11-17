@@ -1,10 +1,3 @@
-export interface DetalleRemision {
-  id: number
-  remision_id: number
-  producto_id: number
-  cantidad: number
-}
-
 export interface Remision {
   id: number
   numero_remision: string

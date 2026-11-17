@@ -6,7 +6,6 @@ from app.models import Pedido, DetallePedido, Producto
 from app.repositories.cliente_repository import ClienteRepository
 from app.repositories.pedido_repository import PedidoRepository
 from app.repositories.producto_repository import ProductoRepository
-from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas import PedidoCreate, PedidoUpdateFull, DetallePedidoCreate
 
 

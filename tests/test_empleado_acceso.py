@@ -13,6 +13,7 @@ from app.core.exceptions import AppException, NotFoundError, ValidationError
 from app.models import Empleado, Rol, Usuario, UsuarioRol
 from app.repositories.usuario_repository import UsuarioRepository
 from app.services.empleado_acceso_service import EmpleadoAccesoService
+from tests.helpers import fake_auth_id
 
 
 def _crear_empleado(db_session, nombre="Juan Perez", documento="123456", activo=True) -> Empleado:
@@ -78,9 +79,9 @@ def test_acceso_permite_admin(client, db_session, admin_user, autenticar):
 @patch("app.services.empleado_acceso_service.crear_usuario_auth")
 def test_crear_acceso_asigna_rol_empleado_y_vincula(mock_crear, db_session):
     _asegurar_rol_empleado(db_session)
-    mock_crear.return_value = {"id": "fake-auth-uuid-123"}
+    mock_crear.return_value = {"id": fake_auth_id("fake-auth-uuid-123")}
     empleado = _crear_empleado(db_session)
-    _simular_trigger_signup(db_session, "fake-auth-uuid-123", "juan@test.com")
+    _simular_trigger_signup(db_session, fake_auth_id("fake-auth-uuid-123"), "juan@test.com")
 
     resultado = EmpleadoAccesoService(db_session).crear_acceso(empleado.id, "juan@test.com", "temporal123")
 
@@ -95,8 +96,8 @@ def test_crear_acceso_asigna_rol_empleado_y_vincula(mock_crear, db_session):
 def test_crear_acceso_ya_tiene_acceso_rechaza(mock_crear, db_session):
     _asegurar_rol_empleado(db_session)
     empleado = _crear_empleado(db_session)
-    mock_crear.return_value = {"id": "auth-1"}
-    _simular_trigger_signup(db_session, "auth-1", "primero@test.com")
+    mock_crear.return_value = {"id": fake_auth_id("auth-1")}
+    _simular_trigger_signup(db_session, fake_auth_id("auth-1"), "primero@test.com")
     EmpleadoAccesoService(db_session).crear_acceso(empleado.id, "primero@test.com", "temporal123")
 
     with pytest.raises(ValidationError):
@@ -124,7 +125,7 @@ def test_crear_acceso_usuario_no_aparece_tras_trigger_lanza_error_claro(mock_cre
     """Si Supabase Auth crea el usuario pero el trigger no corrió (o corrió
     contra otra base), el servicio no debe fallar en silencio."""
     empleado = _crear_empleado(db_session)
-    mock_crear.return_value = {"id": "auth-nunca-aparece"}
+    mock_crear.return_value = {"id": fake_auth_id("auth-nunca-aparece")}
     with pytest.raises(AppException):
         EmpleadoAccesoService(db_session).crear_acceso(empleado.id, "juan@test.com", "temporal123")
 

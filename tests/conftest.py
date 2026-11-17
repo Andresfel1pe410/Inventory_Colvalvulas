@@ -16,6 +16,7 @@ from app.api.auth.jwt import get_current_user
 import app.models as models  # noqa: F401  (registra todos los modelos en Base.metadata)
 from app.models import Usuario, Rol, UsuarioRol
 from app.main import app
+from tests.helpers import fake_auth_id
 
 
 @compiles(BigInteger, "sqlite")
@@ -73,7 +74,7 @@ def _crear_usuario_con_rol(db_session, nombre_rol: str, email: str) -> Usuario:
         rol = Rol(nombre=nombre_rol, descripcion=nombre_rol)
         db_session.add(rol)
         db_session.flush()
-    usuario = Usuario(auth_user_id=f"auth-{email}", email=email, nombre="Test", apellido=nombre_rol, activo=True)
+    usuario = Usuario(auth_user_id=fake_auth_id(f"auth-{email}"), email=email, nombre="Test", apellido=nombre_rol, activo=True)
     db_session.add(usuario)
     db_session.flush()
     db_session.add(UsuarioRol(usuario_id=usuario.id, rol_id=rol.id))

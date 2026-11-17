@@ -47,9 +47,9 @@ src/
 ## Backend requerido
 
 El backend FastAPI debe estar corriendo en el puerto 8000 con los endpoints:
-- `/api/v1/clientes`
-- `/api/v1/productos`
-- `/api/v1/inventario`
-- `/api/v1/pedidos`
+- `/api/v1/ventas/clientes`
+- `/api/v1/ventas/productos`
+- `/api/v1/ventas/inventario`
+- `/api/v1/ventas/pedidos`
 - `/api/v1/remisiones`
 - `/api/v1/usuarios`

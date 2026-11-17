@@ -257,9 +257,3 @@ export const MUNICIPIOS_POR_DEPARTAMENTO: Record<string, string[]> = {
   Vaupés: ['Carurú', 'Mitú', 'Taraira'],
   Vichada: ['Cumaribo', 'La Primavera', 'Puerto Carreño', 'Santa Rosalía'],
 }
-
-/** @deprecated Use MUNICIPIOS_POR_DEPARTAMENTO - mantiene compatibilidad con CIUDADES_POR_DEPARTAMENTO */
-export const CIUDADES_POR_DEPARTAMENTO = MUNICIPIOS_POR_DEPARTAMENTO
-
-/** Lista plana de todos los municipios */
-export const MUNICIPIOS_COLOMBIA = Object.values(MUNICIPIOS_POR_DEPARTAMENTO).flat()

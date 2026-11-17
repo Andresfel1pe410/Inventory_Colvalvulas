@@ -17,17 +17,6 @@ class ProductoRepository(BaseRepository[Producto]):
             .first()
         )
 
-    def get_by_codigo_lista(self, codigo: str, lista: str) -> Producto | None:
-        plp = (
-            self.db.query(ProductoListaPrecio)
-            .filter(
-                ProductoListaPrecio.lista == lista,
-                ProductoListaPrecio.codigo == codigo,
-            )
-            .first()
-        )
-        return plp.producto if plp else None
-
     def get_by_codigo_lista_with_listas(self, codigo: str, lista: str) -> Producto | None:
         """Producto por código+lista con listas_precio en una sola consulta."""
         return (

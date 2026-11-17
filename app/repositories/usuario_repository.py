@@ -1,4 +1,6 @@
 """Repositorio de usuarios."""
+from sqlalchemy.orm import joinedload
+
 from app.repositories.base_repository import BaseRepository
 from app.models import Usuario, Rol, UsuarioRol
 
@@ -8,8 +10,11 @@ class UsuarioRepository(BaseRepository[Usuario]):
         super().__init__(Usuario, db)
 
     def get_by_auth_id(self, auth_user_id: str) -> Usuario | None:
+        """Trae el usuario con sus roles en UNA sola consulta (JOIN), para que
+        la autenticación no haga un segundo viaje a la BD por los roles."""
         return (
             self.db.query(Usuario)
+            .options(joinedload(Usuario.roles).joinedload(UsuarioRol.rol))
             .filter(Usuario.auth_user_id == auth_user_id)
             .first()
         )

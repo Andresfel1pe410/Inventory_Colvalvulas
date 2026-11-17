@@ -6,6 +6,7 @@
 from datetime import datetime, timezone
 
 from app.models import Cliente, DetallePedido, Inventario, Pedido, Producto, Usuario
+from tests.helpers import fake_auth_id
 
 
 def _crear_pedido_enviado(db_session, fecha_envio, cantidad=5, cliente=None, producto=None, numero_pedido=None):
@@ -17,7 +18,7 @@ def _crear_pedido_enviado(db_session, fecha_envio, cantidad=5, cliente=None, pro
             estado_cliente="enviar",
         )
         db_session.add(cliente)
-    usuario = Usuario(auth_user_id=f"auth-vendedor-{fecha_envio.isoformat()}", email=f"v{fecha_envio.month}@test.com", nombre="Vendedor", activo=True)
+    usuario = Usuario(auth_user_id=fake_auth_id(f"auth-vendedor-{fecha_envio.isoformat()}"), email=f"v{fecha_envio.month}@test.com", nombre="Vendedor", activo=True)
     if producto is None:
         producto = Producto(referencia="REF-1", material="Acero")
         db_session.add(producto)
@@ -54,7 +55,7 @@ def test_ventas_vendedores_incluye_cantidad_por_cliente(client, admin_user, aute
     fecha = datetime(2026, 3, 15, 12, 0, 0, tzinfo=timezone.utc)
     cliente, _producto = _crear_pedido_enviado(db_session, fecha, cantidad=7)
 
-    resp = client.get("/api/v1/reportes/ventas-vendedores", params={"year": 2026, "month": 3})
+    resp = client.get("/api/v1/ventas/reportes/ventas-vendedores", params={"year": 2026, "month": 3})
     assert resp.status_code == 200
     top_clientes = resp.json()["top_clientes"]
     assert len(top_clientes) == 1
@@ -70,7 +71,7 @@ def test_top_clientes_productos_junio_no_da_500(client, admin_user, autenticar, 
     cliente, _producto = _crear_pedido_enviado(db_session, fecha, cantidad=3)
 
     resp = client.get(
-        "/api/v1/reportes/top-clientes-productos",
+        "/api/v1/ventas/reportes/top-clientes-productos",
         params={"year": 2026, "months": "6"},
     )
     assert resp.status_code == 200
@@ -97,7 +98,7 @@ def test_top_clientes_productos_varios_meses_incluye_promedio_y_stock(client, ad
     db_session.add(Inventario(producto_id=producto.id, stock_actual=42, stock_minimo=0))
 
     # Pedido pendiente (no enviado) del mismo producto -- resta del "Disponible".
-    usuario_pendiente = Usuario(auth_user_id="auth-pendiente", email="pendiente@test.com", nombre="V", activo=True)
+    usuario_pendiente = Usuario(auth_user_id=fake_auth_id("auth-pendiente"), email="pendiente@test.com", nombre="V", activo=True)
     db_session.add(usuario_pendiente)
     db_session.flush()
     pedido_pendiente = Pedido(
@@ -122,7 +123,7 @@ def test_top_clientes_productos_varios_meses_incluye_promedio_y_stock(client, ad
     db_session.commit()
 
     resp = client.get(
-        "/api/v1/reportes/top-clientes-productos",
+        "/api/v1/ventas/reportes/top-clientes-productos",
         params={"year": 2026, "months": "1,2"},
     )
     assert resp.status_code == 200

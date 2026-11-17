@@ -1,13 +1,11 @@
-import asyncio
 """Router de pedidos."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.api.auth.jwt import get_current_user
-from app.api.deps import require_admin
+from app.api.auth.jwt import get_current_user, get_current_roles
+from app.api.deps import require_admin, es_vendedor_solo
 from app.models import Usuario
-from app.repositories.usuario_repository import UsuarioRepository
 from app.schemas import (
     Pedido,
     PedidoConDetalles,
@@ -25,22 +23,18 @@ from app.services.pedido_service import PedidoService
 router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 
 
-def _es_vendedor_solo(db: Session, usuario: Usuario) -> bool:
-    roles = UsuarioRepository(db).get_roles(usuario.id)
-    return "vendedor" in roles and "admin" not in roles
-
-
 @router.get("/bulk", response_model=list[PedidoConDetalles])
 def obtener_bulk(
     ids: str = Query(..., description="IDs de pedidos separados por coma, ej: 1,2,3"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
     """Trae varios pedidos con detalles en una sola consulta (evita N+1)."""
     id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]
     if not id_list:
         return []
-    es_vend = _es_vendedor_solo(db, current_user)
+    es_vend = es_vendedor_solo(roles)
     return PedidoService(db).obtener_bulk(
         id_list,
         usuario_id=current_user.id if es_vend else None,
@@ -55,11 +49,12 @@ def listar(
     estados: str | None = Query(None, description="Filtrar por estados: en_espera,en_proceso"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
     est_list = None
     if estados:
         est_list = [e.strip() for e in estados.split(",") if e.strip()]
-    es_vend = _es_vendedor_solo(db, current_user)
+    es_vend = es_vendedor_solo(roles)
     return PedidoService(db).listar(
         skip, limit, est_list,
         usuario_id=current_user.id if es_vend else None,
@@ -72,8 +67,9 @@ def obtener(
     id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
-    es_vend = _es_vendedor_solo(db, current_user)
+    es_vend = es_vendedor_solo(roles)
     return PedidoService(db).obtener(
         id,
         usuario_id=current_user.id if es_vend else None,
@@ -96,10 +92,11 @@ def actualizar(
     data: PedidoUpdateFull,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
-    es_vend = _es_vendedor_solo(db, current_user)
-    if data.vendedor_id is not None:
-        require_admin(db, current_user)
+    if data.vendedor_id is not None and "admin" not in roles:
+        raise HTTPException(403, "Solo administradores pueden cambiar el vendedor del pedido")
+    es_vend = es_vendedor_solo(roles)
     return PedidoService(db).actualizar(
         id, data, current_user.id,
         usuario_id_check=current_user.id if es_vend else None,
@@ -122,16 +119,13 @@ def actualizar_intencion_envio(
     id: int,
     data: PedidoIntencionUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
-    _require_admin(db, current_user)
-    es_vend = _es_vendedor_solo(db, current_user)
+    # require_admin garantiza rol admin, por lo que nunca es "vendedor solo".
     return PedidoService(db).actualizar_intencion_envio(
         id,
         data.intencion_envio,
         monto_maximo_parcial=data.monto_maximo_parcial,
-        usuario_id=current_user.id if es_vend else None,
-        es_vendedor=es_vend,
     )
 
 
@@ -141,10 +135,11 @@ def cambiar_estado(
     data: PedidoUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
     if not data.estado:
         raise HTTPException(400, "Se requiere estado")
-    es_vend = _es_vendedor_solo(db, current_user)
+    es_vend = es_vendedor_solo(roles)
     return PedidoService(db).cambiar_estado(
         id, data.estado,
         usuario_id=current_user.id if es_vend else None,
@@ -158,8 +153,9 @@ def actualizar_impreso(
     data: PedidoImpresoUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
-    es_vend = _es_vendedor_solo(db, current_user)
+    es_vend = es_vendedor_solo(roles)
     return PedidoService(db).marcar_impreso(
         id,
         data.impreso,
@@ -174,8 +170,9 @@ def marcar_enviado(
     data: PedidoEnvioCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    roles: list[str] = Depends(get_current_roles),
 ):
-    es_vend = _es_vendedor_solo(db, current_user)
+    es_vend = es_vendedor_solo(roles)
     return PedidoService(db).marcar_enviado(
         id, current_user.id,
         transportadora=data.transportadora,
@@ -192,12 +189,7 @@ def marcar_enviado(
 def desmarcar_enviado(
     id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
     _admin: Usuario = Depends(require_admin),
 ):
-    es_vend = _es_vendedor_solo(db, current_user)
-    return PedidoService(db).desmarcar_enviado(
-        id,
-        usuario_id=current_user.id if es_vend else None,
-        es_vendedor=es_vend,
-    )
+    # Solo admin: nunca aplica el filtro de "vendedor solo".
+    return PedidoService(db).desmarcar_enviado(id)

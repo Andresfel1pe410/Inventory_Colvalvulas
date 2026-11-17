@@ -97,11 +97,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/productos` | List products |
-| POST | `/api/v1/pedidos` | Create order |
-| POST | `/api/v1/pedidos/{id}/marcar-enviado` | Ship order → auto-generates delivery note + stock exit |
-| GET | `/api/v1/inventario` | Live inventory |
-| POST | `/api/v1/inventario/movimientos` | Register movement (entry/exit/adjustment) |
+| GET | `/api/v1/ventas/productos` | List products |
+| POST | `/api/v1/ventas/pedidos` | Create order |
+| POST | `/api/v1/ventas/pedidos/{id}/enviar` | Ship order → auto-generates delivery note + stock exit |
+| GET | `/api/v1/ventas/inventario` | Live inventory |
+| POST | `/api/v1/ventas/inventario/movimientos` | Register movement (entry/exit/adjustment) |
 
 ---
 
@@ -180,15 +180,15 @@ Documentación: http://localhost:8000/docs
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| GET | `/api/v1/productos` | Listar productos |
-| POST | `/api/v1/productos` | Crear producto |
-| GET | `/api/v1/clientes` | Listar clientes |
-| POST | `/api/v1/pedidos` | Crear pedido |
-| GET | `/api/v1/pedidos` | Listar pedidos |
-| POST | `/api/v1/pedidos/{id}/marcar-enviado` | Marcar pedido enviado (genera remisión y salidas) |
-| POST | `/api/v1/pedidos/{id}/desmarcar-enviado` | Revertir envío |
-| GET | `/api/v1/inventario` | Listar inventario |
-| POST | `/api/v1/inventario/movimientos` | Registrar movimiento (entrada/salida/ajuste) |
+| GET | `/api/v1/ventas/productos` | Listar productos |
+| POST | `/api/v1/ventas/productos` | Crear producto |
+| GET | `/api/v1/ventas/clientes` | Listar clientes |
+| POST | `/api/v1/ventas/pedidos` | Crear pedido |
+| GET | `/api/v1/ventas/pedidos` | Listar pedidos |
+| POST | `/api/v1/ventas/pedidos/{id}/enviar` | Marcar pedido enviado (genera remisión y salidas) |
+| POST | `/api/v1/ventas/pedidos/{id}/desmarcar-enviado` | Revertir envío |
+| GET | `/api/v1/ventas/inventario` | Listar inventario |
+| POST | `/api/v1/ventas/inventario/movimientos` | Registrar movimiento (entrada/salida/ajuste) |
 | GET | `/api/v1/remisiones` | Listar remisiones |
 
 ## Reglas de negocio

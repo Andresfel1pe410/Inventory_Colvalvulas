@@ -12,4 +12,3 @@ export const AUTH_API_BASE = `${API_ROOT}/auth`
 export const VENTAS_API_BASE = `${API_ROOT}/ventas`
 export const PROCESO_API_BASE = `${API_ROOT}/proceso`
 export const RRHH_API_BASE = `${API_ROOT}/rrhh`
-export const API_BASE = VENTAS_API_BASE

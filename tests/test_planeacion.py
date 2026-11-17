@@ -4,6 +4,7 @@ import pytest
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models import Empleado, Rol, Usuario, UsuarioRol
 from app.services.planeacion_service import PlaneacionService
+from tests.helpers import fake_auth_id
 
 
 def _crear_empleado(db_session, nombre="Juan Perez", documento="123456", activo=True) -> Empleado:
@@ -23,7 +24,7 @@ def _crear_usuario_empleado(db_session, empleado: Empleado | None, email: str) -
         db_session.add(rol)
         db_session.flush()
     usuario = Usuario(
-        auth_user_id=f"auth-{email}",
+        auth_user_id=fake_auth_id(f"auth-{email}"),
         email=email,
         nombre="Test",
         activo=True,

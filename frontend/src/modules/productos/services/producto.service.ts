@@ -11,9 +11,6 @@ export const productoService = {
 
   get: (id: number) => api.get<Producto>(`/productos/${id}`).then((r) => r.data),
 
-  getByCodigo: (codigo: string, lista: string) =>
-    api.get<Producto>('/productos/codigo/' + encodeURIComponent(codigo), { params: { lista } }).then((r) => r.data),
-
   create: (data: ProductoCreate) => api.post<Producto>('/productos', data).then((r) => r.data),
 
   update: (id: number, data: ProductoUpdate) =>

@@ -4,8 +4,6 @@ import type {
   PedidoConDetalles,
   PedidoCreate,
   PedidoUpdateFull,
-  DetallePedido,
-  DetallePedidoCreate,
 } from '../types/pedido.types'
 
 export interface DetalleEnvioCreate {
@@ -39,9 +37,6 @@ export const pedidoService = {
 
   create: (data: PedidoCreate) =>
     api.post<PedidoConDetalles>('/pedidos', data).then((r) => r.data),
-
-  addDetalle: (pedidoId: number, detalle: DetallePedidoCreate) =>
-    api.post<DetallePedido>(`/pedidos/${pedidoId}/detalles`, detalle).then((r) => r.data),
 
   cambiarEstado: (id: number, estado: string) =>
     api.patch<Pedido>(`/pedidos/${id}/estado`, { estado }).then((r) => r.data),

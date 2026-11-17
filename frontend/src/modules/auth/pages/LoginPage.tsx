@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { login } from '../services/auth.service'
-import { AUTH_API_BASE } from '@/shared/config'
 
 export function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -43,30 +42,9 @@ export function LoginPage() {
       if (!token) {
         throw new Error('No se recibió token de sesión')
       }
+      // login() ya validó el token contra /auth/me (fetchMe), así que el
+      // backend reconoce al usuario: no hace falta otra petición de diagnóstico.
       setAuth(user, token)
-
-      // Diagnóstico: verificar que el backend reconoce el token
-      try {
-        const res = await fetch(`${AUTH_API_BASE}/debug/auth`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const debug = (await res.json()) as {
-          step?: string
-          error?: string
-          hint?: string
-          usuario_in_db?: boolean
-        }
-        if (debug.step !== 'ok') {
-          const msg = debug.error || 'Error desconocido'
-          const hint = debug.hint ? `\n\n${debug.hint}` : ''
-          setError(`Auth falló: ${msg}${hint}`)
-          setLoading(false)
-          return
-        }
-      } catch (_) {
-        // Si falla el debug, continuar igual (puede ser CORS o red)
-      }
-
       navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión')

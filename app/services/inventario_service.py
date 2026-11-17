@@ -62,17 +62,6 @@ class InventarioService:
             self.db.refresh(mov)
         return mov
 
-    def actualizar_stock(self, producto_id: int, nuevo_stock: int) -> Inventario:
-        inv = self.repo.get_by_producto(producto_id)
-        if not inv:
-            raise NotFoundError("Inventario del producto no encontrado")
-        if nuevo_stock < 0:
-            raise ValidationError("El stock actual no puede ser negativo")
-        inv.stock_actual = nuevo_stock
-        self.db.commit()
-        self.db.refresh(inv)
-        return inv
-
     def corregir_movimiento(
         self,
         movimiento_id: int,

@@ -1,58 +1,61 @@
 # Múltiples usuarios simultáneos
 
-Si el sistema se traba o se pone lento con 2+ personas conectadas, la causa real casi siempre es
-**consultas N+1** (código haciendo una query por fila en vez de una sola con `JOIN`/`joinedload`) o
-conexiones a la base de datos que no se reutilizan. Revisa eso primero — más workers o más CPU/RAM
-solo esconden el síntoma.
+Si el sistema se traba o se pone lento con varias personas conectadas, revisa en este orden:
+**I/O bloqueante dentro de `async def`**, **consultas N+1** y **conexiones a la BD**. Subir workers
+o CPU/RAM solo esconde el síntoma.
 
-## 1. Connection Pooler de Supabase
+## 1. Modelo de concurrencia (1 worker)
 
-Supabase limita las conexiones directas a PostgreSQL. Usa la URL del **pooler** (puerto 6543) en
-lugar de la conexión directa (5432):
+El backend corre con **1 worker** de uvicorn (`WEB_CONCURRENCY`, por defecto 1).
 
-1. Entra a [Supabase Dashboard](https://supabase.com/dashboard) → tu proyecto
-2. **Settings** → **Database**
-3. En "Connection string", selecciona **"Transaction"** (modo pooler)
-4. Copia la URI (usa puerto **6543**)
-5. En Railway (o tu `.env`), actualiza `DATABASE_URL` con esa URI
+| Tipo de código | Cómo declararlo | Por qué |
+|---|---|---|
+| Endpoints y dependencias que usan la BD (SQLAlchemy síncrono) | `def` | FastAPI los corre en un threadpool (`THREADPOOL_SIZE`, 40 hilos): varias peticiones esperan a la BD en paralelo |
+| Código que llama a servicios externos lentos (agente/LLM, APIs) | `async def` + `await get_http_client()...` (`app/core/http_client.py`) | Miles de esperas concurrentes sin ocupar hilos |
 
-Ejemplo de URI con pooler:
-```
-postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-```
+> **Regla de oro:** nunca hagas I/O bloqueante (`db.query`, `httpx.get`, `requests`, `time.sleep`)
+> dentro de un `async def`. Corre en el event loop y frena **todas** las peticiones del worker.
+> Ese era el problema original: `get_current_user` era `async def` y consultaba la BD, así que el
+> login de cada petición se ejecutaba uno detrás de otro (con 4 workers solo había 4 filas).
 
-**Importante:** aunque uses el pooler de Supabase, el backend (`app/core/database.py`) mantiene su
-propio pool pequeño de conexiones (`pool_size=2, max_overflow=2`) en vez de `NullPool`. El proceso
-uvicorn es de larga duración, así que reutilizar conexiones ya autenticadas evita pagar el costo de
-TCP+TLS+auth en cada request — usar `NullPool` ahí fue justamente lo que agravaba el problema con
-varios usuarios a la vez.
+Medido localmente (10 peticiones simultáneas, 0.3 s de latencia simulada por consulta):
+antes ~3.2 s (serializado), después ~0.4 s.
 
-Con **4 workers** (sección 3), el total de conexiones que el backend puede abrir contra Supabase es
-`4 * (pool_size + max_overflow) = 16`. Si subes workers de nuevo, vuelve a multiplicar y compáralo
-contra el límite del pooler en tu plan de Supabase — ese es el techo real, no un número arbitrario.
+## 2. Connection Pooler de Supabase
 
-## 2. Revisa N+1 antes de subir workers/recursos
+Usa la URL del **pooler en modo Transaction** (puerto 6543):
 
-Un endpoint con N+1 puede convertir la carga de una pantalla en cientos de consultas SQL. Con pocos
-usuarios concurrentes eso ya satura el pool de conexiones y hace que la app "se caiga". Antes de subir
-workers o el plan de Railway, cuenta las queries que dispara el endpoint lento (ver el caso de
-Control Pedidos, que bajó de ~500 queries/carga a 1 con `joinedload`).
+1. [Supabase Dashboard](https://supabase.com/dashboard) → tu proyecto → **Settings** → **Database**
+2. En "Connection string", selecciona **"Transaction"** y copia la URI (puerto **6543**)
+3. Ponla en `DATABASE_URL` (Railway y `.env`)
 
-## 3. Workers en Railway
+`app/core/database.py`:
+- Fuerza el driver **psycopg 3** (`postgresql+psycopg://`) aunque la URL diga `postgresql://`,
+  para que local y producción usen el mismo driver.
+- Desactiva los *prepared statements* (`prepare_threshold=None`): PgBouncer en modo transacción no
+  los soporta y causan errores intermitentes bajo carga.
+- Pool por worker: `DB_POOL_SIZE` (10) + `DB_MAX_OVERFLOW` (10). Total de conexiones contra Supabase =
+  `workers × (DB_POOL_SIZE + DB_MAX_OVERFLOW)`. Compáralo con el límite de clientes del pooler de tu plan.
 
-`railway.json`/`nixpacks.toml` usan `--workers 4`. Como los endpoints son rutas síncronas (`def`, no
-`async def`), FastAPI las corre en un threadpool interno por worker — eso ya maneja varias requests
-concurrentes dentro de un mismo worker, pero el trabajo CPU-bound (serializar JSON, lógica de negocio)
-sigue compitiendo por el GIL de Python dentro de un mismo proceso. Con más usuarios simultáneos
-(ventas + RRHH), más procesos worker dan paralelismo real entre núcleos. Se bajó a 2 en un momento
-dado como parte de una limpieza de conexiones a la DB, pero el cuello de botella real de esa vez
-era N+1 y `NullPool` (ver abajo) — al volver a subir el tráfico, 2 workers se quedaron cortos y se
-subió de nuevo a 4.
+## 3. Una sola consulta para autenticar
 
-Si subes workers más allá de 4, recalcula el total de conexiones a la DB (sección 1) contra el
-límite del pooler de Supabase — eso sí puede convertirse en el cuello de botella real.
+`get_current_user` trae el usuario **y sus roles** en una sola consulta (JOIN), y `get_current_roles`
+la reutiliza en todo el request (FastAPI cachea las dependencias por petición). Para verificar
+permisos en un endpoint usa `Depends(require_admin)`, `Depends(require_roles(...))` o
+`roles: list[str] = Depends(get_current_roles)`. **No** vuelvas a consultar los roles en la BD.
 
-## 4. Mismo navegador, dos pestañas
+## 4. Revisa N+1 antes de subir workers/recursos
 
-Si dos usuarios usan el **mismo navegador** (pestañas distintas), solo uno puede estar logueado: el
-token se comparte. Cada usuario debe usar un navegador o dispositivo distinto.
+Un endpoint con N+1 puede convertir la carga de una pantalla en cientos de consultas. Cuenta las
+queries del endpoint lento (Control Pedidos bajó de ~500 queries/carga a 1 con `joinedload`).
+
+## 5. Cuándo subir workers
+
+Con 1 worker, el trabajo de CPU (serializar JSON, lógica) comparte el GIL de Python. Si con muchos
+más usuarios la CPU del contenedor se satura (no la BD), sube `WEB_CONCURRENCY` en Railway y
+recalcula el total de conexiones (sección 2).
+
+## 6. Mismo navegador, dos pestañas
+
+Si dos usuarios usan el **mismo navegador**, solo uno puede estar logueado: el token se comparte.
+Cada usuario debe usar un navegador o dispositivo distinto.

@@ -1,29 +1,45 @@
 """
-Conexión a PostgreSQL con SQLAlchemy 2.0.
-Optimizado para múltiples usuarios simultáneos.
+Conexión a PostgreSQL con SQLAlchemy 2.0 (síncrono, driver psycopg 3).
+
+Los endpoints son `def`: FastAPI los ejecuta en un threadpool, de modo que
+varias peticiones esperan a la BD en paralelo sin bloquear el event loop.
 """
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 from app.core.config import get_settings
 
 settings = get_settings()
 
-# Pool reducido por worker: cada uno mantiene unas pocas conexiones ya
-# autenticadas en vez de abrir una nueva por cada request (el proceso uvicorn
-# es de larga duración, incluso detrás del pooler de Supabase en :6543).
-# Con 4 workers (ver railway.json/nixpacks.toml), el total de conexiones que
-# puede abrir el backend es 4 * (pool_size + max_overflow) = 16 — revisa esa
-# cuenta contra el límite del pooler de Supabase si vuelves a subir workers.
+
+def _normalizar_url(url: str) -> str:
+    """Fuerza el driver psycopg 3 (el de requirements.txt). Con
+    `postgresql://` SQLAlchemy elegiría psycopg2, que puede estar instalado en
+    local pero no en producción -- causa de diferencias entre entornos."""
+    for prefijo in ("postgres://", "postgresql://"):
+        if url.startswith(prefijo):
+            return "postgresql+psycopg://" + url[len(prefijo):]
+    return url
+
+
+DATABASE_URL = _normalizar_url(settings.DATABASE_URL)
+
+_connect_args: dict = {"connect_timeout": 10}
+if DATABASE_URL.startswith("postgresql+psycopg://"):
+    # El pooler de Supabase (puerto 6543) usa PgBouncer en modo transacción,
+    # que no soporta prepared statements. psycopg 3 los crea automáticamente
+    # tras unas cuantas ejecuciones; sin esto aparecen errores intermitentes
+    # "prepared statement ... already exists" bajo carga.
+    _connect_args["prepare_threshold"] = None
+
 engine = create_engine(
-    settings.DATABASE_URL,
+    DATABASE_URL,
     pool_pre_ping=True,
-    pool_size=2,
-    max_overflow=2,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
     pool_recycle=300,
-    pool_timeout=15,
-    connect_args={"connect_timeout": 10},
+    connect_args=_connect_args,
     echo=False,
 )
 

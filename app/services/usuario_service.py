@@ -54,9 +54,6 @@ class UsuarioService:
 
         raise NotFoundError("Usuario no encontrado en el sistema")
 
-    def obtener_por_auth_id(self, auth_user_id: str) -> Usuario:
-        return self.obtener_o_sincronizar(auth_user_id)
-
     def listar_con_roles(self, skip: int = 0, limit: int = 100) -> list[dict]:
         from app.repositories.vendedor_lista_repository import VendedorListaRepository
         vendedor_repo = VendedorListaRepository(self.db)

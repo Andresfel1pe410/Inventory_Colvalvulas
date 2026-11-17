@@ -5,7 +5,7 @@ Si obtienes **401 Unauthorized** después de iniciar sesión, probablemente tu u
 ## Diagnóstico rápido
 
 1. Inicia sesión en el frontend.
-2. Abre en el navegador: `http://localhost:5173/api/v1/debug/auth` (o la URL de tu frontend + `/api/v1/debug/auth`).
+2. Arranca el backend con `DEBUG_ENDPOINTS=true` en el `.env` (están apagados por defecto) y abre `http://localhost:5173/api/v1/auth/debug/auth`.
 3. La respuesta indica exactamente dónde falla:
    - `no_token` → El frontend no envía el token (revisa que iniciaste sesión).
    - `token_invalid` → JWT inválido o expirado (revisa `SUPABASE_JWT_SECRET` en `.env`).
