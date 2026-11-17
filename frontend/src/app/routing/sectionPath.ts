@@ -1,7 +1,7 @@
 import { createContext, useContext, createElement } from 'react'
 import type { ReactNode } from 'react'
 
-export type AppSection = 'legacy' | 'ventas' | 'proceso' | 'rrhh'
+export type AppSection = 'legacy' | 'ventas' | 'proceso' | 'rrhh' | 'empleado'
 
 const SectionPathContext = createContext('')
 
@@ -25,6 +25,7 @@ export function getSectionFromPath(pathname: string): AppSection {
   if (pathname.startsWith('/proceso')) return 'proceso'
   if (pathname.startsWith('/ventas')) return 'ventas'
   if (pathname.startsWith('/rrhh')) return 'rrhh'
+  if (pathname.startsWith('/empleado')) return 'empleado'
   return 'legacy'
 }
 

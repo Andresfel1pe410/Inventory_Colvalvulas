@@ -52,10 +52,16 @@ export const queryKeys = {
       ['empleados', 'list', params] as const,
     detail: (id: number) => ['empleados', id] as const,
   },
+  planeacion: {
+    all: ['planeacion'] as const,
+    list: ['planeacion', 'list'] as const,
+    detail: (id: number) => ['planeacion', id] as const,
+    misTareas: ['planeacion', 'mis-tareas'] as const,
+  },
   asistencia: {
     all: ['asistencia'] as const,
     hoy: ['asistencia', 'hoy'] as const,
-    horasSemana: ['asistencia', 'horas-semana'] as const,
+    horasSemana: (semanaInicio?: string) => ['asistencia', 'horas-semana', semanaInicio ?? 'actual'] as const,
     reporte: (params?: {
       empleadoId?: number | null
       fechaInicio?: string

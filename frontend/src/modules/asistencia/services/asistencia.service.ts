@@ -9,7 +9,10 @@ import type {
 export const asistenciaService = {
   hoy: () => rrhhApi.get<EmpleadoEstadoHoy[]>('/asistencia/hoy').then((r) => r.data),
 
-  horasSemana: () => rrhhApi.get<HorasSemanaEmpleado[]>('/asistencia/horas-semana').then((r) => r.data),
+  horasSemana: (semanaInicio?: string) =>
+    rrhhApi
+      .get<HorasSemanaEmpleado[]>('/asistencia/horas-semana', { params: { semana_inicio: semanaInicio } })
+      .then((r) => r.data),
 
   reporte: (filtros?: ReporteFiltros) =>
     rrhhApi

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { login } from '../services/auth.service'
 import { AUTH_API_BASE } from '@/shared/config'
@@ -7,6 +7,8 @@ import { AUTH_API_BASE } from '@/shared/config'
 export function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const navigate = useNavigate()
+  const location = useLocation()
+  const sesionExpirada = Boolean((location.state as { sesionExpirada?: boolean } | null)?.sesionExpirada)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -76,6 +78,11 @@ export function LoginPage() {
           </h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {sesionExpirada && !error && (
+            <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-700">
+              Tu sesión se cerró por inactividad. Inicia sesión de nuevo.
+            </div>
+          )}
           {error && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
           )}

@@ -3,11 +3,13 @@ import { DataTable, Column, PageLoading } from '@/shared/components'
 import { useInventarioList } from '../hooks/useInventario'
 import { usePedidosList, usePedidosDetailsBulk } from '@/modules/pedidos/hooks/usePedidos'
 import { useClientesList } from '@/modules/clientes/hooks/useClientes'
+import { useAuthStore } from '@/modules/auth'
 import { EntradaInventarioModal } from '../components/EntradaInventarioModal'
 import { ReporteMovimientosModal } from '../components/ReporteMovimientosModal'
 import type { InventarioResumenConProducto } from '../types/inventario.types'
-import { getCodigoDisplay } from '@/modules/productos/types/producto.types'
-import type { Producto } from '@/modules/productos/types/producto.types'
+import { getCodigoDisplay, getPrecioByLista, LISTAS_PRECIOS, LISTA_LABELS } from '@/modules/productos/types/producto.types'
+import type { Producto, ListaPrecios } from '@/modules/productos/types/producto.types'
+import { formatPesos } from '@/shared/utils/format'
 
 type FiltroPedidos = 'todos' | number[]
 type FiltroProductos = 'todos' | number[]
@@ -23,6 +25,12 @@ export function InventarioPage() {
   const [productosSeleccionados, setProductosSeleccionados] = useState<Set<number>>(new Set())
   const [busquedaProducto, setBusquedaProducto] = useState('')
   const [soloNegativos, setSoloNegativos] = useState(false)
+  const [listaTotal, setListaTotal] = useState<ListaPrecios>('lista_1')
+  const [descuentoTotal, setDescuentoTotal] = useState('20')
+  const [totalCalculado, setTotalCalculado] = useState<number | null>(null)
+
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.roles?.includes('admin')
 
   const { data: pedidosActivos = [] } = usePedidosList({
     limit: 200,
@@ -195,6 +203,15 @@ export function InventarioPage() {
 
   const handleEntradaCreated = () => {
     setModalEntradaOpen(false)
+  }
+
+  const handleCalcularTotal = () => {
+    const bruto = inventarios.reduce((sum, i) => {
+      if (!i.producto) return sum
+      return sum + getPrecioByLista(i.producto, listaTotal) * i.stock_actual
+    }, 0)
+    const descuento = Math.min(100, Math.max(0, Number(descuentoTotal) || 0))
+    setTotalCalculado(bruto * (1 - descuento / 100))
   }
 
   useEffect(() => {
@@ -750,6 +767,47 @@ export function InventarioPage() {
           </button>
         </div>
       </div>
+      {isAdmin && (
+        <div className="mb-6 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Lista de precio</label>
+            <select
+              value={listaTotal}
+              onChange={(e) => setListaTotal(e.target.value as ListaPrecios)}
+              className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900"
+            >
+              {LISTAS_PRECIOS.map((l) => (
+                <option key={l} value={l}>
+                  {LISTA_LABELS[l]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Descuento (%)</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={descuentoTotal}
+              onChange={(e) => setDescuentoTotal(e.target.value.replace(/[^0-9.]/g, ''))}
+              className="mt-1 w-24 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleCalcularTotal}
+            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            Calcular
+          </button>
+          {totalCalculado !== null && (
+            <div className="ml-auto rounded-lg border border-green-300 bg-green-50 px-5 py-2 text-right">
+              <p className="text-xs font-medium uppercase tracking-wide text-green-700">Total</p>
+              <p className="text-xl font-semibold text-green-800">{formatPesos(totalCalculado)}</p>
+            </div>
+          )}
+        </div>
+      )}
       <EntradaInventarioModal
         open={modalEntradaOpen}
         onClose={() => setModalEntradaOpen(false)}

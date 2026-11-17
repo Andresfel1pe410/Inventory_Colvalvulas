@@ -14,6 +14,9 @@ class UsuarioRepository(BaseRepository[Usuario]):
             .first()
         )
 
+    def get_by_empleado_id(self, empleado_id: int) -> Usuario | None:
+        return self.db.query(Usuario).filter(Usuario.empleado_id == empleado_id).first()
+
     def get_roles(self, usuario_id: int) -> list[str]:
         roles = (
             self.db.query(Rol)

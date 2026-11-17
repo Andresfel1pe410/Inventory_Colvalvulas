@@ -11,10 +11,10 @@ export function useAsistenciaHoy() {
   })
 }
 
-export function useHorasSemana() {
+export function useHorasSemana(semanaInicio?: string) {
   return useQuery({
-    queryKey: queryKeys.asistencia.horasSemana,
-    queryFn: () => asistenciaService.horasSemana(),
+    queryKey: queryKeys.asistencia.horasSemana(semanaInicio),
+    queryFn: () => asistenciaService.horasSemana(semanaInicio),
     refetchInterval: 60_000,
   })
 }

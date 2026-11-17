@@ -7,7 +7,7 @@ export interface VentasVendedoresResponse {
   series: { key: string; label: string; values: number[] }[]
   vendedores: { usuario_id: number; nombre: string; total_mes: number }[]
   total_mes: number
-  top_clientes: { cliente_id: number; nombre: string; total_mes: number }[]
+  top_clientes: { cliente_id: number; nombre: string; total_mes: number; cantidad: number }[]
   top_productos: { producto_id: number; referencia: string; material: string; cantidad: number }[]
   avg_dias_envio: number | null
 }
@@ -32,8 +32,17 @@ export interface VendedorPedidosMesResponse {
 export interface TopClientesProductosAcumuladoResponse {
   year: number
   months: number[]
-  top_clientes: { cliente_id: number; nombre: string; total: number }[]
-  top_productos: { producto_id: number; referencia: string; material: string; cantidad: number }[]
+  top_clientes: { cliente_id: number; nombre: string; total: number; promedio: number; cantidad: number }[]
+  top_productos: {
+    producto_id: number
+    referencia: string
+    material: string
+    cantidad: number
+    promedio: number
+    stock_actual: number
+    disponible: number
+    produccion: number
+  }[]
 }
 
 export const reportesService = {

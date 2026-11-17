@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { inventarioService, type MovimientoInventarioReporteDetalle } from '../services/inventario.service'
-import { DataTable, type Column } from '@/shared/components'
+import { DataTable, ProductoSearchSelect, type Column } from '@/shared/components'
+import { useProductosList } from '@/modules/productos/hooks/useProductos'
 
 interface ReporteMovimientosModalProps {
   open: boolean
@@ -45,10 +46,13 @@ function formatMotivo(movimiento: MovimientoInventarioReporteDetalle) {
 export function ReporteMovimientosModal({ open, onClose }: ReporteMovimientosModalProps) {
   const [fechaInicio, setFechaInicio] = useState(getDefaultDates().inicio)
   const [fechaFin, setFechaFin] = useState(getDefaultDates().fin)
+  const [productoId, setProductoId] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
   const [movimientos, setMovimientos] = useState<MovimientoInventarioReporteDetalle[]>([])
   const [error, setError] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
+
+  const { data: productos = [] } = useProductosList({ limit: 5000 })
 
   const cargarReporte = async () => {
     if (!fechaInicio || !fechaFin || fechaInicio > fechaFin) return
@@ -59,6 +63,7 @@ export function ReporteMovimientosModal({ open, onClose }: ReporteMovimientosMod
       const data = await inventarioService.listarReporteMovimientos({
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
+        producto_id: productoId || undefined,
       })
       setMovimientos(data)
     } catch (err) {
@@ -135,6 +140,11 @@ export function ReporteMovimientosModal({ open, onClose }: ReporteMovimientosMod
       header: 'Motivo',
       render: (m) => <span className="text-sm text-slate-600">{formatMotivo(m)}</span>,
     },
+    {
+      key: 'usuario_nombre',
+      header: 'Modificado por',
+      render: (m) => <span className="text-sm text-slate-600">{m.usuario_nombre || '—'}</span>,
+    },
   ]
 
   if (!open) return null
@@ -178,6 +188,17 @@ export function ReporteMovimientosModal({ open, onClose }: ReporteMovimientosMod
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
                 className="mt-1 rounded-md border border-slate-300 px-3 py-2"
+              />
+            </div>
+            <div className="w-64">
+              <label className="block text-sm font-medium text-slate-700">Referencia</label>
+              <ProductoSearchSelect
+                value={productoId}
+                onChange={setProductoId}
+                products={productos}
+                formatLabel={(p) => (p.material ? `${p.referencia} [${p.material}]` : p.referencia)}
+                placeholder="Todas las referencias"
+                className="mt-1"
               />
             </div>
             <button

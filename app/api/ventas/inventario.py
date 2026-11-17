@@ -103,6 +103,7 @@ def listar_entradas_detalle(
 def listar_reporte_movimientos(
     fecha_inicio: str = Query(..., description="Fecha inicio (YYYY-MM-DD)"),
     fecha_fin: str = Query(..., description="Fecha fin (YYYY-MM-DD)"),
+    producto_id: int | None = Query(None, description="Filtra por una sola referencia"),
     skip: int = Query(0, ge=0),
     limit: int = Query(5000, ge=1, le=10000),
     db: Session = Depends(get_db),
@@ -116,7 +117,9 @@ def listar_reporte_movimientos(
         raise HTTPException(400, "Formato de fecha inválido. Use YYYY-MM-DD")
     if dt_inicio > dt_fin:
         raise HTTPException(400, "La fecha de inicio debe ser menor o igual a la fecha fin")
-    return MovimientoInventarioRepository(db).get_reporte_movimientos(dt_inicio, dt_fin, skip, limit)
+    return MovimientoInventarioRepository(db).get_reporte_movimientos(
+        dt_inicio, dt_fin, skip, limit, producto_id
+    )
 
 
 @router.patch("/movimientos/{movimiento_id}/corregir", response_model=MovimientoInventario)

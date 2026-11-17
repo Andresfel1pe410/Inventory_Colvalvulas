@@ -57,13 +57,16 @@ def hoy(
 
 @router.get("/horas-semana", response_model=list[HorasSemanaEmpleado])
 def horas_semana(
+    semana_inicio: date | None = Query(None, description="Cualquier fecha de la semana a consultar (se ajusta al lunes). Por defecto, la semana actual."),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
     _admin: Usuario = Depends(require_admin),
 ):
-    """Horas trabajadas de lunes a hoy (hora Colombia) de cada empleado activo,
-    contra la jornada legal semanal (42h)."""
-    return AsistenciaService(db).horas_semana_todos()
+    """Resumen semanal (horas totales, promedio diario, desayuno/almuerzo
+    promedio) de cada empleado activo, contra la jornada legal semanal (42h).
+    `semana_inicio` permite consultar una semana pasada; por defecto es la
+    semana actual (de lunes a hoy, hora Colombia)."""
+    return AsistenciaService(db).horas_semana_todos(semana_inicio)
 
 
 @router.get("/reporte", response_model=list[EventoAsistenciaReporte])

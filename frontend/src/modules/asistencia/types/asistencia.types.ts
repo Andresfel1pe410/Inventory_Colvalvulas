@@ -25,6 +25,7 @@ export interface EmpleadoEstadoHoy {
   estado: EstadoHoy
   ultimo_evento?: TipoEvento
   ultima_hora?: string
+  hora_entrada?: string
   entrada_tardia: boolean
 }
 
@@ -34,6 +35,12 @@ export interface HorasSemanaEmpleado {
   cargo?: string
   horas_trabajadas: number
   horas_objetivo: number
+  semana_inicio: string
+  semana_fin: string
+  dias_trabajados: number
+  promedio_horas_dia: number
+  promedio_desayuno_min: number
+  promedio_almuerzo_min: number
 }
 
 export interface ReporteFiltros {

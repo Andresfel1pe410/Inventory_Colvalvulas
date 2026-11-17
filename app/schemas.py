@@ -257,6 +257,7 @@ class MovimientoInventarioReporteDetalle(BaseModel):
     cliente_razon_social: Optional[str] = None
     numero_remision: Optional[str] = None
     motivo: Optional[str] = None
+    usuario_nombre: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -438,6 +439,94 @@ class MovimientoInventarioProceso(MovimientoInventarioProcesoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ============= PROCESO: PLANEACIÓN =============
+ESTADOS_TAREA = ("pendiente", "en_progreso", "hecha")
+
+
+class DependenciaBase(BaseModel):
+    nombre: str
+
+
+class DependenciaCreate(DependenciaBase):
+    empleado_ids: list[int] = Field(default_factory=list)
+
+
+class Dependencia(DependenciaBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DependenciaListItem(Dependencia):
+    """Fila para la lista/tarjetas de dependencias, sin traer el detalle completo."""
+    empleados_count: int
+
+
+class DependenciaEmpleadoAdd(BaseModel):
+    empleado_id: int
+
+
+class TareaCreate(BaseModel):
+    empleado_id: int
+    descripcion: str
+    cantidad: int = Field(..., ge=1)
+
+
+class TareaUpdate(BaseModel):
+    estado: str = Field(..., pattern="^(pendiente|en_progreso|hecha)$")
+    realizado: Optional[int] = Field(None, ge=0)
+
+
+class Tarea(BaseModel):
+    id: int
+    dependencia_id: int
+    empleado_id: int
+    descripcion: str
+    cantidad: int
+    realizado: int
+    estado: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TareaEnDependencia(BaseModel):
+    """Forma anidada de solo lectura para el detalle de una dependencia."""
+    id: int
+    descripcion: str
+    cantidad: int
+    realizado: int
+    estado: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmpleadoConTareas(BaseModel):
+    empleado_id: int
+    nombre: str
+    cargo: Optional[str] = None
+    tareas: list[TareaEnDependencia]
+
+
+class DependenciaDetalle(BaseModel):
+    id: int
+    nombre: str
+    created_at: datetime
+    updated_at: datetime
+    empleados: list[EmpleadoConTareas]
+
+
+class TareaConDependencia(Tarea):
+    """Tarea vista desde 'mis tareas': incluye el nombre de la dependencia
+    porque el empleado no navega por dependencia, ve todas sus tareas juntas."""
+    dependencia_nombre: str
+
+
 # ============= RRHH: EMPLEADOS =============
 TIPOS_EVENTO_ASISTENCIA = (
     "ENTRY",
@@ -482,6 +571,17 @@ class Empleado(EmpleadoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EmpleadoAccesoCreate(BaseModel):
+    """Datos para crear el acceso de login (Supabase Auth) de un empleado ya existente."""
+    email: str
+    password: str = Field(min_length=6)
+
+
+class EmpleadoAccesoEstado(BaseModel):
+    tiene_acceso: bool
+    email: Optional[str] = None
+
+
 # ============= RRHH: ASISTENCIA =============
 class EventoAsistenciaCreate(BaseModel):
     empleado_id: int
@@ -520,19 +620,28 @@ class EmpleadoEstadoHoy(BaseModel):
     estado: str  # presente | ausente | en_desayuno | en_almuerzo | salida
     ultimo_evento: Optional[str] = None
     ultima_hora: Optional[datetime] = None
+    hora_entrada: Optional[datetime] = None
     entrada_tardia: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class HorasSemanaEmpleado(BaseModel):
-    """Horas trabajadas de lunes a hoy (hora Colombia) contra la jornada
-    legal semanal (42h). Usado por el reporte de RRHH en la web."""
+    """Resumen semanal de un empleado (horas totales contra la jornada legal
+    de 42h, más promedios diarios) para una semana cualquiera — la actual
+    (de lunes a hoy) o una semana pasada ya cerrada. Usado por el reporte de
+    RRHH en la web (tarjetas + tooltip por empleado)."""
     empleado_id: int
     empleado_nombre: str
     cargo: Optional[str] = None
     horas_trabajadas: float
     horas_objetivo: float
+    semana_inicio: date
+    semana_fin: date
+    dias_trabajados: int
+    promedio_horas_dia: float
+    promedio_desayuno_min: float
+    promedio_almuerzo_min: float
 
 
 # ============= RRHH: CONTRATO DISPOSITIVO (ESP32) =============

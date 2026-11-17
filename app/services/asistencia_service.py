@@ -20,6 +20,20 @@ SECUENCIA_SIMPLIFICADA = ["ENTRY", "EXIT"]
 COLOMBIA_TZ = timezone(timedelta(hours=-5))
 HORA_LIMITE_ENTRADA = time(7, 0)
 
+# Si un empleado no marca salida, al cambiar de día (medianoche hora
+# Colombia) se le asume la salida a esta hora del día anterior — es la hora
+# real de salida de la mayoría de empleados según el historial, más
+# representativa que adivinar a las 8pm. Antes ese día quedaba en 0 horas/
+# excluido de los promedios, lo cual distorsionaba las métricas igual o peor.
+HORA_SALIDA_AUTOMATICA = time(16, 30)
+DIAS_ATRAS_CIERRE_AUTOMATICO = 60
+
+# El lector de huella a veces queda "marcado" con el dedo (residuo óptico o
+# el dedo no se levantó a tiempo) y el ESP32 manda varias peticiones seguidas
+# para la misma persona en segundos. Se ignora cualquier marca nueva si la
+# última de ese empleado fue hace menos de este tiempo.
+TIEMPO_MINIMO_ENTRE_EVENTOS = timedelta(minutes=10)
+
 # Jornada legal semanal en Colombia (Ley 2101 de 2021, reducción gradual a 42h).
 HORAS_OBJETIVO_SEMANAL = 42.0
 
@@ -59,15 +73,28 @@ def _rango_dia_colombia(dia: date) -> tuple[datetime, datetime]:
     return inicio_local.astimezone(timezone.utc).replace(tzinfo=None), fin_local.astimezone(timezone.utc).replace(tzinfo=None)
 
 
-def _rango_semana_actual() -> tuple[datetime, datetime]:
-    """Del lunes 00:00 (hora Colombia) de esta semana hasta este instante, en
-    UTC naive (mismo criterio que el resto del proyecto). El fin es "ahora",
-    no el fin del día, para que el tramo de hoy en curso cuente en tiempo real."""
+def _lunes_de(dia: date) -> date:
+    return dia - timedelta(days=dia.weekday())
+
+
+def _rango_semana(semana_inicio: date | None) -> tuple[datetime, datetime, date, date]:
+    """Límites UTC (naive) de la semana que empieza en `semana_inicio` (se
+    ajusta al lunes de esa fecha si no cae justo ahí). Si es la semana actual,
+    el fin es "ahora" (para que el tramo de hoy cuente en tiempo real); si es
+    una semana pasada, el fin es el domingo 23:59 de esa semana (ya cerrada).
+    Devuelve también el lunes/domingo calendario, para mostrar el rango en
+    el reporte sin importar hasta dónde llegan los datos."""
     hoy = _hoy_colombia()
-    lunes = hoy - timedelta(days=hoy.weekday())
+    lunes_actual = _lunes_de(hoy)
+    lunes = _lunes_de(semana_inicio) if semana_inicio else lunes_actual
+    domingo = lunes + timedelta(days=6)
+
     dt_inicio, _ = _rango_dia_colombia(lunes)
-    dt_fin = datetime.now(timezone.utc).replace(tzinfo=None)
-    return dt_inicio, dt_fin
+    if lunes == lunes_actual:
+        dt_fin = datetime.now(timezone.utc).replace(tzinfo=None)
+    else:
+        _, dt_fin = _rango_dia_colombia(domingo)
+    return dt_inicio, dt_fin, lunes, domingo
 
 
 def _horas_trabajadas(eventos: list[EventoAsistencia], ahora_utc: datetime) -> float:
@@ -97,6 +124,54 @@ def _horas_trabajadas(eventos: list[EventoAsistencia], ahora_utc: datetime) -> f
     return max(total_segundos, 0.0) / 3600.0
 
 
+def _duracion_minutos(inicio: EventoAsistencia | None, fin: EventoAsistencia | None) -> float | None:
+    if inicio is None or fin is None:
+        return None
+    return (_a_utc_aware(fin.timestamp) - _a_utc_aware(inicio.timestamp)).total_seconds() / 60.0
+
+
+def _resumen_semana_empleado(eventos_semana: list[EventoAsistencia], hoy: date) -> dict:
+    """A partir de los eventos de UN empleado en la semana, arma: horas totales,
+    promedio de horas trabajadas por día, y promedio de minutos de desayuno y
+    almuerzo — agrupando primero por día calendario (hora Colombia), porque
+    una jornada nunca cruza la medianoche y así cada día se puede cerrar con
+    su propio corte (el de hoy hasta "ahora", los pasados hasta su último
+    evento — no se puede adivinar cuánto trabajó después de su última marca)."""
+    por_dia: dict[date, list[EventoAsistencia]] = {}
+    for ev in eventos_semana:
+        dia_local = _a_utc_aware(ev.timestamp).astimezone(COLOMBIA_TZ).date()
+        por_dia.setdefault(dia_local, []).append(ev)
+
+    horas_dias_trabajados: list[float] = []
+    desayunos_min: list[float] = []
+    almuerzos_min: list[float] = []
+    total_horas = 0.0
+
+    for dia, eventos_dia in por_dia.items():
+        eventos_dia = sorted(eventos_dia, key=lambda e: e.timestamp)
+        corte = datetime.now(timezone.utc) if dia == hoy else eventos_dia[-1].timestamp
+        horas_dia = _horas_trabajadas(eventos_dia, corte)
+        total_horas += horas_dia
+        if any(e.tipo_evento == "ENTRY" for e in eventos_dia):
+            horas_dias_trabajados.append(horas_dia)
+
+        por_tipo = {e.tipo_evento: e for e in eventos_dia}
+        desayuno = _duracion_minutos(por_tipo.get("BREAKFAST_START"), por_tipo.get("BREAKFAST_END"))
+        if desayuno is not None:
+            desayunos_min.append(desayuno)
+        almuerzo = _duracion_minutos(por_tipo.get("LUNCH_START"), por_tipo.get("LUNCH_END"))
+        if almuerzo is not None:
+            almuerzos_min.append(almuerzo)
+
+    return {
+        "horas_trabajadas": round(total_horas, 2),
+        "dias_trabajados": len(horas_dias_trabajados),
+        "promedio_horas_dia": round(sum(horas_dias_trabajados) / len(horas_dias_trabajados), 2) if horas_dias_trabajados else 0.0,
+        "promedio_desayuno_min": round(sum(desayunos_min) / len(desayunos_min), 1) if desayunos_min else 0.0,
+        "promedio_almuerzo_min": round(sum(almuerzos_min) / len(almuerzos_min), 1) if almuerzos_min else 0.0,
+    }
+
+
 def _a_utc_aware(dt: datetime) -> datetime:
     """Normaliza a datetime UTC-aware, sea que el driver haya devuelto un valor
     naive (se asume UTC, igual que el resto del proyecto) o ya con tzinfo."""
@@ -110,6 +185,43 @@ class AsistenciaService:
         self.db = db
         self.repo = AsistenciaRepository(db)
         self.emp_repo = EmpleadoRepository(db)
+
+    def _cerrar_dias_pendientes(self, empleado_id: int | None = None) -> int:
+        """Al cambiar de día (medianoche hora Colombia), si un empleado tiene
+        ENTRY pero nunca marcó EXIT en un día que ya terminó, se le crea
+        automáticamente la salida a las 4:30pm de ese día (hora real de
+        salida de la mayoría de empleados según el historial) — antes ese
+        día quedaba en 0 horas en las métricas (o efectivamente invisible).
+        HOY nunca se toca mientras siga siendo hoy (todavía puede marcar).
+        Se llama tanto al marcar un evento como al pedir cualquier reporte,
+        para que se autocorrija solo sin depender de que alguien vuelva a
+        marcar."""
+        hoy = _hoy_colombia()
+        desde, _ = _rango_dia_colombia(hoy - timedelta(days=DIAS_ATRAS_CIERRE_AUTOMATICO))
+
+        query = self.db.query(EventoAsistencia).filter(EventoAsistencia.timestamp >= desde)
+        if empleado_id is not None:
+            query = query.filter(EventoAsistencia.empleado_id == empleado_id)
+        eventos = query.order_by(EventoAsistencia.empleado_id, EventoAsistencia.timestamp).all()
+
+        por_empleado_dia: dict[tuple[int, date], set[str]] = {}
+        for ev in eventos:
+            dia_local = _a_utc_aware(ev.timestamp).astimezone(COLOMBIA_TZ).date()
+            if dia_local >= hoy:
+                continue  # hoy (o algo a futuro) no se toca todavía
+            por_empleado_dia.setdefault((ev.empleado_id, dia_local), set()).add(ev.tipo_evento)
+
+        creados = 0
+        for (emp_id, dia), tipos in por_empleado_dia.items():
+            if "ENTRY" not in tipos or "EXIT" in tipos:
+                continue
+            salida_utc = datetime.combine(dia, HORA_SALIDA_AUTOMATICA, tzinfo=COLOMBIA_TZ).astimezone(timezone.utc)
+            self.repo.crear_evento(emp_id, "EXIT", device_id=None, timestamp=salida_utc)
+            creados += 1
+
+        if creados:
+            self.db.commit()
+        return creados
 
     def _validar_transicion(self, ultimo_tipo: str | None, nuevo_tipo: str) -> None:
         if nuevo_tipo == "ENTRY" and ultimo_tipo == "ENTRY":
@@ -147,6 +259,8 @@ class AsistenciaService:
         if not empleado or not empleado.activo:
             raise NotFoundError("Empleado no encontrado o inactivo")
 
+        self._cerrar_dias_pendientes(empleado_id)
+
         dt_inicio, dt_fin = _rango_dia_colombia(_hoy_colombia())
         ultimo = self.repo.get_ultimo_evento_en_rango(empleado_id, dt_inicio, dt_fin)
         self._validar_transicion(ultimo.tipo_evento if ultimo else None, tipo_evento)
@@ -165,8 +279,24 @@ class AsistenciaService:
         if not empleado or not empleado.activo:
             return {"success": False, "employee_name": None, "message": "Huella no reconocida", "event_type": None}
 
+        self._cerrar_dias_pendientes(empleado.id)
+
         dt_inicio, dt_fin = _rango_dia_colombia(_hoy_colombia())
         ultimo = self.repo.get_ultimo_evento_en_rango(empleado.id, dt_inicio, dt_fin)
+
+        if ultimo is not None:
+            transcurrido = datetime.now(timezone.utc) - _a_utc_aware(ultimo.timestamp)
+            if transcurrido < TIEMPO_MINIMO_ENTRE_EVENTOS:
+                horas = self._horas_por_empleado_semana_actual().get(empleado.id, 0.0)
+                return {
+                    "success": False,
+                    "employee_name": empleado.nombre,
+                    "message": "Ya se registró una marca hace unos momentos. Espera unos minutos.",
+                    "event_type": None,
+                    "horas_semana": horas,
+                    "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
+                }
+
         siguiente = self._siguiente_evento(empleado, ultimo.tipo_evento if ultimo else None)
 
         if siguiente is None:
@@ -194,6 +324,7 @@ class AsistenciaService:
         }
 
     def estado_hoy(self) -> list[dict]:
+        self._cerrar_dias_pendientes()
         empleados = self.emp_repo.listar(limit=10000)
         empleados_activos = [e for e in empleados if e.activo]
         dt_inicio, dt_fin = _rango_dia_colombia(_hoy_colombia())
@@ -223,13 +354,17 @@ class AsistenciaService:
                     "estado": estado,
                     "ultimo_evento": ultimo.tipo_evento if ultimo else None,
                     "ultima_hora": ultimo.timestamp if ultimo else None,
+                    "hora_entrada": primer_entry.timestamp if primer_entry else None,
                     "entrada_tardia": entrada_tardia,
                 }
             )
         return resultado
 
     def _horas_por_empleado_semana_actual(self) -> dict[int, float]:
-        dt_inicio, dt_fin = _rango_semana_actual()
+        """Solo el total (sin desglose por día) — usada en la ruta rápida del
+        dispositivo, en cada marcada de huella, para no cargarla con trabajo
+        que ahí no hace falta."""
+        dt_inicio, dt_fin, _, _ = _rango_semana(None)
         eventos = self.repo.get_eventos_en_rango(dt_inicio, dt_fin)
         eventos_por_empleado: dict[int, list[EventoAsistencia]] = {}
         for ev in eventos:
@@ -239,34 +374,55 @@ class AsistenciaService:
             for empleado_id, evs in eventos_por_empleado.items()
         }
 
-    def horas_semana_empleado(self, empleado_id: int) -> dict:
-        """Horas trabajadas de lunes a hoy (hora Colombia) para un empleado.
-        Usada tanto por el reporte web como por la respuesta al dispositivo,
-        para que el ESP32 pueda mostrar "llevas X/42 horas" tras cada marca."""
+    def _resumen_semana_por_empleado(self, semana_inicio: date | None) -> tuple[dict[int, dict], date, date]:
+        dt_inicio, dt_fin, lunes, domingo = _rango_semana(semana_inicio)
+        eventos = self.repo.get_eventos_en_rango(dt_inicio, dt_fin)
+        eventos_por_empleado: dict[int, list[EventoAsistencia]] = {}
+        for ev in eventos:
+            eventos_por_empleado.setdefault(ev.empleado_id, []).append(ev)
+
+        hoy = _hoy_colombia()
+        resumen = {
+            empleado_id: _resumen_semana_empleado(evs, hoy) for empleado_id, evs in eventos_por_empleado.items()
+        }
+        return resumen, lunes, domingo
+
+    def horas_semana_empleado(self, empleado_id: int, semana_inicio: date | None = None) -> dict:
+        """Resumen semanal (horas totales, promedio diario, desayuno/almuerzo
+        promedio) para un empleado, de una semana cualquiera (por defecto la
+        actual, de lunes a hoy en hora Colombia)."""
         empleado = self.emp_repo.get(empleado_id)
         if not empleado:
             raise NotFoundError("Empleado no encontrado")
-        horas = self._horas_por_empleado_semana_actual().get(empleado_id, 0.0)
+        self._cerrar_dias_pendientes(empleado_id)
+        resumen_por_empleado, lunes, domingo = self._resumen_semana_por_empleado(semana_inicio)
+        resumen = resumen_por_empleado.get(empleado_id, _resumen_semana_empleado([], _hoy_colombia()))
         return {
             "empleado_id": empleado.id,
             "empleado_nombre": empleado.nombre,
             "cargo": empleado.cargo,
-            "horas_trabajadas": horas,
             "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
+            "semana_inicio": lunes,
+            "semana_fin": domingo,
+            **resumen,
         }
 
-    def horas_semana_todos(self) -> list[dict]:
-        """Horas de lunes a hoy de todos los empleados activos, para el
-        reporte de RRHH en la aplicación web."""
+    def horas_semana_todos(self, semana_inicio: date | None = None) -> list[dict]:
+        """Resumen semanal de todos los empleados activos, para el reporte de
+        RRHH en la aplicación web (tarjetas + tooltip por empleado)."""
+        self._cerrar_dias_pendientes()
         empleados = [e for e in self.emp_repo.listar(limit=10000) if e.activo]
-        horas_por_empleado = self._horas_por_empleado_semana_actual()
+        resumen_por_empleado, lunes, domingo = self._resumen_semana_por_empleado(semana_inicio)
+        resumen_vacio = _resumen_semana_empleado([], _hoy_colombia())
         return [
             {
                 "empleado_id": e.id,
                 "empleado_nombre": e.nombre,
                 "cargo": e.cargo,
-                "horas_trabajadas": horas_por_empleado.get(e.id, 0.0),
                 "horas_objetivo": HORAS_OBJETIVO_SEMANAL,
+                "semana_inicio": lunes,
+                "semana_fin": domingo,
+                **resumen_por_empleado.get(e.id, resumen_vacio),
             }
             for e in empleados
         ]
@@ -280,6 +436,7 @@ class AsistenciaService:
         skip: int = 0,
         limit: int = 5000,
     ) -> list[dict]:
+        self._cerrar_dias_pendientes(empleado_id)
         return self.repo.listar(empleado_id, fecha_inicio, fecha_fin, tipo_evento, skip, limit)
 
     def sync_dispositivo(self) -> list[dict]:
