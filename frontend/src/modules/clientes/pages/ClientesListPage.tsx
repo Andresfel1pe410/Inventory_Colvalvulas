@@ -9,6 +9,7 @@ import {
 import { useSectionPath } from '@/app/routing/sectionPath'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { useClientesList, useClienteDelete, useClienteUpdate } from '../hooks/useClientes'
+import { ModalMontoParcial } from '../components/ModalMontoParcial'
 import type { Cliente, EstadoCliente } from '../types/cliente.types'
 
 const ESTADOS_CLIENTE: { value: EstadoCliente; label: string }[] = [
@@ -32,6 +33,7 @@ export function ClientesListPage() {
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [modalCliente, setModalCliente] = useState<Cliente | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 300)
@@ -46,13 +48,38 @@ export function ClientesListPage() {
   const updateMutation = useClienteUpdate()
 
   const handleEstadoChange = async (cliente: Cliente, estado_cliente: EstadoCliente) => {
+    if (estado_cliente === 'enviar_parcial') {
+      setModalCliente(cliente)
+      return
+    }
+
     try {
       await updateMutation.mutateAsync({
         id: cliente.id,
-        data: { estado_cliente },
+        data: {
+          estado_cliente,
+          monto_maximo_parcial: null,
+        },
       })
     } catch {
       // Error manejado por interceptor
+    }
+  }
+
+  const handleConfirmMontoParcial = async (monto: number) => {
+    if (!modalCliente) return
+    try {
+      await updateMutation.mutateAsync({
+        id: modalCliente.id,
+        data: {
+          estado_cliente: 'enviar_parcial',
+          monto_maximo_parcial: monto,
+        },
+      })
+    } catch {
+      // Error manejado por interceptor
+    } finally {
+      setModalCliente(null)
     }
   }
 
@@ -121,7 +148,7 @@ export function ClientesListPage() {
                 header: 'Estado Cliente',
                 width: '180px',
                 render: (c) => (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-start gap-1">
                     <select
                       value={c.estado_cliente}
                       onChange={(e) => handleEstadoChange(c, e.target.value as EstadoCliente)}
@@ -134,6 +161,30 @@ export function ClientesListPage() {
                         </option>
                       ))}
                     </select>
+                    {c.estado_cliente === 'enviar_parcial' && (
+                      <button
+                        type="button"
+                        onClick={() => setModalCliente(c)}
+                        disabled={!isAuditorContable}
+                        title={isAuditorContable ? 'Hacer clic para editar monto máximo' : undefined}
+                        className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-200 transition-colors"
+                      >
+                        <span>
+                          {c.monto_maximo_parcial != null && c.monto_maximo_parcial > 0
+                            ? `Máx: ${new Intl.NumberFormat('es-CO', {
+                                style: 'currency',
+                                currency: 'COP',
+                                maximumFractionDigits: 0,
+                              }).format(c.monto_maximo_parcial)}`
+                            : 'Definir monto'}
+                        </span>
+                        {isAuditorContable && (
+                          <svg className="h-3 w-3 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
                   </div>
                 ),
               },
@@ -223,6 +274,13 @@ export function ClientesListPage() {
         variant="danger"
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
+      />
+      <ModalMontoParcial
+        isOpen={modalCliente !== null}
+        clienteNombre={modalCliente?.razon_social}
+        valorInicial={modalCliente?.monto_maximo_parcial}
+        onClose={() => setModalCliente(null)}
+        onConfirm={handleConfirmMontoParcial}
       />
     </div>
   )

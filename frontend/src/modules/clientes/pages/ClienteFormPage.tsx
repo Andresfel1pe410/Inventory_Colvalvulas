@@ -10,6 +10,7 @@ import {
 } from '@/shared/constants/colombia'
 import { VENDEDORES } from '@/shared/constants/vendedores'
 import { TIPOS_DOCUMENTO } from '../types/cliente.types'
+import { ModalMontoParcial } from '../components/ModalMontoParcial'
 import type { ClienteCreate, EstadoCliente } from '../types/cliente.types'
 
 const ESTADOS_CLIENTE: { value: EstadoCliente; label: string }[] = [
@@ -49,8 +50,10 @@ export function ClienteFormPage() {
     detalles_tributarios: '',
     vendedor: '',
     estado_cliente: 'enviar',
+    monto_maximo_parcial: null,
   })
   const [error, setError] = useState('')
+  const [showModalParcial, setShowModalParcial] = useState(false)
 
   const { data: cliente, isLoading: loadingCliente } = useCliente(isEdit && id ? Number(id) : null)
   const createMutation = useClienteCreate()
@@ -75,6 +78,7 @@ export function ClienteFormPage() {
         detalles_tributarios: cliente.detalles_tributarios || '',
         vendedor: cliente.vendedor || '',
         estado_cliente: cliente.estado_cliente || 'enviar',
+        monto_maximo_parcial: cliente.monto_maximo_parcial ?? null,
       })
     }
   }, [cliente])
@@ -101,6 +105,10 @@ export function ClienteFormPage() {
       detalles_tributarios: form.detalles_tributarios || undefined,
       vendedor: form.vendedor || undefined,
       estado_cliente: form.estado_cliente || undefined,
+      monto_maximo_parcial:
+        form.estado_cliente === 'enviar_parcial'
+          ? form.monto_maximo_parcial ?? null
+          : null,
     }
     try {
       if (isEdit && id) {
@@ -199,7 +207,15 @@ export function ClienteFormPage() {
           <label className="block text-sm font-medium text-slate-700">Estado Cliente</label>
           <select
             value={form.estado_cliente}
-            onChange={(e) => setForm((f) => ({ ...f, estado_cliente: e.target.value as EstadoCliente }))}
+            onChange={(e) => {
+              const val = e.target.value as EstadoCliente
+              if (val === 'enviar_parcial') {
+                setForm((f) => ({ ...f, estado_cliente: val }))
+                setShowModalParcial(true)
+              } else {
+                setForm((f) => ({ ...f, estado_cliente: val, monto_maximo_parcial: null }))
+              }
+            }}
             disabled={!canEditEstadoCliente}
             className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
           >
@@ -209,6 +225,45 @@ export function ClienteFormPage() {
               </option>
             ))}
           </select>
+
+          {form.estado_cliente === 'enviar_parcial' && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <label className="block text-sm font-semibold text-amber-900">
+                    Monto Máximo Autorizado para Envío Parcial
+                  </label>
+                  <p className="text-xs text-amber-700">
+                    Tope en dinero que puede costar el pedido a despachar para este cliente.
+                  </p>
+                </div>
+                {canEditEstadoCliente && (
+                  <button
+                    type="button"
+                    onClick={() => setShowModalParcial(true)}
+                    className="inline-flex items-center gap-1.5 self-start rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-700"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    {form.monto_maximo_parcial && form.monto_maximo_parcial > 0 ? 'Editar Monto' : 'Definir Monto'}
+                  </button>
+                )}
+              </div>
+              <div className="mt-2.5 flex items-center gap-2">
+                <span className="text-sm font-medium text-amber-900">Monto asignado:</span>
+                <span className="text-base font-bold text-amber-900">
+                  {form.monto_maximo_parcial && form.monto_maximo_parcial > 0
+                    ? new Intl.NumberFormat('es-CO', {
+                        style: 'currency',
+                        currency: 'COP',
+                        maximumFractionDigits: 0,
+                      }).format(form.monto_maximo_parcial)
+                    : 'Sin definir — Haz clic en "Definir Monto"'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -390,6 +445,16 @@ export function ClienteFormPage() {
           </button>
         </div>
       </form>
+      <ModalMontoParcial
+        isOpen={showModalParcial}
+        clienteNombre={form.razon_social || undefined}
+        valorInicial={form.monto_maximo_parcial}
+        onClose={() => setShowModalParcial(false)}
+        onConfirm={(monto) => {
+          setForm((f) => ({ ...f, monto_maximo_parcial: monto }))
+          setShowModalParcial(false)
+        }}
+      />
     </div>
   )
 }

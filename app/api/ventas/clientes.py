@@ -25,9 +25,9 @@ def _check_actualizar_permission(
     attrs = data.model_dump(exclude_unset=True)
     cambios = {k for k, v in attrs.items() if getattr(cliente_actual, k) != v}
 
-    if not is_admin and (cambios - {"estado_cliente"}):
+    if not is_admin and (cambios - {"estado_cliente", "monto_maximo_parcial"}):
         raise HTTPException(403, "Auditor Contable solo puede modificar Estado Cliente")
-    if not is_auditor and "estado_cliente" in cambios:
+    if not is_auditor and ("estado_cliente" in cambios or "monto_maximo_parcial" in cambios):
         raise HTTPException(403, "Solo Auditor Contable puede modificar Estado Cliente")
 
 

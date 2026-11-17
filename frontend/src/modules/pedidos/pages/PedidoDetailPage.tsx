@@ -301,6 +301,21 @@ export function PedidoDetailPage() {
                   {labelIntencion(pedido.intencion_envio ?? undefined)}
                 </div>
               )}
+              {pedido.intencion_envio === 'enviar_parcial' && cliente?.monto_maximo_parcial != null && (
+                <p className="mt-1 text-xs font-semibold text-amber-800">
+                  Límite autorizado:{' '}
+                  {new Intl.NumberFormat('es-CO', {
+                    style: 'currency',
+                    currency: 'COP',
+                    maximumFractionDigits: 0,
+                  }).format(cliente.monto_maximo_parcial)}
+                  {pedido.total > cliente.monto_maximo_parcial && (
+                    <span className="ml-1 text-red-600 font-bold block">
+                      ⚠ El total del pedido ({new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(pedido.total)}) supera el límite parcial permitido.
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
           <p className="mt-2 text-sm text-slate-500">

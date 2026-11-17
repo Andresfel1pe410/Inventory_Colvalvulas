@@ -229,6 +229,7 @@ class PedidoService:
         self,
         pedido_id: int,
         intencion_envio: str | None,
+        monto_maximo_parcial: Decimal | None = None,
         usuario_id: int | None = None,
         es_vendedor: bool = False,
     ) -> Pedido:
@@ -243,6 +244,11 @@ class PedidoService:
         if not cliente:
             raise NotFoundError("Cliente no encontrado")
         cliente.estado_cliente = estado
+        if estado == "enviar_parcial":
+            if monto_maximo_parcial is not None:
+                cliente.monto_maximo_parcial = monto_maximo_parcial
+        else:
+            cliente.monto_maximo_parcial = None
         self.db.commit()
         return self.obtener(pedido_id, usuario_id=usuario_id, es_vendedor=es_vendedor)
 

@@ -143,13 +143,16 @@ export function usePedidoUpdateIntencionEnvio() {
     mutationFn: ({
       id,
       intencion_envio,
+      monto_maximo_parcial,
     }: {
       id: number
       intencion_envio: 'enviar' | 'enviar_parcial' | 'no_enviar' | 'solo_contado' | null
-    }) => pedidoService.updateIntencionEnvio(id, intencion_envio),
+      monto_maximo_parcial?: number | null
+    }) => pedidoService.updateIntencionEnvio(id, intencion_envio, monto_maximo_parcial),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: queryKeys.pedidos.all })
       qc.invalidateQueries({ queryKey: queryKeys.pedidos.detail(id) })
+      qc.invalidateQueries({ queryKey: queryKeys.clientes.all })
     },
   })
 }

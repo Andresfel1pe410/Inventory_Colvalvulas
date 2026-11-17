@@ -127,7 +127,9 @@ def actualizar_intencion_envio(
     _require_admin(db, current_user)
     es_vend = _es_vendedor_solo(db, current_user)
     return PedidoService(db).actualizar_intencion_envio(
-        id, data.intencion_envio,
+        id,
+        data.intencion_envio,
+        monto_maximo_parcial=data.monto_maximo_parcial,
         usuario_id=current_user.id if es_vend else None,
         es_vendedor=es_vend,
     )

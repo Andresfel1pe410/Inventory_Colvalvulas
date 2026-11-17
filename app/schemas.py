@@ -67,6 +67,7 @@ class ClienteBase(BaseModel):
     detalles_tributarios: Optional[str] = None
     vendedor: Optional[str] = None
     estado_cliente: str = Field(default="enviar", pattern="^(enviar|enviar_parcial|no_enviar|solo_contado)$")
+    monto_maximo_parcial: Optional[Decimal] = Field(None, ge=0)
 
 
 class ClienteCreate(ClienteBase):
@@ -92,6 +93,7 @@ class ClienteUpdate(BaseModel):
     estado_cliente: Optional[str] = Field(
         None, pattern="^(enviar|enviar_parcial|no_enviar|solo_contado)$"
     )
+    monto_maximo_parcial: Optional[Decimal] = Field(None, ge=0)
 
 
 class Cliente(ClienteBase):
@@ -332,6 +334,7 @@ class PedidoIntencionUpdate(BaseModel):
         None,
         pattern="^(enviar|enviar_parcial|no_enviar|solo_contado)$",
     )
+    monto_maximo_parcial: Optional[Decimal] = Field(None, ge=0)
 
 
 class PedidoImpresoUpdate(BaseModel):

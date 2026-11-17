@@ -66,11 +66,18 @@ export function ClienteDetailPage() {
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Estado Cliente</p>
             <p className="text-sm text-slate-600">Se aplicará como referencia para los pedidos nuevos.</p>
           </div>
-          <span
-            className={`rounded-full border px-3 py-1 text-sm font-medium ${COLOR_ESTADO[cliente.estado_cliente]}`}
-          >
-            {LABEL_ESTADO[cliente.estado_cliente]}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span
+              className={`rounded-full border px-3 py-1 text-sm font-medium ${COLOR_ESTADO[cliente.estado_cliente]}`}
+            >
+              {LABEL_ESTADO[cliente.estado_cliente]}
+            </span>
+            {cliente.estado_cliente === 'enviar_parcial' && cliente.monto_maximo_parcial != null && (
+              <span className="text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-200 rounded px-2 py-0.5">
+                Monto máx: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(cliente.monto_maximo_parcial)}
+              </span>
+            )}
+          </div>
         </div>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>

@@ -58,8 +58,14 @@ export const pedidoService = {
   updateIntencionEnvio: (
     id: number,
     intencion_envio: 'enviar' | 'enviar_parcial' | 'no_enviar' | 'solo_contado' | null,
+    monto_maximo_parcial?: number | null,
   ) =>
-    api.patch<PedidoConDetalles>(`/pedidos/${id}/intencion-envio`, { intencion_envio }).then((r) => r.data),
+    api
+      .patch<PedidoConDetalles>(`/pedidos/${id}/intencion-envio`, {
+        intencion_envio,
+        monto_maximo_parcial,
+      })
+      .then((r) => r.data),
 
   update: (id: number, data: PedidoUpdateFull) =>
     api.put<PedidoConDetalles>(`/pedidos/${id}`, data).then((r) => r.data),

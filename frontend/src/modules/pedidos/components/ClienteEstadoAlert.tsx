@@ -18,11 +18,25 @@ export function ClienteEstadoAlert({ clienteId }: ClienteEstadoAlertProps) {
 
   if (!cliente) return null
 
+  const montoFormateado =
+    cliente.estado_cliente === 'enviar_parcial' && cliente.monto_maximo_parcial != null
+      ? new Intl.NumberFormat('es-CO', {
+          style: 'currency',
+          currency: 'COP',
+          maximumFractionDigits: 0,
+        }).format(cliente.monto_maximo_parcial)
+      : null
+
   return (
     <div
       className={`rounded-md border px-3 py-2 text-sm font-medium ${ESTILOS_ESTADO[cliente.estado_cliente]}`}
     >
-      Estado del cliente: {ESTADO_CLIENTE_LABELS[cliente.estado_cliente]}
+      <span>Estado del cliente: {ESTADO_CLIENTE_LABELS[cliente.estado_cliente]}</span>
+      {montoFormateado && (
+        <span className="ml-2 font-semibold text-amber-900 underline decoration-amber-400">
+          (Monto máx: {montoFormateado})
+        </span>
+      )}
     </div>
   )
 }

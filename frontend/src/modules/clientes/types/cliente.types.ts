@@ -18,6 +18,7 @@ export interface Cliente {
   detalles_tributarios?: string
   vendedor?: string
   estado_cliente: EstadoCliente
+  monto_maximo_parcial?: number | null
   created_at: string
   updated_at: string
 }
@@ -39,6 +40,7 @@ export interface ClienteCreate {
   detalles_tributarios?: string
   vendedor?: string
   estado_cliente?: EstadoCliente
+  monto_maximo_parcial?: number | null
 }
 
 export interface ClienteUpdate {
@@ -58,6 +60,7 @@ export interface ClienteUpdate {
   detalles_tributarios?: string
   vendedor?: string
   estado_cliente?: EstadoCliente
+  monto_maximo_parcial?: number | null
 }
 
 export const TIPOS_DOCUMENTO = ['NIT', 'CC'] as const

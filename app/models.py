@@ -78,6 +78,7 @@ class Cliente(Base):
     detalles_tributarios = Column(Text)
     vendedor = Column(String(10))
     estado_cliente = Column(String(20), default="enviar", nullable=False)  # enviar, enviar_parcial, no_enviar, solo_contado
+    monto_maximo_parcial = Column(Numeric(14, 2), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
