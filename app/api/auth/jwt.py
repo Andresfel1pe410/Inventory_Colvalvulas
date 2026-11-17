@@ -111,11 +111,14 @@ async def get_current_user(
             detail="Token inválido: falta sub",
         )
 
+    email = payload.get("email")
+    user_metadata = payload.get("user_metadata") or {}
+
     usuario_service = UsuarioService(db)
     try:
-        usuario = usuario_service.obtener_por_auth_id(auth_user_id)
+        usuario = usuario_service.obtener_o_sincronizar(auth_user_id, email=email, metadata=user_metadata)
     except Exception as e:
-        logger.warning("401: Usuario no encontrado en BD: auth_user_id=%s, error=%s", auth_user_id, e)
+        logger.warning("401: Usuario no encontrado en BD: auth_user_id=%s, email=%s, error=%s", auth_user_id, email, e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario no encontrado en la base de datos. Ejecute el SQL en MIGRACION_USUARIO.md para crearlo.",

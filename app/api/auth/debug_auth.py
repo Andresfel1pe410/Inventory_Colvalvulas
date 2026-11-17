@@ -68,7 +68,9 @@ def debug_auth(
 
     try:
         usuario_service = UsuarioService(db)
-        usuario = usuario_service.obtener_por_auth_id(auth_user_id)
+        email = payload.get("email")
+        user_metadata = payload.get("user_metadata") or {}
+        usuario = usuario_service.obtener_o_sincronizar(auth_user_id, email=email, metadata=user_metadata)
         result["step"] = "ok"
         result["usuario_in_db"] = True
         result["usuario_id"] = usuario.id

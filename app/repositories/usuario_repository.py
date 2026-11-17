@@ -14,6 +14,13 @@ class UsuarioRepository(BaseRepository[Usuario]):
             .first()
         )
 
+    def get_by_email(self, email: str) -> Usuario | None:
+        return (
+            self.db.query(Usuario)
+            .filter(Usuario.email.ilike(email.strip()))
+            .first()
+        )
+
     def get_by_empleado_id(self, empleado_id: int) -> Usuario | None:
         return self.db.query(Usuario).filter(Usuario.empleado_id == empleado_id).first()
 

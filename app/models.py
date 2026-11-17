@@ -5,7 +5,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from sqlalchemy import (
     Column, BigInteger, String, Text, Boolean, Integer, 
-    Numeric, DateTime, Date, ForeignKey, CheckConstraint, UniqueConstraint
+    Numeric, DateTime, Date, ForeignKey, CheckConstraint, UniqueConstraint, Uuid
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -25,7 +25,7 @@ class Usuario(Base):
     __tablename__ = "usuario"
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    auth_user_id = Column(String(36), unique=True, nullable=False)  # UUID como string
+    auth_user_id = Column(Uuid(as_uuid=False), unique=True, nullable=False)  # UUID de auth.users
     email = Column(String(255), nullable=False)
     nombre = Column(String(100), nullable=False)
     apellido = Column(String(100))
